@@ -4,6 +4,11 @@ This document fixes the decisions a contributor would otherwise have to make. Wo
 here. If an item needs a choice this document does not settle, **stop and ask on the item**.
 Do not invent a new convention.
 
+## Language
+
+The library, generators (`xtask`) and examples are Rust. Dev-only scripts in `scripts/` may be
+Python or Node; their outputs are committed and nothing in the build or the CI gates needs Node.
+
 ## Crates
 
 | crate | depends on | licence | contents |

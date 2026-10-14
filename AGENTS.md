@@ -7,7 +7,7 @@ module layout, the component API, theming, testing and gates.
 
 ## How a work item is done
 
-1. Read the work item fully. It names the files to create or change, the upstream references
+1. Find the item in Vogt (index: `docs/BACKLOG.md`) and read it fully. It names the files to create or change, the upstream references
    (pinned URLs), the acceptance criteria and the commands to run.
 2. Branch `wi-<number>-<short-slug>` from `main`, or from the branch the item says it stacks on.
 3. Touch only the files the item lists, plus `CHANGELOG.md`. If you need to touch more, or need
@@ -17,6 +17,10 @@ module layout, the component API, theming, testing and gates.
 5. Open a PR against `main` (or the stacked branch) that names the work item. **Do not merge.**
 
 ## Rules that are never broken
+
+- **Language:** the library and everything that ships or builds into it is Rust. Dev-only
+  scripts under `scripts/` may be Python or Node (for example the one-off Fluent token snapshot);
+  their outputs are committed, and no build, test or CI gate may need Node.
 
 - **Assets:** no Microsoft fonts (Segoe UI, Segoe UI Variable, Segoe Fluent Icons) in the repo
   or embedded in binaries, no Office artwork or logos, and no image without a row in
