@@ -1,0 +1,150 @@
+# Upstream sources this repository depends on, generates from, adapts code from, or follows as a
+# behaviour reference. Policy and procedures: UPSTREAM.md. Checker: scripts/upstream-check.py.
+#
+# Fields
+#   repo      GitHub "owner/name".
+#   branch    branch the pin is compared against.
+#   rev       pinned commit (full SHA). Change it only in a commit that also handles what moved
+#             (regenerate, re-review, or note "reviewed, nothing to do") — see UPSTREAM.md.
+#   reviewed  date (YYYY-MM-DD) the pin was last reviewed against upstream.
+#   licence   SPDX expression of what we use from it.
+#   role      dependency | generated | adapted | reference
+#               dependency: a Cargo dependency; Cargo.lock is the real pin, `rev` records the
+#                           upstream commit of the release we target.
+#               generated:  our files are generated from upstream data at `rev`.
+#               adapted:    our files contain code adapted from upstream at `rev` (attribution
+#                           required; see [[adaptation]] below).
+#               reference:  behaviour/design reference only; no code or assets copied.
+#   watch     upstream paths whose changes matter to us; the checker reports only these.
+#   notes     free text.
+#
+# [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
+# change to the upstream file can be traced to the file here that may need the same fix.
+
+[[source]]
+name = "egui"
+repo = "emilk/egui"
+branch = "main"
+rev = "efcf49788df313b7ff701995f211aa543d2c9ac5"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "dependency"
+watch = ["crates/egui/src/style.rs", "crates/egui/src/widgets", "crates/egui/src/containers", "crates/egui/src/response.rs", "crates/egui_kittest", "CHANGELOG.md"]
+notes = "Targeted release: egui 0.36.2 (crates.io, MSRV 1.95). We support exactly one egui minor per release line."
+
+[[source]]
+name = "fluentui"
+repo = "microsoft/fluentui"
+branch = "master"
+rev = "93e324f72f0e187ff6a7e5f70ebf929d9b2212a2"
+reviewed = "2026-10-14"
+licence = "MIT"
+role = "generated"
+watch = ["packages/tokens/src"]
+notes = "Source of fluent2-tokens. Use only packages/tokens; the repo's fonts and MDL2 icons fall under aka.ms/fluentui-assets-license and are not used."
+
+[[source]]
+name = "fluentui-system-icons"
+repo = "microsoft/fluentui-system-icons"
+branch = "main"
+rev = "a347af95478f989038cccbf085978865264c048a"
+reviewed = "2026-10-14"
+licence = "MIT"
+role = "generated"
+watch = ["assets", "LICENSE"]
+notes = "Source of fluent2-icons (regular and filled, 16/20/24)."
+
+[[source]]
+name = "selawik"
+repo = "microsoft/Selawik"
+branch = "master"
+rev = "89362e84731d1f5777fa078fd4d5ebbd339e4378"
+reviewed = "2026-10-14"
+licence = "OFL-1.1"
+role = "reference"
+watch = ["fonts", "LICENSE.txt"]
+notes = "Open Segoe UI fallback for non-Windows platforms. Not bundled yet; becomes role=generated if we ship it."
+
+[[source]]
+name = "winui-gallery"
+repo = "microsoft/WinUI-Gallery"
+branch = "main"
+rev = "14061eeac21c38ae99f302edf3d9136d4f652c4c"
+reviewed = "2026-10-14"
+licence = "MIT"
+role = "reference"
+watch = ["WinUIGallery/Samples/ControlPages"]
+notes = "Control behaviour reference. Copy no images without checking each one's provenance."
+
+[[source]]
+name = "craft-libs"
+repo = "storytold/craft-libs"
+branch = "main"
+rev = "457a078809690994b22debdffb703ff36d3129df"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["crates/ui", "docs/ui-components-audit.md", "docs/theme-infrastructure.md", "docs/ui-docking.md"]
+notes = "craft-ui: toolbar fitting, split/resize geometry, docking model, accessible tabs. Candidate for adaptation (becomes role=adapted when we copy code). Never copy docs/brand or use the ArtCraft name."
+
+[[source]]
+name = "wordcraft"
+repo = "storytold/wordcraft"
+branch = "main"
+rev = "cf8aea688620e08c483a44a8b0028821d9486bb9"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["crates/ui-egui/src/keytips.rs", "crates/ui-egui/src/ribbon.rs", "crates/ui-egui/src/widgets.rs", "crates/ui-egui/src/backstage.rs", "crates/ui-egui/src/theme.rs", "crates/ui-egui/src/a11y.rs", "crates/ui-egui/src/desktop_theme.rs"]
+notes = "Keytips state machine and ribbon tab fitting are adaptation candidates. Moves hundreds of commits a day: review the watched paths, not the whole log."
+
+[[source]]
+name = "gridcraft"
+repo = "storytold/gridcraft"
+branch = "main"
+rev = "d9d09f0baa912e88c5111107903fc8c640214b57"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["crates/ui-egui/src/grid.rs", "crates/ui-egui/src/ribbon.rs", "crates/ui-egui/src/backstage.rs", "crates/ui-egui/src/theme.rs", "crates/ui-egui/src/keytips.rs"]
+notes = "Virtualised grid and system-font discovery reference."
+
+[[source]]
+name = "deckcraft"
+repo = "storytold/deckcraft"
+branch = "main"
+rev = "ea904591a59d01c9af75c2e7ef5730227da3e3a3"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["crates/ui-egui/src/ribbon.rs", "crates/ui-egui/src/widgets.rs", "crates/ui-egui/src/backstage.rs", "crates/ui-egui/src/qat.rs"]
+notes = "Split buttons returning (main, arrow) responses, galleries, QAT."
+
+[[source]]
+name = "laststudio-fluent-egui"
+repo = "laststudio/fluent-egui"
+branch = "main"
+rev = "ec6e3a3f6cf639b381e985a372bd7f46dc12b05e"
+reviewed = "2026-10-14"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["src/winui", "Cargo.toml"]
+notes = "Prior art (crates.io fluent-egui 0.1.1, egui 0.35). Bundled sample PNGs have no per-file attribution: do not copy them."
+
+[[source]]
+name = "fluent-gpui"
+repo = "thedancingdeveloper/fluent-gpui"
+branch = "main"
+rev = "f601e54b4e58e416bc7495a75468b82af9a10545"
+reviewed = "2026-10-14"
+licence = "Apache-2.0"
+role = "reference"
+watch = ["crates/fluent-core/src", "crates/fluent-primitives/src", "crates/fluent-layout/src", "crates/fluent-ribbon/src", "crates/fluent-app/src"]
+notes = "Our own gpui library (parked 2026-10-14). Component inventory and API shapes are the spec reference. Its LICENSE file is not the verbatim Apache-2.0 text; relicensing code into this repo needs the owner's confirmation."
+
+# [[adaptation]]
+# ours     = "crates/fluent2-egui/src/office/keytips.rs"
+# source   = "wordcraft"
+# path     = "crates/ui-egui/src/keytips.rs"
+# rev      = "<full sha the code was taken at>"
+# notes    = "state machine only; rendering rewritten"

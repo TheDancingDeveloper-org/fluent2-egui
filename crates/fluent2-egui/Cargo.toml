@@ -1,0 +1,16 @@
+[package]
+name = "fluent2-egui"
+description = "Fluent 2 themes, controls and Office-style application chrome for egui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+egui = { workspace = true }
+fluent2-tokens = { workspace = true }
+fluent2-icons = { workspace = true }

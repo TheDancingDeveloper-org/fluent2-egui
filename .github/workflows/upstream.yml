@@ -1,0 +1,31 @@
+name: upstream drift
+
+# Reports how far each source in upstream.toml has moved since its pin. Read-only: it writes
+# the report to the job summary and never changes the repository. See UPSTREAM.md.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "Space-separated source names (empty = all)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Drift report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCES: ${{ inputs.sources }}
+        run: python3 scripts/upstream-check.py $SOURCES | tee -a "$GITHUB_STEP_SUMMARY"

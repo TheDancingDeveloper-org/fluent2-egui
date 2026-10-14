@@ -1,0 +1,20 @@
+fluent2-egui
+Copyright (c) 2026 The fluent2-egui contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE). The fluent2-icons crate is licensed under the MIT License only.
+
+Not affiliated with or endorsed by Microsoft Corporation. Microsoft, Fluent, Office and Segoe are
+trademarks of the Microsoft group of companies.
+
+Third-party material
+
+None bundled yet. Each asset is listed in ATTRIBUTION.md when it is added. Planned:
+- Fluent 2 design token values generated from microsoft/fluentui packages/tokens, MIT License,
+  Copyright (c) Microsoft Corporation.
+- Fluent System Icons from microsoft/fluentui-system-icons, MIT License,
+  Copyright (c) 2020 Microsoft Corporation.
+
+Source provenance
+
+Code adapted from other projects is listed here and in upstream.toml ([[adaptation]]), with the
+upstream repository, path, revision and copyright holder. None yet.
