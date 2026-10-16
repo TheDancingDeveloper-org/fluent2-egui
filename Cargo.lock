@@ -168,6 +168,7 @@ dependencies = [
  "egui",
  "fluent2-icons",
  "fluent2-tokens",
+ "log",
 ]
 
 [[package]]
