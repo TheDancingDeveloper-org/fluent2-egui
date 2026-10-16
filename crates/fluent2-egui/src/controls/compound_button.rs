@@ -118,13 +118,15 @@ impl Widget for CompoundButton<'_> {
                 secondary_style,
             )
         });
-        // body1_strong (14) plus caption1 (12) plus spacingVerticalM on each side.
-        let lines = if self.secondary.is_some() {
-            14.0 + 12.0
-        } else {
-            14.0
-        };
-        let height = lines + v_pad * 2.0;
+        // Reserve the Fluent line heights (body1 20, caption1 16). A galley measured before
+        // the type ramp is installed is only the font size (14 and 12), which is too short.
+        let lines = TypeRamp::Body1Strong.line_height()
+            + if secondary.is_some() {
+                TypeRamp::Caption1.line_height()
+            } else {
+                0.0
+            };
+        let height = (lines + v_pad * 2.0).max(icon_slot + v_pad * 2.0);
         let text_w = primary
             .size()
             .x
@@ -164,6 +166,7 @@ impl Widget for CompoundButton<'_> {
                 );
                 x += ICON_BOX + gap;
             }
+            let primary_row = TypeRamp::Body1Strong.line_height();
             let block_top = rect.center().y - lines / 2.0;
             ui.painter()
                 .galley(egui::pos2(x, block_top), primary.clone(), c(face.foreground));
@@ -175,7 +178,7 @@ impl Widget for CompoundButton<'_> {
                     theme.color.neutral_foreground_disabled
                 };
                 ui.painter().galley(
-                    egui::pos2(x, block_top + primary.size().y),
+                    egui::pos2(x, block_top + primary_row),
                     secondary.clone(),
                     c(secondary_color),
                 );
