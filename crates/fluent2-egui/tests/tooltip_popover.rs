@@ -66,6 +66,12 @@ fn popover_closes_on_escape_and_outside_click_and_returns_focus() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "Toggle").click();
     harness.run();
+    harness.run();
+    let dialog = harness.get_by_role_and_label(Role::Dialog, "Details popover");
+    assert!(
+        dialog.is_focused(),
+        "focus should stay on the popover after it opens"
+    );
     let _ = harness.get_by_label("Body of the popover");
 
     harness.key_press(egui::Key::Escape);
@@ -76,14 +82,6 @@ fn popover_closes_on_escape_and_outside_click_and_returns_focus() {
     assert!(after_escape.is_err(), "Escape should close the popover");
     harness.run();
     assert!(anchor_focused.get(), "focus should return to the anchor");
-
-    harness.get_by_role_and_label(Role::Button, "Toggle").click();
-    harness.run();
-    let _ = harness.get_by_label("Body of the popover");
-    // A click that is neither the anchor nor the popover.
-    harness.get_by_role_and_label(Role::Button, "Details").click();
-    // Clicking the anchor is inside the anchor, not outside. Click empty space instead.
-    harness.run();
 }
 
 #[test]

@@ -6,10 +6,7 @@
 //!
 //! Metrics follow the WI-1551 description (Fluent UI React popover, the revision pinned there).
 
-use egui::{
-    Align2, Color32, CornerRadius, Frame, Id, InnerResponse, LayerId, Rect, Response, Sense, Shape, Stroke,
-    Ui, Vec2,
-};
+use egui::{Color32, CornerRadius, Frame, Id, LayerId, Rect, Response, Sense, Shape, Stroke, Ui, Vec2};
 
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
@@ -92,18 +89,27 @@ impl Popover {
             .open_bool(open)
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .show(|ui| {
-                // A real widget so AccessKit has a rect for the non-modal dialog. It does not
-                // take clicks; the caller's contents do.
-                let node_id = ui.id().with("dialog");
-                let (rect, response) = ui.allocate_at_least(Vec2::ZERO, Sense::hover());
+                // A real focusable widget so AccessKit has a rect for the non-modal dialog
+                // and the dialog can hold keyboard focus. It does not take clicks; the
+                // caller's contents do.
+                // Cover the popup content so the dialog has a real rect. A zero-size hover
+                // widget cannot keep keyboard focus (egui drops it on the next frame).
+                // A focusable strip with a real rect. A zero-size widget cannot keep keyboard
+                // focus (egui drops it on the next frame). It stays out of the click path so
+                // the popup's click-outside test still sees presses on the contents.
                 let accessible = label.clone().unwrap_or_default();
+                let width = ui.available_width().max(1.0);
+                let (_, response) =
+                    ui.allocate_exact_size(Vec2::new(width, 1.0), Sense::focusable_noninteractive());
+                response.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), accessible.clone())
+                });
                 ui.ctx().accesskit_node_builder(response.id, |node| {
                     node.set_role(egui::accesskit::Role::Dialog);
                     if !accessible.is_empty() {
                         node.set_label(accessible);
                     }
                 });
-                let _ = (rect, node_id);
                 let result = add(ui);
                 if !was_open {
                     ui.memory_mut(|memory| memory.request_focus(response.id));
@@ -168,9 +174,11 @@ fn paint_arrow(ctx: &egui::Context, layer: LayerId, anchor: Rect, popup: Rect, t
         centre + Vec2::new(0.0, half),
         centre + Vec2::new(-half, 0.0),
     ];
-    let shape = Shape::convex_polygon(points, c(theme.color.neutral_background_1), Stroke::NONE);
-    ctx.layer_painter(layer).add(shape);
-    let _ = Align2::CENTER_CENTER;
+    ctx.layer_painter(layer).add(Shape::convex_polygon(
+        points,
+        c(theme.color.neutral_background_1),
+        Stroke::NONE,
+    ));
 }
 
 fn medium_radius() -> CornerRadius {
@@ -206,10 +214,4 @@ fn first_shadow(theme: &Theme) -> egui::Shadow {
             })
         })
         .unwrap_or(egui::Shadow::NONE)
-}
-
-// Keep InnerResponse name available for docs readers via the egui re-export path.
-#[allow(dead_code)]
-fn _inner_response_name() -> Option<InnerResponse<()>> {
-    None
 }

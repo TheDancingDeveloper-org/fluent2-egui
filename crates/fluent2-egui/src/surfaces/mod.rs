@@ -6,4 +6,4 @@ mod tooltip;
 
 pub use menu::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use popover::Popover;
-pub use tooltip::{TooltipExt, TooltipTone, fluent_tooltip};
+pub use tooltip::{FluentTooltip, TooltipExt, TooltipTone};
