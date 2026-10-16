@@ -290,3 +290,31 @@ fn five_thousand_options_lay_out_under_one_hundred() {
         "5000 options should lay out fewer than 100 rows, laid out {laid_out}"
     );
 }
+
+#[test]
+fn press_outside_closes_the_listbox() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_egui_theme(ui);
+        let mut selected = None;
+        ui.add(
+            Dropdown::new("city", &mut selected, &["Perth", "Paris"])
+                .placeholder("City")
+                .width(160.0),
+        );
+        // A second widget so a press can land outside both the field and the popup.
+        ui.add_space(80.0);
+        let _ = ui.button("Elsewhere");
+    });
+    harness.run();
+    harness.get_by_label("City").click();
+    harness.run();
+    let _ = harness.get_by_role_and_label(egui::accesskit::Role::Button, "Paris");
+    harness.get_by_label("Elsewhere").click();
+    harness.run();
+    assert!(
+        harness
+            .query_by_role_and_label(egui::accesskit::Role::Button, "Paris")
+            .is_none(),
+        "a press outside the field and the popup should close the listbox"
+    );
+}

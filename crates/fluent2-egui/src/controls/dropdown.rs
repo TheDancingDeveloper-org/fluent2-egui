@@ -198,10 +198,13 @@ impl Widget for Dropdown<'_> {
         });
 
         if open && enabled {
-            let picked = show_listbox(ui, id, rect, &self.options, selected_index, active, &self.preview);
+            let (picked, outside) =
+                show_listbox(ui, id, rect, &self.options, selected_index, active, &self.preview);
             if let Some(index) = picked {
                 *self.selected = Some(index);
                 response.mark_changed();
+                open = false;
+            } else if outside {
                 open = false;
             }
         }
@@ -224,14 +227,14 @@ pub(super) fn show_listbox(
     selected: Option<usize>,
     active: Option<usize>,
     preview: &Option<PreviewFn<'_>>,
-) -> Option<usize> {
+) -> (Option<usize>, bool) {
     let theme = Theme::get(ui.ctx());
     let count = options.len();
     let rows = (count as f32)
         .min(MAX_VISIBLE_ROWS)
         .max(if count == 0 { 0.0 } else { 1.0 });
     if count == 0 {
-        return None;
+        return (None, false);
     }
     let popup_height = rows * OPTION_HEIGHT;
     let popup_id = id.with("popup");
@@ -246,10 +249,12 @@ pub(super) fn show_listbox(
         .stroke(Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_1)))
         .corner_radius(radius)
         .inner_margin(0);
-    egui::Popup::from_response(&ui.interact(field, id.with("anchor"), Sense::hover()))
+    let shown = egui::Popup::from_response(&ui.interact(field, id.with("anchor"), Sense::hover()))
         .id(popup_id)
         .layout(Layout::top_down(Align::Min))
         .frame(menu_frame)
+        // IgnoreClicks keeps a scrollbar drag from closing the list. Dismissal of a press that
+        // is outside both the field and this popup is handled below.
         .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
         .open(true)
         .show(|ui| {
@@ -290,7 +295,17 @@ pub(super) fn show_listbox(
                 }
             }
         });
-    picked
+    // A press on the scrollbar is inside the popup rect, so it does not dismiss. A press on the
+    // field is handled by the field. Anything else closes.
+    let popup_rect = shown.as_ref().map(|inner| inner.response.rect);
+    let outside = ui.input(|input| {
+        input.pointer.any_pressed()
+            && input
+                .pointer
+                .interact_pos()
+                .is_some_and(|pos| !field.contains(pos) && popup_rect.is_none_or(|rect| !rect.contains(pos)))
+    });
+    (picked, outside)
 }
 
 pub(super) fn option_row(

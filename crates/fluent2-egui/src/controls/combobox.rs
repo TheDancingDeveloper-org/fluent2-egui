@@ -189,6 +189,17 @@ impl Widget for Combobox<'_> {
             open = !open;
             response.request_focus();
         }
+        if open && !response.has_focus() && !chevron_response.clicked() {
+            let over_popup = ui.input(|input| {
+                input
+                    .pointer
+                    .interact_pos()
+                    .is_some_and(|pos| pos.y >= rect.bottom())
+            });
+            if !over_popup {
+                open = false;
+            }
+        }
         let icon_color = if enabled {
             c(theme.color.neutral_foreground_3)
         } else {
@@ -238,7 +249,7 @@ impl Widget for Combobox<'_> {
             let selected_in_list = labels
                 .iter()
                 .position(|label| label.eq_ignore_ascii_case(self.text));
-            let picked = show_listbox(
+            let (picked, outside) = show_listbox(
                 ui,
                 id,
                 rect,
@@ -247,6 +258,9 @@ impl Widget for Combobox<'_> {
                 Some(active),
                 &self.preview,
             );
+            if outside {
+                open = false;
+            }
             if let Some(index) = picked {
                 if let Some((_, label)) = filtered.get(index) {
                     *self.text = (*label).to_owned();
