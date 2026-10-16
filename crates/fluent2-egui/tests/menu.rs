@@ -111,6 +111,26 @@ fn down_arrow_moves_focus_between_items() {
     );
 }
 
+#[test]
+fn clicking_a_submenu_keeps_the_parent_open() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_light(ui);
+        ui.menu_button("File", |ui| {
+            let _ = ui.add(MenuItem::new("Alpha"));
+            fluent2_egui::submenu(ui, "Share", None, |ui| {
+                let _ = ui.add(MenuItem::new("Email"));
+            });
+        });
+    });
+    harness.run();
+    harness.get_by_role_and_label(Role::Button, "File").click();
+    harness.run();
+    harness.get_by_role_and_label(Role::Button, "Share").click();
+    harness.run();
+    let _ = harness.get_by_role_and_label(Role::Button, "Alpha");
+    let _ = harness.get_by_role_and_label(Role::Button, "Email");
+}
+
 #[path = "../../../gallery/src/pages/menus.rs"]
 mod menus;
 
