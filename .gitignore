@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 /upstream-report.md
+
+# trunk output
+crates/gallery/dist/
