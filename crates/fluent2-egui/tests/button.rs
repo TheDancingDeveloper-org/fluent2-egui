@@ -2,7 +2,7 @@
 //!
 //! Widgets are found through the AccessKit tree by role and label.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 use egui::accesskit::Role;
 use egui_kittest::Harness;
@@ -67,7 +67,10 @@ fn activates(appearance: Appearance, key: Option<egui::Key>) {
     });
     harness.run();
     if let Some(key) = key {
-        harness.key_press(key);
+        // Focus requested this frame is live on the next one. A press-and-release is two
+        // harness steps and the second clears `clicked`, so send the key-down only.
+        harness.run();
+        harness.key_down(key);
     } else {
         harness.get_by_label("Go").click();
     }
@@ -179,4 +182,70 @@ fn gallery_page_is_a_matrix() {
     let _ = harness.get_by_role_and_label(Role::Button, "Primary Small");
     let _ = harness.get_by_role_and_label(Role::Button, "Transparent Large");
     let _ = harness.get_by_role_and_label(Role::Button, "Close");
+}
+
+#[test]
+fn tab_moves_from_one_button_to_the_next() {
+    let focused = RefCell::new(("".to_owned(), "".to_owned()));
+    let mut harness = Harness::new_ui(|ui| {
+        install_light(ui);
+        let first = ui.add(Button::new("Alpha"));
+        let second = ui.add(Button::new("Beta"));
+        let name = |response: &egui::Response, label: &str| -> String {
+            if response.has_focus() {
+                label.to_owned()
+            } else {
+                String::new()
+            }
+        };
+        *focused.borrow_mut() = (name(&first, "Alpha"), name(&second, "Beta"));
+    });
+    harness.run();
+    harness.key_down(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        focused.borrow().0,
+        "Alpha",
+        "first Tab should focus Alpha, not an invisible stop"
+    );
+    harness.key_up(egui::Key::Tab);
+    harness.run();
+    harness.key_down(egui::Key::Tab);
+    harness.run();
+    assert_eq!(focused.borrow().1, "Beta", "second Tab should focus Beta");
+}
+
+fn click_nth(harness: &mut Harness, index: usize) {
+    let mut nodes = harness.get_all_by_label("Save");
+    let mut node = None;
+    for _ in 0..=index {
+        node = nodes.next();
+    }
+    drop(nodes);
+    if let Some(node) = node {
+        node.click();
+    }
+}
+
+#[test]
+fn two_unsalted_buttons_with_the_same_label_are_independent() {
+    let hits = RefCell::new((0, 0));
+    let mut harness = Harness::new_ui(|ui| {
+        install_light(ui);
+        let mut counts = *hits.borrow();
+        if ui.add(Button::new("Save")).clicked() {
+            counts.0 += 1;
+        }
+        if ui.add(Button::new("Save")).clicked() {
+            counts.1 += 1;
+        }
+        *hits.borrow_mut() = counts;
+    });
+    harness.run();
+    assert_eq!(harness.get_all_by_label("Save").count(), 2);
+    click_nth(&mut harness, 0);
+    harness.run();
+    click_nth(&mut harness, 1);
+    harness.run();
+    assert_eq!(*hits.borrow(), (1, 1), "each Save should click once");
 }
