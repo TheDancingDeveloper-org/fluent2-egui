@@ -3,8 +3,9 @@
 //! Arrow keys step by the configured step, or by 1% of the range when none is set.
 //! Home and End jump to the ends. Dragging the thumb uses [`egui::Sense::drag`].
 
-use egui::{Key, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, Widget, WidgetInfo};
+use egui::{Key, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget, WidgetInfo};
 
+use crate::foundation::focus::paint_focus_ring;
 use crate::theme::{self, Theme};
 
 const RAIL: f32 = 4.0;
@@ -182,19 +183,15 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
     );
     painter.circle_filled(thumb.center(), DOT / 2.0, theme::c(color.brand_background));
     if focused {
-        painter.rect_stroke(
-            thumb.expand(2.0),
-            (THUMB / 2.0) + 2.0,
-            Stroke::new(2.0, theme::c(color.stroke_focus_2)),
-            StrokeKind::Outside,
-        );
+        paint_focus_ring(ui, thumb, egui::CornerRadius::same((THUMB / 2.0) as u8));
     }
     let _ = enabled;
 }
 
 fn fraction_at(pointer: Pos2, rect: Rect, vertical: bool) -> f64 {
+    // The rail is inset by half a thumb on both ends, matching `paint`.
     let (along, length) = if vertical {
-        (rect.bottom() - pointer.y, rect.height() - THUMB)
+        (rect.bottom() - THUMB / 2.0 - pointer.y, rect.height() - THUMB)
     } else {
         (pointer.x - rect.left() - THUMB / 2.0, rect.width() - THUMB)
     };
