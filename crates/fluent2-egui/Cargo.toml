@@ -12,5 +12,6 @@ workspace = true
 
 [dependencies]
 egui = { workspace = true }
+log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
