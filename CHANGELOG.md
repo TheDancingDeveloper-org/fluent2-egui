@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- Checkbox, RadioGroup and Switch controls (WI-1546).
 - Input, SearchBox and Textarea: Fluent frame around egui `TextEdit` (WI-1547).
 - `SpinButton` and `Slider` controls (WI-1548).
 - Button control: primary, secondary, outline, subtle and transparent; small, medium and large; icon and icon-only (WI-1542).
