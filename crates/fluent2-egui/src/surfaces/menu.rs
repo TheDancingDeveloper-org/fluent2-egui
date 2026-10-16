@@ -74,6 +74,8 @@ pub struct MenuItem<'a> {
     check_column: bool,
     disabled_reason: Option<&'a str>,
     id_salt: Option<Id>,
+    /// Submenu triggers must not dismiss the parent menu.
+    closes_menu: bool,
 }
 
 impl<'a> MenuItem<'a> {
@@ -87,6 +89,7 @@ impl<'a> MenuItem<'a> {
             check_column: false,
             disabled_reason: None,
             id_salt: None,
+            closes_menu: true,
         }
     }
 
@@ -183,7 +186,7 @@ impl Widget for MenuItem<'_> {
             // `on_hover_text` only shows on an enabled widget. This reason is for a disabled item.
             response = response.on_disabled_hover_text(reason);
         }
-        if response.clicked() {
+        if response.clicked() && self.closes_menu {
             ui.close();
         }
 
@@ -251,6 +254,7 @@ pub fn submenu<R>(
     let text = text.into();
     let in_menu = ui.stack().iter().any(|frame| frame.kind() == Some(UiKind::Menu));
     let mut item = MenuItem::new(text);
+    item.closes_menu = false;
     if let Some(icon) = icon {
         item = item.icon(icon);
     }
