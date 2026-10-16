@@ -11,14 +11,14 @@ pub mod controls;
 pub mod foundation;
 pub mod theme;
 
-pub use controls::{Slider, SpinButton};
+pub use controls::{Input, InputAppearance, SearchBox, Slider, SpinButton, Textarea, TextareaResize};
 pub use theme::{Theme, ThemeKind};
 
 /// Names a caller usually wants in scope.
 pub mod prelude {
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
-    pub use crate::{Slider, SpinButton, Theme, ThemeKind};
+    pub use crate::{Input, SearchBox, Slider, SpinButton, Textarea, Theme, ThemeKind};
 }
 
 /// Install image loaders and `theme`.

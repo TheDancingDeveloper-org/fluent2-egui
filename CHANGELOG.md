@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- Input, SearchBox and Textarea: Fluent frame around egui `TextEdit` (WI-1547).
 - `SpinButton` and `Slider` controls (WI-1548).
 - Button control: primary, secondary, outline, subtle and transparent; small, medium and large; icon and icon-only (WI-1542).
 - `Icon` widget and `fluent2_egui::install`: Fluent System Icons at 16/20/24 px, tinted from the theme (WI-1536).
