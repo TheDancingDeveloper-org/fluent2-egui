@@ -4,7 +4,7 @@
 //! the selection inside the group. Only the selected radio is in the Tab order.
 
 use egui::{
-    CornerRadius, Id, Key, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetText,
+    CornerRadius, Key, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetText,
     epaint::RectShape,
 };
 use fluent2_tokens::generated::global::{spacing_horizontal, stroke_width};
@@ -71,7 +71,6 @@ impl RadioGroup<'_> {
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
         let enabled = ui.is_enabled();
-        let id = ui.id().with("fluent2_radio_group");
         let count = options.len();
         if count > 0 {
             *selected = (*selected).min(count - 1);
@@ -118,7 +117,8 @@ impl RadioGroup<'_> {
                     Vec2::splat(OUTER),
                 );
                 let pointer = ui.input(|input| input.pointer.interact_pos());
-                if response.clicked() && pointer.is_some_and(|pos| item.contains(pos)) {
+                let over = pointer.is_some_and(|pos| item.contains(pos));
+                if response.clicked() && over {
                     clicked = Some(index);
                 }
                 paint_radio(
@@ -127,8 +127,8 @@ impl RadioGroup<'_> {
                     index == *selected,
                     &theme,
                     enabled,
-                    item.contains(pointer.unwrap_or(egui::Pos2::new(f32::NAN, f32::NAN))),
-                    response.is_pointer_button_down_on() && clicked == Some(index),
+                    over,
+                    response.is_pointer_button_down_on() && over,
                 );
                 let text_pos = egui::pos2(item.left() + OUTER + gap, item.center().y - galley.size().y / 2.0);
                 let foreground = if enabled {
@@ -137,7 +137,7 @@ impl RadioGroup<'_> {
                     c(theme.color.neutral_foreground_disabled)
                 };
                 ui.painter().galley(text_pos, galley, foreground);
-                let child = id.with(index);
+                let child = response.id.with(("radio", index));
                 let label = options_label(&options, index);
                 let on = index == *selected;
                 ui.ctx().accesskit_node_builder(child, |node| {
@@ -180,6 +180,9 @@ impl RadioGroup<'_> {
                 response.mark_changed();
             }
             if response.has_focus() && count > 0 {
+                if space_pressed(ui) {
+                    response.mark_changed();
+                }
                 let next = arrow_delta(ui, horizontal);
                 if next != 0 {
                     let len = count as i32;
@@ -193,11 +196,12 @@ impl RadioGroup<'_> {
             }
         }
 
-        ui.ctx().accesskit_node_builder(id, |node| {
+        // The allocated widget is the group: one Tab stop, with the radios as children.
+        // The child ids hang off this response, so two groups in one Ui do not collide.
+        let group_id = response.id;
+        ui.ctx().accesskit_node_builder(group_id, |node| {
             node.set_role(egui::accesskit::Role::RadioGroup);
         });
-        // Only the group is in the Tab order; the radios are children.
-        let _ = Id::NULL;
         RadioGroupResponse { response }
     }
 }
@@ -276,6 +280,10 @@ fn paint_radio(
         };
         ui.painter().circle_filled(rect.center(), DOT / 2.0, dot);
     }
+}
+
+fn space_pressed(ui: &Ui) -> bool {
+    ui.input(|input| input.key_pressed(Key::Space))
 }
 
 fn arrow_delta(ui: &Ui, horizontal: bool) -> i32 {

@@ -1,6 +1,4 @@
-//! Fluent motion. The public helper lives in WI-1537; this file is the same easing so
-//! [`crate::controls::Switch`] can call `foundation::motion::animate` before that item lands.
-//! When WI-1537 merges, replace this module with its version rather than keeping both.
+//! Fluent durations and cubic-bezier curves.
 
 use egui::{Context, Id};
 use fluent2_tokens::generated::global::{curve, duration};
@@ -85,7 +83,10 @@ impl Curve {
         }
     }
 
-    /// Evaluate the cubic-bezier easing at `t` in `0..=1`. Non-finite input returns `0.0`.
+    /// Evaluate the cubic-bezier easing at `t`.
+    ///
+    /// `t` is clamped to `0..=1`. Non-finite input returns `0.0`. The X root uses at most eight
+    /// Newton iterations.
     #[must_use]
     pub fn ease(self, t: f32) -> f32 {
         if !t.is_finite() {
@@ -96,27 +97,27 @@ impl Curve {
             return t;
         }
         let [x1, y1, x2, y2] = self.bezier();
-        sample_bezier(solve_bezier_x(t, x1, x2), y1, y2)
+        let x = solve_bezier_x(t, x1, x2);
+        sample_bezier(x, y1, y2)
     }
 }
 
 /// Store whether motion should snap to its target.
 pub fn set_reduced_motion(ctx: &Context, enabled: bool) {
-    ctx.data_mut(|data| data.insert_temp(Id::NULL.with(REDUCED_MOTION_KEY), enabled));
+    ctx.data_mut(|data| data.insert_temp(reduced_motion_id(), enabled));
 }
 
 /// Animate `target` over `duration` with `curve`.
 ///
-/// Reduced motion returns `target` immediately. The first observation returns `target` as well,
-/// so a control that appears already on does not slide in from the off position.
+/// [`Context::animate_value_with_time`] moves linearly. This samples `curve` on that progress.
+/// When `target` changes before the run settles, the clock is reseeded at the value returned
+/// last frame (the eased value, not egui's linear one) and the new run starts there. Reduced
+/// motion returns `target` immediately.
 pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Curve) -> f32 {
     if !target.is_finite() {
         return 0.0;
     }
-    if ctx.data(|data| {
-        data.get_temp::<bool>(Id::NULL.with(REDUCED_MOTION_KEY))
-            .unwrap_or(false)
-    }) {
+    if ctx.data(|data| data.get_temp::<bool>(reduced_motion_id()).unwrap_or(false)) {
         return target;
     }
     let from_id = id.with("fluent2_motion_from");
@@ -128,6 +129,8 @@ pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Cu
     let retargeted = previous_to.is_some_and(|previous| (previous - target).abs() > f32::EPSILON);
     if retargeted {
         let current = previous_eased.unwrap_or(target);
+        // egui would otherwise restart from its last *linear* return. Seed that stored value
+        // with the eased sample, then aim the same clock at the new target.
         ctx.animate_value_with_time(id, current, 0.0);
         ctx.data_mut(|data| data.insert_temp(from_id, current));
     }
@@ -139,15 +142,18 @@ pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Cu
     } else {
         ((linear - origin) / span).clamp(0.0, 1.0)
     };
-    if stored_from.is_none() && !retargeted {
+    let eased = if stored_from.is_none() && !retargeted {
+        // First observation: egui reports `target` immediately, so there is no span yet.
+        // Remember it as the origin; the next frame eases away from it.
         ctx.data_mut(|data| {
             data.insert_temp(from_id, linear);
             data.insert_temp(to_id, target);
             data.insert_temp(eased_id, linear);
         });
         return linear;
-    }
-    let eased = origin + span * curve.ease(progress);
+    } else {
+        origin + span * curve.ease(progress)
+    };
     ctx.data_mut(|data| {
         data.insert_temp(from_id, origin);
         data.insert_temp(to_id, target);
@@ -156,6 +162,11 @@ pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Cu
     eased
 }
 
+fn reduced_motion_id() -> Id {
+    Id::NULL.with(REDUCED_MOTION_KEY)
+}
+
+/// Solve `bezier_x(u) = t` for `u` in `0..=1`.
 fn solve_bezier_x(t: f32, x1: f32, x2: f32) -> f32 {
     let mut u = t;
     for _ in 0..NEWTON_STEPS {
@@ -166,17 +177,63 @@ fn solve_bezier_x(t: f32, x1: f32, x2: f32) -> f32 {
         }
         u = (u - x / dx).clamp(0.0, 1.0);
     }
-    if u.is_finite() { u } else { t }
+    if !u.is_finite() { t } else { u }
 }
 
 fn sample_bezier(u: f32, c1: f32, c2: f32) -> f32 {
     let u2 = u * u;
     let u3 = u2 * u;
     let one = 1.0 - u;
-    3.0 * one * one * u * c1 + 3.0 * one * u2 * c2 + u3
+    let one2 = one * one;
+    3.0 * one2 * u * c1 + 3.0 * one * u2 * c2 + u3
 }
 
 fn bezier_slope(u: f32, c1: f32, c2: f32) -> f32 {
     let one = 1.0 - u;
     3.0 * one * one * c1 + 6.0 * one * u * (c2 - c1) + 3.0 * u * u * (1.0 - c2)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Curve;
+
+    #[test]
+    fn ease_endpoints_are_identity() {
+        for curve in [
+            Curve::AccelerateMax,
+            Curve::AccelerateMid,
+            Curve::AccelerateMin,
+            Curve::DecelerateMax,
+            Curve::DecelerateMid,
+            Curve::DecelerateMin,
+            Curve::EasyEase,
+            Curve::EasyEaseMax,
+            Curve::Linear,
+        ] {
+            assert_eq!(curve.ease(0.0), 0.0);
+            assert_eq!(curve.ease(1.0), 1.0);
+        }
+    }
+
+    #[test]
+    fn easy_ease_is_monotonic() {
+        let mut previous = 0.0;
+        let mut t = 0.0;
+        while t <= 1.0 {
+            let value = Curve::EasyEase.ease(t);
+            assert!(value + 1e-4 >= previous, "{value} < {previous} at {t}");
+            previous = value;
+            t += 0.05;
+        }
+    }
+
+    #[test]
+    fn non_finite_and_out_of_range_are_finite() {
+        for t in [-1.0, f32::NAN, 2.0] {
+            let value = Curve::EasyEase.ease(t);
+            assert!(value.is_finite(), "{t} -> {value}");
+        }
+        assert_eq!(Curve::EasyEase.ease(-1.0), 0.0);
+        assert_eq!(Curve::EasyEase.ease(2.0), 1.0);
+    }
 }
