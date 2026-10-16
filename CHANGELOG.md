@@ -5,7 +5,8 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
-- `cargo xtask gen-tokens` generates the `fluent2-tokens` Rust modules from the JSON snapshot.\n- Fluent 2 token snapshot (`crates/fluent2-tokens/data/*.json`) from `@fluentui/tokens@1.0.0-alpha.24`.
+- `cargo xtask gen-tokens` generates the `fluent2-tokens` Rust modules from the JSON snapshot.
+- Fluent 2 token snapshot (`crates/fluent2-tokens/data/*.json`) from `@fluentui/tokens@1.0.0-alpha.24`.
 - Workspace scaffold: `fluent2-tokens`, `fluent2-icons`, `fluent2-egui`.
 - Upstream tracking: `upstream.toml`, `UPSTREAM.md`, `scripts/upstream-check.py` and a weekly
   drift workflow.
