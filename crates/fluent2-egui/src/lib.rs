@@ -26,10 +26,10 @@ pub mod prelude {
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
     pub use crate::{
-        Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton, Divider,
-        Dropdown, Field, Input, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup, SearchBox, Slider,
-        SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea, Theme, ThemeKind, ToggleButton,
-        ValidationState,
+        Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton,
+        Divider, Dropdown, Field, Input, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup,
+        SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea, Theme, ThemeKind,
+        ToggleButton, ValidationState,
     };
 }
 
