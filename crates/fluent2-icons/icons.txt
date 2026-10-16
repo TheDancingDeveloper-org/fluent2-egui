@@ -1,0 +1,60 @@
+Add
+Alert
+Archive
+Arrow Clockwise
+Arrow Counterclockwise
+Arrow Download
+Arrow Left
+Arrow Right
+Arrow Sort
+Arrow Up
+Attach
+Bookmark
+Calendar
+Checkmark
+Chevron Down
+Chevron Left
+Chevron Right
+Chevron Up
+Clipboard Paste
+Copy
+Cut
+Delete
+Dismiss
+Document
+Edit
+Error Circle
+Filter
+Flag
+Folder
+Folder Open
+Grid
+Home
+Image
+Info
+Link
+Lock Closed
+Mail
+More Horizontal
+Navigation
+Open
+Options
+Panel Left
+Person
+Pin
+Print
+Question Circle
+Save
+Search
+Settings
+Share
+Star
+Table
+Text Bold
+Text Italic
+Text Underline
+Warning
+Weather Moon
+Weather Sunny
+Window
+Zoom In

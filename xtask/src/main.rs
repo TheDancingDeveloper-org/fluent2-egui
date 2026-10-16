@@ -1,5 +1,11 @@
-//! `cargo xtask gen-tokens` reads `crates/fluent2-tokens/data/*.json` and writes the
-//! generated modules under `crates/fluent2-tokens/src/generated/`.
+//! Repository tasks.
+//!
+//! - `cargo xtask gen-tokens` reads `crates/fluent2-tokens/data/*.json` and writes
+//!   `crates/fluent2-tokens/src/generated/`.
+//! - `cargo xtask gen-icons` downloads the Fluent System Icons subset and writes
+//!   `crates/fluent2-icons/src/generated.rs`.
+
+mod icons;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -22,7 +28,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("gen-tokens: {err}");
+            eprintln!("xtask: {err}");
             ExitCode::FAILURE
         }
     }
@@ -32,8 +38,19 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     match args.next().as_deref() {
         Some("gen-tokens") => generate(),
+        Some("gen-icons") => {
+            let refresh = match args.next().as_deref() {
+                None => false,
+                Some("--refresh") => true,
+                Some(other) => return Err(format!("unknown flag {other}")),
+            };
+            if args.next().is_some() {
+                return Err("usage: cargo xtask gen-icons [--refresh]".to_string());
+            }
+            icons::generate(refresh)
+        }
         Some(other) => Err(format!("unknown task {other}")),
-        None => Err("usage: cargo xtask gen-tokens".to_string()),
+        None => Err("usage: cargo xtask <gen-tokens|gen-icons>".to_string()),
     }
 }
 
