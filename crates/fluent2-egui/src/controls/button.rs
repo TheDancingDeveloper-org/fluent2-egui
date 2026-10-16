@@ -4,9 +4,8 @@
 //! the WI-1542 description). Sizes, radii, spacing and colours come from the installed
 //! [`Theme`]; nothing here is a literal colour.
 //!
-//! Icon painting is a local helper until the icon-widget item (WI-1536) lands. The focus
-//! ring is painted here until the foundation focus helper (WI-1537) replaces it. Both call
-//! sites are marked.
+//! Icons are painted by [`crate::foundation::icon::paint_icon`]. The focus ring is
+//! [`crate::foundation::focus`].
 
 use egui::epaint::{Color32, RectShape};
 use egui::{
@@ -168,10 +167,6 @@ impl Widget for Button<'_> {
         ensure_type_ramp(ui);
         let metrics = Metrics::of(self.size);
         let enabled = ui.is_enabled();
-        let id = ui.make_persistent_id(
-            self.id_salt
-                .unwrap_or_else(|| Id::new((self.label_string(), "fluent2_button"))),
-        );
         let has_icon = self.icon.is_some();
         let icon_px = if has_icon { metrics.icon } else { 0.0 };
         let gap = if has_icon && self.text.is_some() {
@@ -200,7 +195,15 @@ impl Widget for Button<'_> {
         let width = (content + metrics.h_padding * 2.0).max(min_width);
         let desired = Vec2::new(finite(width), metrics.min_height);
 
-        let (rect, _) = ui.allocate_exact_size(desired, Sense::click());
+        // One widget. `allocate_space` returns the id egui focuses. Interacting with a second
+        // id, or allocating with `Sense::click` and then interacting again, adds an invisible
+        // Tab stop. A salt replaces that automatic id so the caller can name the button; with
+        // no salt the automatic id keeps two identical labels independent.
+        let (auto_id, rect) = ui.allocate_space(desired);
+        let id = match self.id_salt {
+            Some(salt) => ui.make_persistent_id(salt),
+            None => auto_id,
+        };
         let mut response = ui.interact(rect, id, Sense::click());
         let content_width = (rect.width() - metrics.h_padding * 2.0 - icon_px - gap).max(0.0);
         let galley = self.text.as_ref().map(|text| {
