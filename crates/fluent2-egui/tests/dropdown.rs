@@ -34,7 +34,7 @@ fn renders_in_light_dark_and_high_contrast() {
             ui.add(Combobox::new("town", &mut text, &["Lyon", "Nice"]).placeholder("Town"));
         });
         harness.run();
-        let _ = harness.get_by_label("Perth");
+        let _ = harness.get_by_label("City");
     }
 }
 
@@ -55,7 +55,9 @@ fn pointer_selects_an_option() {
     harness.run();
     harness.get_by_label("City").click();
     harness.run();
-    harness.get_by_label("Paris").click();
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "Paris")
+        .click();
     harness.run();
     assert_eq!(*selected.borrow(), Some(1), "clicking an option should select it");
 }
@@ -163,4 +165,128 @@ fn many_options_virtualise() {
     );
     let _ = options;
     let _ = ButtonSize::Medium;
+}
+
+#[test]
+fn dropdown_value_is_the_selected_text() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_egui_theme(ui);
+        let mut selected = Some(1usize);
+        ui.add(Dropdown::new("city", &mut selected, &["Perth", "Paris"]).placeholder("City"));
+    });
+    harness.run();
+    let node = harness.get_by_role_and_label(egui::accesskit::Role::ComboBox, "City");
+    assert_eq!(node.value().as_deref(), Some("Paris"));
+}
+
+#[test]
+fn combobox_value_is_the_typed_text() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_egui_theme(ui);
+        let mut text = String::from("Perth");
+        ui.add(Combobox::new("city", &mut text, &["Perth", "Paris"]).placeholder("City"));
+    });
+    harness.run();
+    let node = harness.get_by_role_and_label(egui::accesskit::Role::ComboBox, "City");
+    assert_eq!(node.value().as_deref(), Some("Perth"));
+}
+
+#[test]
+fn freeform_enter_keeps_typed_text() {
+    let text = Rc::new(RefCell::new(String::new()));
+    let shown = Rc::clone(&text);
+    let mut harness = Harness::new_ui(move |ui| {
+        install_egui_theme(ui);
+        let mut value = shown.borrow().clone();
+        let response = ui.add(
+            Combobox::new("city", &mut value, &["Perth", "Paris"])
+                .placeholder("City")
+                .freeform(true)
+                .width(160.0),
+        );
+        response.request_focus();
+        *shown.borrow_mut() = value;
+    });
+    harness.run();
+    harness.run();
+    harness.get_by_label("City").type_text("Oslo");
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert_eq!(
+        text.borrow().as_str(),
+        "Oslo",
+        "freeform Enter should keep the typed text"
+    );
+}
+
+#[test]
+fn non_freeform_enter_picks_the_active_option() {
+    let text = Rc::new(RefCell::new(String::new()));
+    let shown = Rc::clone(&text);
+    let mut harness = Harness::new_ui(move |ui| {
+        install_egui_theme(ui);
+        let mut value = shown.borrow().clone();
+        let response = ui.add(
+            Combobox::new("city", &mut value, &["Perth", "Paris"])
+                .placeholder("City")
+                .width(160.0),
+        );
+        response.request_focus();
+        *shown.borrow_mut() = value;
+    });
+    harness.run();
+    harness.run();
+    harness.get_by_label("City").type_text("pa");
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert_eq!(
+        text.borrow().as_str(),
+        "Paris",
+        "Enter without freeform should replace the text with the active option"
+    );
+}
+
+#[test]
+fn combobox_marks_the_matching_option() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_egui_theme(ui);
+        let mut text = String::from("Paris");
+        let response = ui.add(
+            Combobox::new("city", &mut text, &["Perth", "Paris"])
+                .placeholder("City")
+                .width(160.0),
+        );
+        response.request_focus();
+    });
+    harness.run();
+    harness.key_press_modifiers(egui::Modifiers::ALT, egui::Key::ArrowDown);
+    harness.run();
+    let node = harness.get_by_role_and_label(egui::accesskit::Role::Button, "Paris");
+    let toggled = egui_kittest::kittest::NodeT::accesskit_node(&node).toggled();
+    assert_eq!(toggled, Some(egui::accesskit::Toggled::True));
+}
+
+#[test]
+fn five_thousand_options_lay_out_under_one_hundred() {
+    let options: Vec<String> = (0..5_000).map(|index| format!("Option {index}")).collect();
+    let options2 = options.clone();
+    let mut harness = Harness::new_ui(move |ui| {
+        install_egui_theme(ui);
+        let mut selected = None;
+        ui.add(
+            Dropdown::new("many", &mut selected, &options2)
+                .placeholder("Pick")
+                .width(200.0),
+        );
+    });
+    harness.run();
+    harness.get_by_label("Pick").click();
+    harness.run();
+    let laid_out = harness.query_all_by_label_contains("Option ").count();
+    assert!(
+        laid_out < 100,
+        "5000 options should lay out fewer than 100 rows, laid out {laid_out}"
+    );
 }
