@@ -7,9 +7,11 @@
 
 #![warn(missing_docs)]
 
+pub mod brand;
 pub mod generated;
 mod types;
 
+pub use brand::{BrandRamp, FLUENT, dark, from_seed, high_contrast, light};
 pub use types::{CubicBezier, Rgba, ShadowLayer};
 
 #[cfg(test)]
