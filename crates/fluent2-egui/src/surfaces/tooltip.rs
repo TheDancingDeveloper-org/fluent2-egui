@@ -14,28 +14,22 @@ use egui::{Color32, CornerRadius, Frame, Id, Response, Stroke, Ui};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
 use crate::foundation::text::{self, TypeRamp};
+
+/// Fluent styling for a tooltip, attached to an egui [`Response`].
+pub trait TooltipExt {
+    /// Show `text` as a Fluent tooltip after egui's hover delay, and while keyboard focus is
+    /// visible.
+    ///
+    /// Returns `self` so it chains. For the inverted palette, use
+    /// [`FluentTooltip::inverted`] on the returned builder.
+    fn fluent_tooltip(self, text: impl Into<String>) -> Self;
+}
 use crate::theme::{Theme, ThemeKind, c};
 
 /// Maximum width of the tooltip text, in points.
 const MAX_WIDTH: f32 = 240.0;
 /// Same key `foundation::focus` uses for the sticky keyboard-focus flag.
 const KEYBOARD_FOCUS_KEY: &str = "fluent2_keyboard_focus";
-
-/// Fluent styling for a tooltip, attached to an egui [`Response`].
-///
-/// ```
-/// # use fluent2_egui::surfaces::TooltipExt;
-/// # fn demo(ui: &mut egui::Ui) {
-/// let _response = ui.button("Save").fluent_tooltip("Saves the document");
-/// # }
-/// ```
-pub trait TooltipExt {
-    /// Show `text` as a Fluent tooltip after egui's hover delay, and while keyboard focus is
-    /// visible.
-    ///
-    /// Returns `self` so it chains. For the inverted palette, use [`fluent_tooltip`].
-    fn fluent_tooltip(self, text: impl Into<String>) -> Self;
-}
 
 /// How a tooltip is coloured.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -48,34 +42,83 @@ pub enum TooltipTone {
     Inverted,
 }
 
-/// Show `text` as a Fluent tooltip on `response`.
+/// A Fluent tooltip attached to an egui [`Response`].
 ///
-/// Hover waits for egui's tooltip delay. Keyboard focus (the sticky flag written by
-/// [`crate::foundation::focus::focus_visible`], or a key event this frame) shows it at once,
-/// below the widget.
-pub fn fluent_tooltip(response: &Response, text: impl Into<String>, tone: TooltipTone) {
-    let text = text.into();
-    let show_for_focus = keyboard_focus(response);
-    let hover_text = text.clone();
-    response.clone().on_hover_ui(move |ui| {
-        paint_tooltip(ui, &hover_text, tone);
-    });
-    if show_for_focus {
-        let _ = egui::Tooltip::always_open(
-            response.ctx.clone(),
-            response.layer_id,
-            response.id.with("fluent_focus_tooltip"),
-            response.rect,
-        )
-        .show(|ui| {
-            paint_tooltip(ui, &text, tone);
+/// Created by [`TooltipExt::fluent_tooltip`]. Hover waits for egui's tooltip delay. Call
+/// [`Self::inverted`] before dropping (or before [`Self::show`]) to use the static inverted
+/// palette.
+pub struct FluentTooltip {
+    response: Response,
+    text: String,
+    tone: TooltipTone,
+    shown: bool,
+}
+
+impl FluentTooltip {
+    /// Use `neutral_background_static` with `neutral_foreground_static_inverted`.
+    #[must_use]
+    pub fn inverted(mut self) -> Self {
+        self.tone = TooltipTone::Inverted;
+        self
+    }
+
+    /// Attach the tooltip. This also runs on drop, so a plain
+    /// `response.fluent_tooltip(...).inverted()` chain is enough.
+    pub fn show(mut self) {
+        self.paint();
+    }
+
+    fn paint(&mut self) {
+        if self.shown {
+            return;
+        }
+        self.shown = true;
+        let text = self.text.clone();
+        let tone = self.tone;
+        let response = self.response.clone();
+        let show_for_focus = keyboard_focus(&response);
+        let hover_text = text.clone();
+        response.clone().on_hover_ui(move |ui| {
+            paint_tooltip(ui, &hover_text, tone);
         });
+        if show_for_focus {
+            let _ = egui::Tooltip::always_open(
+                response.ctx.clone(),
+                response.layer_id,
+                response.id.with("fluent_focus_tooltip"),
+                response.rect,
+            )
+            .show(move |ui| {
+                paint_tooltip(ui, &text, tone);
+            });
+        }
+    }
+}
+
+impl Drop for FluentTooltip {
+    fn drop(&mut self) {
+        self.paint();
     }
 }
 
 impl TooltipExt for Response {
+    /// Show `text` as a Fluent tooltip after egui's hover delay, and while keyboard focus is
+    /// visible.
+    ///
+    /// ```
+    /// # use fluent2_egui::surfaces::TooltipExt;
+    /// # fn demo(ui: &mut egui::Ui) {
+    /// let _response = ui.button("Save").fluent_tooltip("Saves the document");
+    /// # }
+    /// ```
     fn fluent_tooltip(self, text: impl Into<String>) -> Self {
-        fluent_tooltip(&self, text, TooltipTone::Normal);
+        let tooltip = FluentTooltip {
+            response: self.clone(),
+            text: text.into(),
+            tone: TooltipTone::Normal,
+            shown: false,
+        };
+        tooltip.show();
         self
     }
 }
