@@ -13,23 +13,23 @@ pub mod surfaces;
 pub mod theme;
 
 pub use controls::{
-    CheckState, Checkbox, CompoundButton, Input, InputAppearance, MenuButton, RadioGroup, SearchBox, Slider,
-    SpinButton, SplitButton, SplitButtonResponse, Switch, Textarea, TextareaResize, ToggleButton,
+    Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton, Divider,
+    Dropdown, Field, Input, InputAppearance, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup,
+    SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, SplitButtonResponse, Switch, Textarea,
+    TextareaResize, ToggleButton, ValidationState,
 };
 pub use surfaces::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use theme::{Theme, ThemeKind};
 
 /// Names a caller usually wants in scope.
 pub mod prelude {
-    pub use crate::controls::{
-        Badge, BadgeAppearance, BadgeColor, BadgeSize, Divider, Field, Link, ProgressBar, ProgressBarSize,
-        Spinner, SpinnerSize, ValidationState,
-    };
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
     pub use crate::{
-        CheckState, Checkbox, CompoundButton, Input, MenuButton, RadioGroup, SearchBox, Slider, SpinButton,
-        SplitButton, Switch, Textarea, Theme, ThemeKind, ToggleButton,
+        Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton, Divider,
+        Dropdown, Field, Input, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup, SearchBox, Slider,
+        SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea, Theme, ThemeKind, ToggleButton,
+        ValidationState,
     };
 }
 
