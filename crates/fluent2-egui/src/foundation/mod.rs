@@ -1,3 +1,4 @@
-//! Shared building blocks: type ramp, focus, elevation, motion.
+//! Shared building blocks: icons, type ramp, focus, elevation, motion.
 
+pub mod icon;
 pub mod text;

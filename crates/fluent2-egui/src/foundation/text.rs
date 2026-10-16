@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn install_writes_every_step_and_the_builtins() {
         let ctx = egui::Context::default();
-        crate::install(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
 
         let styles = ctx.style_of(egui::Theme::Light).text_styles.clone();
         for step in TypeRamp::ALL {
@@ -409,9 +409,9 @@ mod tests {
         // Build the atlas first. `set_fonts` only queues a definition when one is already
         // installed, and `fonts()` is what installs egui's defaults.
         let _ = family_names(&ctx);
-        crate::install(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
         let after_once = family_names(&ctx);
-        crate::install(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
         let after_twice = family_names(&ctx);
         assert_no_duplicate_names(&after_once);
         assert_no_duplicate_names(&after_twice);

@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 egui = { workspace = true }
+egui_extras = { version = "0.36", default-features = false, features = ["svg"] }
 log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
