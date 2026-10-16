@@ -9,14 +9,14 @@ pub use fluent2_tokens as tokens;
 
 pub mod controls;
 pub mod foundation;
+pub mod surfaces;
 pub mod theme;
 
 pub use controls::{
-    CheckState, Checkbox, CompoundButton, Input, InputAppearance, RadioGroup, SearchBox, Slider, SpinButton,
-    Switch, Textarea, TextareaResize, ToggleButton,
-    CheckState, Checkbox, Input, InputAppearance, MenuButton, RadioGroup, SearchBox, Slider, SpinButton,
-    SplitButton, SplitButtonResponse, Switch, Textarea, TextareaResize,
+    CheckState, Checkbox, CompoundButton, Input, InputAppearance, MenuButton, RadioGroup, SearchBox, Slider,
+    SpinButton, SplitButton, SplitButtonResponse, Switch, Textarea, TextareaResize, ToggleButton,
 };
+pub use surfaces::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use theme::{Theme, ThemeKind};
 
 /// Names a caller usually wants in scope.
@@ -28,10 +28,8 @@ pub mod prelude {
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
     pub use crate::{
-        CheckState, Checkbox, CompoundButton, Input, RadioGroup, SearchBox, Slider, SpinButton, Switch,
-        Textarea, Theme, ThemeKind, ToggleButton,
-        CheckState, Checkbox, Input, MenuButton, RadioGroup, SearchBox, Slider, SpinButton, SplitButton,
-        Switch, Textarea, Theme, ThemeKind,
+        CheckState, Checkbox, CompoundButton, Input, MenuButton, RadioGroup, SearchBox, Slider, SpinButton,
+        SplitButton, Switch, Textarea, Theme, ThemeKind, ToggleButton,
     };
 }
 

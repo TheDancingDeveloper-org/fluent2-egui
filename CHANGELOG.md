@@ -8,6 +8,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Display controls: `Link`, `Badge`, `Divider`, `Field`, `ProgressBar` and `Spinner` (WI-1550).
 - ToggleButton and CompoundButton controls (WI-1543).
 - SplitButton and MenuButton controls (WI-1544).
+- Menu and ContextMenu: Fluent frame, items with icon, shortcut, checkmark, submenu, divider and group header (WI-1545).
 - Checkbox, RadioGroup and Switch controls (WI-1546).
 - Input, SearchBox and Textarea: Fluent frame around egui `TextEdit` (WI-1547).
 - `SpinButton` and `Slider` controls (WI-1548).
