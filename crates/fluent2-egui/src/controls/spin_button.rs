@@ -8,6 +8,7 @@ use egui::{
     Align2, CornerRadius, Key, Response, Sense, Stroke, StrokeKind, TextEdit, Ui, Vec2, Widget, WidgetInfo,
 };
 
+use crate::foundation::focus::paint_focus_ring;
 use crate::theme::{self, Theme};
 
 const FIELD_HEIGHT: f32 = 32.0;
@@ -167,7 +168,11 @@ impl Widget for SpinButton<'_> {
             })
             .inner;
 
+        // TextEdit marks changed on every keystroke. The contract is changed() only on
+        // commit or step, so drop that flag and set it ourselves below.
+        response.flags -= egui::response::Flags::CHANGED;
         response = response.union(text_response.clone()).union(up).union(down);
+        response.flags -= egui::response::Flags::CHANGED;
 
         if enabled && response.has_focus() {
             let input = ui.input(|input| {
@@ -311,12 +316,7 @@ fn paint(ui: &Ui, theme: &Theme, parts: &Paint) {
         );
     }
     if focused {
-        painter.rect_stroke(
-            field.union(up.union(down)).expand(1.0),
-            radius,
-            Stroke::new(2.0, theme::c(color.stroke_focus_2)),
-            StrokeKind::Outside,
-        );
+        paint_focus_ring(ui, field.union(up.union(down)), radius);
     }
 }
 

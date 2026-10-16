@@ -42,6 +42,23 @@ fn arrow_keys_step_and_clamp() {
 }
 
 #[test]
+fn typing_does_not_report_changed_until_commit() {
+    let changed = Cell::new(false);
+    let mut harness = Harness::new_ui(|ui| {
+        install(ui);
+        let mut current = 4.0;
+        let response = ui.add(SpinButton::new(&mut current).decimals(0));
+        response.request_focus();
+        changed.set(response.changed());
+    });
+    harness.run();
+    changed.set(false);
+    harness.event(egui::Event::Text("7".to_owned()));
+    harness.run();
+    assert!(!changed.get(), "a keystroke edits the buffer but does not commit");
+}
+
+#[test]
 fn invalid_text_reverts_on_enter() {
     let value = Cell::new(4.0);
     let mut harness = Harness::new_ui(|ui| {
@@ -52,10 +69,9 @@ fn invalid_text_reverts_on_enter() {
         value.set(current);
     });
     harness.run();
-    for key in [egui::Key::A, egui::Key::B, egui::Key::C] {
-        harness.key_press(key);
-        harness.run();
-    }
+    // TextEdit only inserts Event::Text, so key presses would never reach the buffer.
+    harness.event(egui::Event::Text("abc".to_owned()));
+    harness.run();
     harness.key_press(egui::Key::Enter);
     harness.run();
     assert_eq!(value.get(), 4.0, "non-numeric text reverts to the last value");
