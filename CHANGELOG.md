@@ -6,6 +6,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ### Added
 - Display controls: `Link`, `Badge`, `Divider`, `Field`, `ProgressBar` and `Spinner` (WI-1550).
+- ToggleButton and CompoundButton controls (WI-1543).
 - Checkbox, RadioGroup and Switch controls (WI-1546).
 - Input, SearchBox and Textarea: Fluent frame around egui `TextEdit` (WI-1547).
 - `SpinButton` and `Slider` controls (WI-1548).

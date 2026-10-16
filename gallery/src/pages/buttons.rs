@@ -4,7 +4,7 @@
 //! is not a workspace member yet. The button tests compile this page.
 
 use egui::Ui;
-use fluent2_egui::controls::{Appearance, Button, ButtonSize, Shape};
+use fluent2_egui::controls::{Appearance, Button, ButtonSize, CompoundButton, Shape, ToggleButton};
 use fluent2_icons::Icon;
 
 const APPEARANCES: [Appearance; 5] = [
@@ -38,4 +38,16 @@ pub fn page(ui: &mut Ui) {
         let _ = ui.add(Button::icon_only(Icon::Dismiss, "Close"));
         let _ = ui.add_enabled(false, Button::new("Disabled"));
     });
+    ui.label("Toggle and compound");
+    ui.horizontal(|ui| {
+        let mut bold = true;
+        let _ = ui.add(ToggleButton::new(&mut bold, "Bold").appearance(Appearance::Primary));
+        let mut italic = false;
+        let _ = ui.add(ToggleButton::new(&mut italic, "Italic"));
+    });
+    let _ = ui.add(
+        CompoundButton::new("Meeting")
+            .secondary_content("Starts in 5 minutes")
+            .icon(Icon::Save),
+    );
 }

@@ -12,8 +12,8 @@ pub mod foundation;
 pub mod theme;
 
 pub use controls::{
-    CheckState, Checkbox, Input, InputAppearance, RadioGroup, SearchBox, Slider, SpinButton, Switch,
-    Textarea, TextareaResize,
+    CheckState, Checkbox, CompoundButton, Input, InputAppearance, RadioGroup, SearchBox, Slider, SpinButton,
+    Switch, Textarea, TextareaResize, ToggleButton,
 };
 pub use theme::{Theme, ThemeKind};
 
@@ -26,8 +26,8 @@ pub mod prelude {
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
     pub use crate::{
-        CheckState, Checkbox, Input, RadioGroup, SearchBox, Slider, SpinButton, Switch, Textarea, Theme,
-        ThemeKind,
+        CheckState, Checkbox, CompoundButton, Input, RadioGroup, SearchBox, Slider, SpinButton, Switch,
+        Textarea, Theme, ThemeKind, ToggleButton,
     };
 }
 
