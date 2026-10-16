@@ -14,6 +14,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Input, SearchBox and Textarea: Fluent frame around egui `TextEdit` (WI-1547).
 - `SpinButton` and `Slider` controls (WI-1548).
 - Button control: primary, secondary, outline, subtle and transparent; small, medium and large; icon and icon-only (WI-1542).
+- Gallery app (`cargo run -p gallery`): theme switcher, accent seed, alias-colour swatches, type ramp and icon grid. Wasm entry via trunk (WI-1539).
 - `Icon` widget and `fluent2_egui::install`: Fluent System Icons at 16/20/24 px, tinted from the theme (WI-1536).
 - Foundation helpers: keyboard focus ring, elevation shadows and motion curves (`foundation::{focus, elevation, motion}`).
 - `fluent2_egui::theme`: `Theme`, `ThemeKind` and `theme::install`, mapping Fluent alias tokens onto egui visuals.
