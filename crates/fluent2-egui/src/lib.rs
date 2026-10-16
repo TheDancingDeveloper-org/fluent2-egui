@@ -14,6 +14,8 @@ pub mod theme;
 pub use controls::{
     CheckState, Checkbox, CompoundButton, Input, InputAppearance, RadioGroup, SearchBox, Slider, SpinButton,
     Switch, Textarea, TextareaResize, ToggleButton,
+    CheckState, Checkbox, Input, InputAppearance, MenuButton, RadioGroup, SearchBox, Slider, SpinButton,
+    SplitButton, SplitButtonResponse, Switch, Textarea, TextareaResize,
 };
 pub use theme::{Theme, ThemeKind};
 
@@ -28,6 +30,8 @@ pub mod prelude {
     pub use crate::{
         CheckState, Checkbox, CompoundButton, Input, RadioGroup, SearchBox, Slider, SpinButton, Switch,
         Textarea, Theme, ThemeKind, ToggleButton,
+        CheckState, Checkbox, Input, MenuButton, RadioGroup, SearchBox, Slider, SpinButton, SplitButton,
+        Switch, Textarea, Theme, ThemeKind,
     };
 }
 
