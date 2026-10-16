@@ -66,8 +66,13 @@ fn generate() -> Result<(), String> {
     let web_light = render_theme("web_light", &light, &light, &color_keys, &plain_shadows)?;
     let web_dark = render_theme("web_dark", &dark, &light, &color_keys, &plain_shadows)?;
     let high_contrast = render_theme("high_contrast", &high, &light, &color_keys, &plain_shadows)?;
+    let brand_web = load(&data.join("brand-web.json"))?;
+    let marker_light = load(&data.join("brand-marker-light.json"))?;
+    let marker_dark = load(&data.join("brand-marker-dark.json"))?;
+    let brand = render_brand(&brand_web)?;
+    let brand_map = render_brand_map(&color_keys, &light, &marker_light, &dark, &marker_dark)?;
     let module = format!(
-        "{HEADER}//! Generated token modules.\n\n/// Alias colour struct.\npub mod colors;\n/// Global size, type, spacing and motion tokens.\npub mod global;\n/// High contrast theme values.\npub mod high_contrast;\n/// Shadow struct.\npub mod shadows;\n/// Web dark theme values.\npub mod web_dark;\n/// Web light theme values.\npub mod web_light;\n"
+        "{HEADER}//! Generated token modules.\n\n/// Default Fluent brand ramp.\npub mod brand;\n/// Which alias colours come from the brand ramp.\npub mod brand_map;\n/// Alias colour struct.\npub mod colors;\n/// Global size, type, spacing and motion tokens.\npub mod global;\n/// High contrast theme values.\npub mod high_contrast;\n/// Shadow struct.\npub mod shadows;\n/// Web dark theme values.\npub mod web_dark;\n/// Web light theme values.\npub mod web_light;\n"
     );
 
     write(&out.join("mod.rs"), &module)?;
@@ -77,7 +82,98 @@ fn generate() -> Result<(), String> {
     write(&out.join("web_light.rs"), &web_light)?;
     write(&out.join("web_dark.rs"), &web_dark)?;
     write(&out.join("high_contrast.rs"), &high_contrast)?;
+    write(&out.join("brand.rs"), &brand)?;
+    write(&out.join("brand_map.rs"), &brand_map)?;
     Ok(())
+}
+
+/// `#0000NN` means brand step `NN` (hex) × 10. `#000000` is real black, not a step.
+fn marker_step(value: &Value) -> Option<u16> {
+    let text = value.as_str()?;
+    let hex = text.strip_prefix("#0000")?;
+    if hex.len() != 2 {
+        return None;
+    }
+    let nn = u16::from_str_radix(hex, 16).ok()?;
+    if nn == 0 {
+        None
+    } else {
+        Some(nn.saturating_mul(10))
+    }
+}
+
+fn render_brand(ramp: &BTreeMap<String, Value>) -> Result<String, String> {
+    let mut steps = Vec::new();
+    for n in (10..=160).step_by(10) {
+        let key = n.to_string();
+        let value = ramp
+            .get(&key)
+            .ok_or_else(|| format!("brand-web.json: missing step {key}"))?;
+        let (r, g, b, a) = parse_color(&format!("brand {key}"), as_str(&key, value)?)?;
+        if a != 255 {
+            return Err(format!("brand-web.json step {key} is not opaque"));
+        }
+        steps.push(format!("    crate::Rgba::hex(0x{r:02X}{g:02X}{b:02X}),"));
+    }
+    if ramp.len() != 16 {
+        return Err(format!("brand-web.json: expected 16 steps, found {}", ramp.len()));
+    }
+    Ok(format!(
+        "{HEADER}/// Fluent web brand ramp, step 10 through step 160.\n///\n/// Index 0 is step 10.\npub const STEPS: [crate::Rgba; 16] = [\n{}\n];\n",
+        steps.join("\n")
+    ))
+}
+
+fn render_brand_map(
+    color_keys: &[String],
+    light: &BTreeMap<String, Value>,
+    marker_light: &BTreeMap<String, Value>,
+    dark: &BTreeMap<String, Value>,
+    marker_dark: &BTreeMap<String, Value>,
+) -> Result<String, String> {
+    same_keys(light, marker_light, "brand-marker-light")?;
+    same_keys(dark, marker_dark, "brand-marker-dark")?;
+    let light_rows = brand_rows("light", color_keys, marker_light)?;
+    let dark_rows = brand_rows("dark", color_keys, marker_dark)?;
+    let mut variants = String::new();
+    let mut arms = String::new();
+    for key in color_keys {
+        if marker_step(&marker_light[key]).is_none() && marker_step(&marker_dark[key]).is_none() {
+            continue;
+        }
+        let variant = pascal(&key["color".len()..]);
+        let field = color_field(key);
+        variants.push_str(&format!("    /// `{key}`.\n    {variant},\n"));
+        arms.push_str(&format!("            Self::{variant} => &mut colors.{field},\n"));
+    }
+    Ok(format!(
+        "{HEADER}use super::colors::AliasColors;\nuse crate::Rgba;\n\n/// An alias colour that a theme takes from the brand ramp.\n#[derive(Clone, Copy, Debug, PartialEq, Eq)]\npub enum BrandField {{
+{variants}}}\n\nimpl BrandField {{
+    /// The colour inside `colors` this field names.\n    #[must_use]\n    pub fn set(self, colors: &mut AliasColors) -> &mut Rgba {{
+        match self {{
+{arms}        }}\n    }}\n}}\n\n/// Light theme: `(field, brand step)`. Step is 10, 20, … 160.\npub const LIGHT_BRAND_MAP: &[(BrandField, u16)] = &[\n{light_rows}];\n\n/// Dark theme: `(field, brand step)`. Step is 10, 20, … 160.\npub const DARK_BRAND_MAP: &[(BrandField, u16)] = &[\n{dark_rows}];\n"
+    ))
+}
+
+fn brand_rows(
+    theme: &str,
+    color_keys: &[String],
+    marker: &BTreeMap<String, Value>,
+) -> Result<String, String> {
+    let mut rows = String::new();
+    for key in color_keys {
+        let Some(step) = marker_step(&marker[key]) else {
+            continue;
+        };
+        if !(10..=160).contains(&step) || step % 10 != 0 {
+            return Err(format!("{theme} {key}: brand step {step} is not 10..=160 by 10"));
+        }
+        rows.push_str(&format!(
+            "    (BrandField::{variant}, {step}),\n",
+            variant = pascal(&key["color".len()..])
+        ));
+    }
+    Ok(rows)
 }
 
 fn load(path: &std::path::Path) -> Result<BTreeMap<String, Value>, String> {
@@ -278,6 +374,27 @@ fn snake(name: &str) -> String {
     out
 }
 
+fn pascal(rest: &str) -> String {
+    let mut out = String::new();
+    let mut cap = true;
+    for ch in rest.chars() {
+        if ch.is_ascii_digit() {
+            out.push(ch);
+            cap = true;
+        } else if ch.is_uppercase() {
+            out.push(ch);
+            cap = false;
+        } else if ch.is_lowercase() {
+            if cap {
+                out.extend(ch.to_uppercase());
+            } else {
+                out.push(ch);
+            }
+            cap = false;
+        }
+    }
+    out
+}
 fn scream(rest: &str) -> String {
     let snaked = if rest.is_empty() {
         "BASE".to_string()
@@ -527,5 +644,6 @@ mod tests {
         );
         assert_eq!(snake("shadow16"), "shadow_16");
         assert_eq!(scream("Base300"), "BASE_300");
+        assert_eq!(pascal("BrandBackground2Hover"), "BrandBackground2Hover");
     }
 }
