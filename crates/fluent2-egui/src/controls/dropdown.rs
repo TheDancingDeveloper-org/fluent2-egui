@@ -9,8 +9,8 @@
 //! (rest stroke, accessible bottom border, focus accent).
 
 use egui::{
-    Align, Color32, CornerRadius, Id, Layout, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind,
-    TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType, epaint::RectShape,
+    Align, CornerRadius, Id, Layout, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, Widget,
+    WidgetInfo, WidgetText, WidgetType, epaint::RectShape,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -21,11 +21,11 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, strok
 
 use super::ButtonSize;
 
-const VIRTUAL_THRESHOLD: usize = 50;
-const OPTION_HEIGHT: f32 = 32.0;
+pub(super) const VIRTUAL_THRESHOLD: usize = 50;
+pub(super) const OPTION_HEIGHT: f32 = 32.0;
 const MAX_VISIBLE_ROWS: f32 = 8.0;
 
-type PreviewFn<'a> = Box<dyn Fn(&mut Ui, &str) + 'a>;
+pub(super) type PreviewFn<'a> = Box<dyn Fn(&mut Ui, &str) + 'a>;
 
 /// A closed list of options. The value is the selected index, or `None`.
 ///
@@ -187,9 +187,13 @@ impl Widget for Dropdown<'_> {
         if focus_visible(ui, &response) {
             paint_focus_ring(ui, rect, CornerRadius::same(rounded_u8(border_radius::MEDIUM)));
         }
+        let accessible_name = self.placeholder.clone().unwrap_or_else(|| "Dropdown".to_owned());
+        let value_text = selected_index
+            .and_then(|index| self.options.get(index).cloned())
+            .unwrap_or_default();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, &label);
-            info.selected = Some(selected_index.is_some());
+            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
+            info.current_text_value = Some(value_text.clone());
             info
         });
 
@@ -198,9 +202,6 @@ impl Widget for Dropdown<'_> {
             if let Some(index) = picked {
                 *self.selected = Some(index);
                 response.mark_changed();
-                open = false;
-            }
-            if clicked_outside(ui, rect, id) {
                 open = false;
             }
         }
@@ -215,239 +216,7 @@ impl Widget for Dropdown<'_> {
     }
 }
 
-/// An editable field that filters a list of options.
-///
-/// ```
-/// # use fluent2_egui::controls::Combobox;
-/// # fn demo(ui: &mut egui::Ui, text: &mut String) {
-/// let _ = ui.add(Combobox::new("city", text, &["Perth", "Paris"]).freeform(true));
-/// # }
-/// ```
-pub struct Combobox<'a> {
-    id_salt: Id,
-    text: &'a mut String,
-    options: Vec<String>,
-    placeholder: Option<String>,
-    size: ButtonSize,
-    width: Option<f32>,
-    freeform: bool,
-    preview: Option<PreviewFn<'a>>,
-}
-
-impl<'a> Combobox<'a> {
-    /// A combobox bound to `text`. `id_salt` names the widget.
-    pub fn new(
-        id_salt: impl std::hash::Hash + std::fmt::Debug,
-        text: &'a mut String,
-        options: &[impl AsRef<str>],
-    ) -> Self {
-        Self {
-            id_salt: Id::new(id_salt),
-            text,
-            options: options.iter().map(|option| option.as_ref().to_owned()).collect(),
-            placeholder: None,
-            size: ButtonSize::Medium,
-            width: None,
-            freeform: false,
-            preview: None,
-        }
-    }
-
-    /// Grey hint while `text` is empty.
-    #[must_use]
-    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
-        self.placeholder = Some(placeholder.into());
-        self
-    }
-
-    /// Field height. Defaults to [`ButtonSize::Medium`].
-    #[must_use]
-    pub fn size(mut self, size: ButtonSize) -> Self {
-        self.size = size;
-        self
-    }
-
-    /// Field width. Defaults to [`Ui::available_width`].
-    #[must_use]
-    pub fn width(mut self, width: f32) -> Self {
-        self.width = Some(width);
-        self
-    }
-
-    /// When set, Enter on a typed string that matches no active option keeps the typed text.
-    /// Otherwise Enter only accepts an option.
-    #[must_use]
-    pub fn freeform(mut self, freeform: bool) -> Self {
-        self.freeform = freeform;
-        self
-    }
-
-    /// Draw each option. The default is plain text.
-    #[must_use]
-    pub fn option_preview(mut self, preview: impl Fn(&mut Ui, &str) + 'a) -> Self {
-        self.preview = Some(Box::new(preview));
-        self
-    }
-}
-
-impl Widget for Combobox<'_> {
-    fn ui(self, ui: &mut Ui) -> Response {
-        let theme = Theme::get(ui.ctx());
-        let enabled = ui.is_enabled();
-        let height = field_height(self.size);
-        let width = finite(self.width.unwrap_or_else(|| ui.available_width())).max(0.0);
-        let id = ui.make_persistent_id(self.id_salt);
-        let open_id = id.with("open");
-        let active_id = id.with("active");
-
-        let rect = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover()).0;
-        let icon_px = icon_points(self.size);
-        let pad_x = spacing_horizontal::S;
-        let text_rect = Rect::from_min_max(
-            egui::pos2(rect.left() + pad_x, rect.top()),
-            egui::pos2(
-                rect.right() - pad_x - icon_px - spacing_horizontal::XXS,
-                rect.bottom(),
-            ),
-        );
-        let hint = self.placeholder.clone().unwrap_or_default();
-        let text_color = if enabled {
-            c(theme.color.neutral_foreground_1)
-        } else {
-            c(theme.color.neutral_foreground_disabled)
-        };
-        let mut response = ui.put(
-            text_rect,
-            TextEdit::singleline(self.text)
-                .id(id)
-                .frame(egui::Frame::NONE)
-                .interactive(enabled)
-                .desired_width(text_rect.width().max(0.0))
-                .text_color(text_color)
-                .hint_text(WidgetText::from(hint.clone()).color(c(theme.color.neutral_foreground_4))),
-        );
-
-        let mut open = ui
-            .ctx()
-            .data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
-        let filtered = filter_options(&self.options, self.text);
-        let mut active = ui
-            .ctx()
-            .data(|data| data.get_temp::<usize>(active_id))
-            .unwrap_or(0)
-            .min(filtered.len().saturating_sub(1));
-
-        let focused = response.has_focus() && enabled;
-        if response.changed() && enabled && !self.text.is_empty() {
-            open = true;
-            active = 0;
-        }
-        if enabled && focused {
-            let input = ui.input(|i| i.clone());
-            if input.modifiers.alt && input.key_pressed(egui::Key::ArrowDown) {
-                open = true;
-            }
-            if open && input.key_pressed(egui::Key::ArrowDown) {
-                active = step(Some(active), filtered.len(), 1);
-            }
-            if open && input.key_pressed(egui::Key::ArrowUp) {
-                active = step(Some(active), filtered.len(), -1);
-            }
-            if input.key_pressed(egui::Key::Escape) {
-                open = false;
-            }
-            if input.key_pressed(egui::Key::Enter) {
-                if open {
-                    if let Some((_, label)) = filtered.get(active) {
-                        *self.text = (*label).to_owned();
-                        response.mark_changed();
-                    } else if !self.freeform {
-                        // Nothing to accept.
-                    }
-                }
-                open = false;
-            }
-        }
-
-        let chevron = Rect::from_center_size(
-            egui::pos2(rect.right() - pad_x - icon_px / 2.0, rect.center().y),
-            Vec2::splat(icon_px),
-        );
-        let chevron_response = ui.interact(chevron, id.with("chevron"), Sense::click());
-        if chevron_response.clicked() && enabled {
-            open = !open;
-            response.request_focus();
-        }
-        let icon_color = if enabled {
-            c(theme.color.neutral_foreground_3)
-        } else {
-            c(theme.color.neutral_foreground_disabled)
-        };
-        paint_icon(
-            ui,
-            chevron,
-            IconName::ChevronDown,
-            icon_size(self.size),
-            IconStyle::Regular,
-            Some(icon_color),
-        );
-
-        paint_outline(
-            ui,
-            rect,
-            &theme,
-            enabled,
-            focused,
-            response.hovered() || chevron_response.hovered(),
-        );
-        if focus_visible(ui, &response) {
-            paint_focus_ring(ui, rect, CornerRadius::same(rounded_u8(border_radius::MEDIUM)));
-        }
-
-        let accessible = if self.text.is_empty() {
-            hint
-        } else {
-            self.text.clone()
-        };
-        if !accessible.is_empty() {
-            ui.ctx().accesskit_node_builder(response.id, |builder| {
-                builder.set_role(egui::accesskit::Role::ComboBox);
-                builder.set_label(accessible);
-            });
-        }
-
-        if open && enabled {
-            let labels: Vec<&str> = filtered.iter().map(|(_, label)| *label).collect();
-            let selected_label = self
-                .options
-                .iter()
-                .find(|option| option.eq_ignore_ascii_case(self.text))
-                .map(String::as_str);
-            let picked = show_listbox(ui, id, rect, &labels, None, Some(active), &self.preview);
-            // `show_listbox` reports an index into `labels`. Map it back and compare by string
-            // because the selected marker above is label-based.
-            let _ = selected_label;
-            if let Some(index) = picked {
-                if let Some((_, label)) = filtered.get(index) {
-                    *self.text = (*label).to_owned();
-                    response.mark_changed();
-                }
-                open = false;
-            }
-            if clicked_outside(ui, rect, id) {
-                open = false;
-            }
-        }
-
-        ui.ctx().data_mut(|data| {
-            data.insert_temp(open_id, open);
-            data.insert_temp(active_id, active);
-        });
-        response
-    }
-}
-
-fn show_listbox(
+pub(super) fn show_listbox(
     ui: &mut Ui,
     id: Id,
     field: Rect,
@@ -469,23 +238,24 @@ fn show_listbox(
     let mut picked = None;
     // `Popup` is the layer egui hit-tests. A bare `Area` receives no pointer events, so a click
     // on an option never reached the row.
+    let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
+    // Menu frame: neutral fill, thin stroke, medium radius. There is no Menu widget on main yet
+    // (WI-1545), so the frame is this Popup's own frame rather than a second painted rect.
+    let menu_frame = egui::Frame::new()
+        .fill(c(theme.color.neutral_background_1))
+        .stroke(Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_1)))
+        .corner_radius(radius)
+        .inner_margin(0);
     egui::Popup::from_response(&ui.interact(field, id.with("anchor"), Sense::hover()))
         .id(popup_id)
         .layout(Layout::top_down(Align::Min))
+        .frame(menu_frame)
+        .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
         .open(true)
         .show(|ui| {
             ui.set_min_width(field.width());
             ui.set_max_width(field.width());
             ui.set_max_height(popup_height);
-            let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
-            let panel = ui.max_rect();
-            ui.painter().add(RectShape::new(
-                panel,
-                radius,
-                c(theme.color.neutral_background_1),
-                Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_1)),
-                StrokeKind::Inside,
-            ));
             let mut row = |ui: &mut Ui, index: usize| {
                 let label = options.get(index).map(|option| option.as_ref()).unwrap_or("");
                 let response = option_row(
@@ -523,7 +293,7 @@ fn show_listbox(
     picked
 }
 
-fn option_row(
+pub(super) fn option_row(
     ui: &mut Ui,
     _id: Id,
     _index: usize,
@@ -631,7 +401,7 @@ fn paint_field(ui: &Ui, rect: Rect, theme: &Theme, state: (bool, bool, bool, boo
     );
 }
 
-fn paint_outline(ui: &Ui, rect: Rect, theme: &Theme, enabled: bool, focused: bool, hovered: bool) {
+pub(super) fn paint_outline(ui: &Ui, rect: Rect, theme: &Theme, enabled: bool, focused: bool, hovered: bool) {
     let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
     let stroke = if !enabled {
         Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_disabled))
@@ -680,7 +450,7 @@ fn paint_outline(ui: &Ui, rect: Rect, theme: &Theme, enabled: bool, focused: boo
 }
 
 /// Options whose text contains `query`, prefix matches first. An empty query returns every option.
-fn filter_options<'a>(options: &'a [String], query: &str) -> Vec<(usize, &'a str)> {
+pub(super) fn filter_options<'a>(options: &'a [String], query: &str) -> Vec<(usize, &'a str)> {
     if query.is_empty() {
         return options
             .iter()
@@ -722,7 +492,7 @@ fn jump_to(options: &[String], letter: char, start: usize) -> Option<usize> {
     None
 }
 
-fn step(current: Option<usize>, count: usize, delta: isize) -> usize {
+pub(super) fn step(current: Option<usize>, count: usize, delta: isize) -> usize {
     if count == 0 {
         return 0;
     }
@@ -746,18 +516,7 @@ fn typed_letter(input: &egui::InputState) -> Option<char> {
     })
 }
 
-fn clicked_outside(ui: &Ui, field: Rect, id: Id) -> bool {
-    let popup = ui.ctx().data(|data| data.get_temp::<Rect>(id.with("popup_rect")));
-    ui.input(|input| {
-        input.pointer.any_pressed()
-            && input
-                .pointer
-                .interact_pos()
-                .is_some_and(|pos| !field.contains(pos) && popup.is_none_or(|rect| !rect.contains(pos)))
-    })
-}
-
-fn field_height(size: ButtonSize) -> f32 {
+pub(super) fn field_height(size: ButtonSize) -> f32 {
     match size {
         ButtonSize::Small => 24.0,
         ButtonSize::Medium => 32.0,
@@ -765,7 +524,7 @@ fn field_height(size: ButtonSize) -> f32 {
     }
 }
 
-fn icon_size(size: ButtonSize) -> IconSize {
+pub(super) fn icon_size(size: ButtonSize) -> IconSize {
     if matches!(size, ButtonSize::Large) {
         IconSize::S20
     } else {
@@ -773,7 +532,7 @@ fn icon_size(size: ButtonSize) -> IconSize {
     }
 }
 
-fn icon_points(size: ButtonSize) -> f32 {
+pub(super) fn icon_points(size: ButtonSize) -> f32 {
     if matches!(size, ButtonSize::Large) {
         20.0
     } else {
@@ -781,7 +540,7 @@ fn icon_points(size: ButtonSize) -> f32 {
     }
 }
 
-fn accent_id(rect: Rect) -> Id {
+pub(super) fn accent_id(rect: Rect) -> Id {
     Id::new((
         "fluent2_dropdown_accent",
         rect.min.x.to_bits(),
@@ -790,7 +549,7 @@ fn accent_id(rect: Rect) -> Id {
     ))
 }
 
-fn rounded_u8(value: f32) -> u8 {
+pub(super) fn rounded_u8(value: f32) -> u8 {
     if !value.is_finite() || value <= 0.0 {
         0
     } else if value >= f32::from(u8::MAX) {
@@ -800,11 +559,9 @@ fn rounded_u8(value: f32) -> u8 {
     }
 }
 
-fn finite(value: f32) -> f32 {
+pub(super) fn finite(value: f32) -> f32 {
     if value.is_finite() { value } else { 0.0 }
 }
-
-const _: Option<Color32> = None;
 
 #[cfg(test)]
 mod tests {
