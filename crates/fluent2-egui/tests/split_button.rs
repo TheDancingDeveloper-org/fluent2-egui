@@ -2,9 +2,10 @@
 
 use std::cell::{Cell, RefCell};
 
+use egui::Modifiers;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use fluent2_egui::controls::{MenuButton, SplitButton};
 use fluent2_egui::{Theme, install};
 
@@ -170,6 +171,79 @@ fn disabled_split_button_ignores_both_regions() {
     harness.run();
     assert!(!main_clicked.get());
     assert!(!open.get());
+}
+
+#[test]
+fn alt_down_and_enter_on_the_chevron_open_the_menu() {
+    for key in [egui::Key::ArrowDown, egui::Key::Enter] {
+        let open = std::rc::Rc::new(Cell::new(false));
+        let open_in = open.clone();
+        let mut harness = Harness::new_ui(move |ui| {
+            install_light(ui);
+            let response = SplitButton::new("Save").show(ui, |ui| {
+                ui.label("Save as");
+            });
+            open_in.set(response.menu_open);
+        });
+        harness.run();
+        // Two Tabs: main, then the chevron.
+        for _ in 0..2 {
+            harness.key_press(egui::Key::Tab);
+            harness.run();
+        }
+        let modifiers = if key == egui::Key::ArrowDown {
+            Modifiers::ALT
+        } else {
+            Modifiers::NONE
+        };
+        harness.key_press_modifiers(modifiers, key);
+        harness.run();
+        assert!(open.get(), "{key:?} on the focused chevron should open the menu");
+    }
+}
+
+#[test]
+fn menu_button_opens_on_enter_space_and_alt_down() {
+    for key in [egui::Key::Enter, egui::Key::Space, egui::Key::ArrowDown] {
+        let open = std::rc::Rc::new(Cell::new(false));
+        let open_in = open.clone();
+        let mut harness = Harness::new_ui(move |ui| {
+            install_light(ui);
+            let (_, value) = MenuButton::new("Open").show(ui, |ui| {
+                ui.label("Recent");
+                7
+            });
+            open_in.set(value == Some(7));
+        });
+        harness.run();
+        harness.key_press(egui::Key::Tab);
+        harness.run();
+        let modifiers = if key == egui::Key::ArrowDown {
+            Modifiers::ALT
+        } else {
+            Modifiers::NONE
+        };
+        harness.key_press_modifiers(modifiers, key);
+        harness.run();
+        assert!(open.get(), "{key:?} should open the menu button");
+    }
+}
+
+#[test]
+fn chevron_reports_expanded_when_the_menu_is_open() {
+    let mut harness = Harness::new_ui(|ui| {
+        install_light(ui);
+        let _ = SplitButton::new("Save").show(ui, |ui| {
+            ui.label("Save as");
+        });
+    });
+    harness.run();
+    let node = harness.get_by_role_and_label(Role::Button, "Save options");
+    assert_ne!(node.accesskit_node().data().is_expanded(), Some(true));
+    node.click();
+    harness.run();
+    let node = harness.get_by_role_and_label(Role::Button, "Save options");
+    assert_eq!(node.accesskit_node().data().is_expanded(), Some(true));
 }
 
 #[path = "../../../gallery/src/pages/split_buttons.rs"]
