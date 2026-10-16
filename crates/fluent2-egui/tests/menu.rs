@@ -83,27 +83,32 @@ fn escape_closes_the_menu() {
 }
 
 #[test]
-fn tab_moves_focus_between_items() {
+fn down_arrow_moves_focus_between_items() {
     let focused = std::cell::RefCell::new(String::new());
     let mut harness = Harness::new_ui(|ui| {
         install_light(ui);
-        let first = ui.add(MenuItem::new("Alpha"));
-        let second = ui.add(MenuItem::new("Beta"));
-        if first.has_focus() {
-            *focused.borrow_mut() = "Alpha".to_owned();
-        } else if second.has_focus() {
-            *focused.borrow_mut() = "Beta".to_owned();
-        }
+        ui.menu_button("File", |ui| {
+            let first = ui.add(MenuItem::new("Alpha"));
+            let second = ui.add(MenuItem::new("Beta"));
+            if first.has_focus() {
+                *focused.borrow_mut() = "Alpha".to_owned();
+            } else if second.has_focus() {
+                *focused.borrow_mut() = "Beta".to_owned();
+            }
+        });
     });
     harness.run();
-    harness.key_down(egui::Key::Tab);
+    harness.get_by_role_and_label(Role::Button, "File").click();
     harness.run();
-    assert_eq!(focused.borrow().as_str(), "Alpha", "first Tab focuses Alpha");
-    harness.key_up(egui::Key::Tab);
+    harness.get_by_role_and_label(Role::Button, "Alpha").focus();
     harness.run();
-    harness.key_down(egui::Key::Tab);
+    harness.key_down(egui::Key::ArrowDown);
     harness.run();
-    assert_eq!(focused.borrow().as_str(), "Beta", "second Tab focuses Beta");
+    assert_eq!(
+        focused.borrow().as_str(),
+        "Beta",
+        "Down should move focus from Alpha to Beta inside the open menu"
+    );
 }
 
 #[path = "../../../gallery/src/pages/menus.rs"]

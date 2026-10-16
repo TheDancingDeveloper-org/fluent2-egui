@@ -8,7 +8,8 @@ use fluent2_icons::Icon;
 pub fn page(ui: &mut Ui) {
     ui.label("Menus");
     let _ = ui.menu_button("File", |ui| {
-        let _ = menu_frame(ui);
+        let frame = menu_frame(ui);
+        ui.painter().add(frame.paint(ui.max_rect()));
         group_header(ui, "File");
         let _ = ui.add(MenuItem::new("New").icon(Icon::Add).shortcut("Ctrl+N"));
         let _ = ui.add(MenuItem::new("Save").icon(Icon::Save).shortcut("Ctrl+S"));
@@ -18,12 +19,7 @@ pub fn page(ui: &mut Ui) {
             let _ = ui.add(MenuItem::new("Copy link"));
         });
         divider(ui);
-        let _ = ui.add(
-            MenuItem::new("Autosave")
-                .checked(true)
-                .check_column(true)
-                .shortcut(""),
-        );
+        let _ = ui.add(MenuItem::new("Autosave").checked(true).check_column(true));
         let _ = ui.add(MenuItem::new("Read only").checked(false).check_column(true));
     });
 

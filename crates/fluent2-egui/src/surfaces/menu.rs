@@ -9,8 +9,8 @@
 
 use egui::epaint::RectShape;
 use egui::{
-    Align, CornerRadius, Frame, Id, InnerResponse, Layout, Popup, Rect, Response, Sense, Stroke, StrokeKind,
-    TextWrapMode, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
+    Align, CornerRadius, Frame, Id, InnerResponse, Layout, Popup, Rect, Response, Sense, Stroke,
+    TextWrapMode, Ui, UiKind, UiStackInfo, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -121,8 +121,9 @@ impl<'a> MenuItem<'a> {
         self
     }
 
-    /// Tooltip shown while the pointer is over the item. Does not disable the item; use
-    /// `ui.add_enabled` for that.
+    /// Tooltip shown when the item is disabled (`ui.add_enabled(false, …)`).
+    ///
+    /// Does not disable the item by itself.
     #[must_use]
     pub fn disabled_reason(mut self, reason: &'a str) -> Self {
         self.disabled_reason = Some(reason);
@@ -171,11 +172,16 @@ impl Widget for MenuItem<'_> {
             .clone()
             .into_galley(ui, Some(TextWrapMode::Truncate), text_width, font);
         let width = available;
-        let (rect, mut response) = ui.allocate_exact_size(Vec2::new(width, ITEM_HEIGHT), Sense::click());
-        let _ = self.id_salt;
+        let (auto_id, rect) = ui.allocate_space(Vec2::new(width, ITEM_HEIGHT));
+        let id = match self.id_salt {
+            Some(salt) => ui.make_persistent_id(salt),
+            None => auto_id,
+        };
+        let mut response = ui.interact(rect, id, Sense::click());
 
         if let Some(reason) = self.disabled_reason {
-            response = response.on_hover_text(reason);
+            // `on_hover_text` only shows on an enabled widget. This reason is for a disabled item.
+            response = response.on_disabled_hover_text(reason);
         }
         if response.clicked() {
             ui.close();
@@ -232,8 +238,10 @@ impl Widget for MenuItem<'_> {
 
 /// A menu row that opens a submenu. Wraps [`Ui::menu_button`].
 ///
-/// The trigger is a Fluent [`MenuItem`] plus a trailing ChevronRight. egui owns opening,
-/// closing and keyboard movement of the submenu.
+/// The trigger is a Fluent [`MenuItem`] (same height, padding and hover fill) with a trailing
+/// ChevronRight, so the label is not a stock egui button. egui's [`egui::containers::menu::SubMenu`]
+/// owns hover, keyboard and closing when this is called from inside a menu. From a menu bar it
+/// opens through [`egui::Popup::menu`].
 pub fn submenu<R>(
     ui: &mut Ui,
     text: impl Into<WidgetText>,
@@ -241,28 +249,36 @@ pub fn submenu<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> InnerResponse<Option<R>> {
     let text = text.into();
-    let label = text.text().to_owned();
-    let inner = ui.menu_button(label.as_str(), |ui| {
-        ui.set_min_width(160.0);
-        add(ui)
-    });
-    paint_chevron(ui, &inner.response);
+    let in_menu = ui.stack().iter().any(|frame| frame.kind() == Some(UiKind::Menu));
+    let mut item = MenuItem::new(text);
     if let Some(icon) = icon {
-        let theme = Theme::get(ui.ctx());
-        let fg = foreground(ui, &theme);
-        let slot = centred_slot(
-            inner.response.rect,
-            inner.response.rect.left() + H_PADDING,
-            ICON_SLOT,
-        );
-        paint_icon(ui, slot, icon, IconSize::S20, IconStyle::Regular, Some(fg));
+        item = item.icon(icon);
     }
-    let expanded = inner.inner.is_some();
-    ui.ctx().accesskit_node_builder(inner.response.id, |node| {
+    // Reserve the trailing column the chevron is painted into, so it does not cover the label.
+    item = item.shortcut(" ");
+    let response = ui.add(item);
+    paint_chevron(ui, &response);
+
+    let popup = if in_menu {
+        egui::containers::menu::SubMenu::default().show(ui, &response, |ui| {
+            ui.set_min_width(160.0);
+            add(ui)
+        })
+    } else {
+        Popup::menu(&response)
+            .style(menu_contents_style)
+            .frame(menu_frame(ui))
+            .info(UiStackInfo::new(UiKind::Menu))
+            .show(|ui| {
+                ui.set_min_width(160.0);
+                add(ui)
+            })
+    };
+    let expanded = popup.is_some();
+    ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_expanded(expanded);
     });
-    let _ = (text, label);
-    inner
+    InnerResponse::new(popup.map(|inner| inner.inner), response)
 }
 
 /// A 1 px `neutral_stroke_2` rule with 4 px of vertical margin.
@@ -281,7 +297,9 @@ pub fn divider(ui: &mut Ui) {
 /// A non-interactive group caption: caption1, `neutral_foreground_3`.
 pub fn group_header(ui: &mut Ui, text: impl Into<WidgetText>) {
     let theme = Theme::get(ui.ctx());
-    let font = text::font_id(TypeRamp::Caption1);
+    // caption1 strong: caption1's size in the semibold family.
+    let mut font = text::font_id(TypeRamp::Caption1);
+    font.family = text::font_id(TypeRamp::Body1Strong).family;
     let color = c(theme.color.neutral_foreground_3);
     let galley = text
         .into()
@@ -386,7 +404,6 @@ fn paint_row_fill(ui: &Ui, rect: Rect, response: &Response) {
         return;
     };
     ui.painter().add(RectShape::filled(rect, medium_radius(), fill));
-    let _ = StrokeKind::Inside;
 }
 
 fn centred_slot(row: Rect, x: f32, size: f32) -> Rect {
