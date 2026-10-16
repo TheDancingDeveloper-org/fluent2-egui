@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- `SpinButton` and `Slider` controls (WI-1548).
 - `Icon` widget and `fluent2_egui::install`: Fluent System Icons at 16/20/24 px, tinted from the theme (WI-1536).
 - Foundation helpers: keyboard focus ring, elevation shadows and motion curves (`foundation::{focus, elevation, motion}`).
 - `fluent2_egui::theme`: `Theme`, `ThemeKind` and `theme::install`, mapping Fluent alias tokens onto egui visuals.
