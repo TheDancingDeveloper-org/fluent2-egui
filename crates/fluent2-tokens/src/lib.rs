@@ -12,6 +12,8 @@ pub mod generated;
 mod types;
 
 pub use brand::{BrandRamp, FLUENT, dark, from_seed, high_contrast, light};
+pub use generated::colors::AliasColors;
+pub use generated::shadows::Shadows;
 pub use types::{CubicBezier, Rgba, ShadowLayer};
 
 #[cfg(test)]

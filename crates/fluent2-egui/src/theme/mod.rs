@@ -3,9 +3,8 @@
 use egui::CornerRadius;
 
 use crate::foundation::text;
-use fluent2_tokens::BrandRamp;
-use fluent2_tokens::Rgba;
-use fluent2_tokens::generated::{colors::AliasColors, global, shadows::Shadows};
+use fluent2_tokens::generated::global;
+use fluent2_tokens::{AliasColors, BrandRamp, Rgba, Shadows};
 
 /// Which Fluent theme is installed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
