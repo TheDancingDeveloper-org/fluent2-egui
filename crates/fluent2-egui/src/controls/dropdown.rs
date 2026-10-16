@@ -228,7 +228,6 @@ pub(super) fn show_listbox(
     active: Option<usize>,
     preview: &Option<PreviewFn<'_>>,
 ) -> (Option<usize>, bool) {
-    let theme = Theme::get(ui.ctx());
     let count = options.len();
     let rows = (count as f32)
         .min(MAX_VISIBLE_ROWS)
@@ -241,18 +240,12 @@ pub(super) fn show_listbox(
     let mut picked = None;
     // `Popup` is the layer egui hit-tests. A bare `Area` receives no pointer events, so a click
     // on an option never reached the row.
-    let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
-    // Menu frame: neutral fill, thin stroke, medium radius. There is no Menu widget on main yet
-    // (WI-1545), so the frame is this Popup's own frame rather than a second painted rect.
-    let menu_frame = egui::Frame::new()
-        .fill(c(theme.color.neutral_background_1))
-        .stroke(Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_1)))
-        .corner_radius(radius)
-        .inner_margin(0);
+    // WI-1545 menu frame: neutral fill, medium radius and the elevation shadow.
+    let frame = crate::surfaces::menu_frame(ui);
     let shown = egui::Popup::from_response(&ui.interact(field, id.with("anchor"), Sense::hover()))
         .id(popup_id)
         .layout(Layout::top_down(Align::Min))
-        .frame(menu_frame)
+        .frame(frame)
         // IgnoreClicks keeps a scrollbar drag from closing the list. Dismissal of a press that
         // is outside both the field and this popup is handled below.
         .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
