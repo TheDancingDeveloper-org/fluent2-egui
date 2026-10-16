@@ -3,6 +3,7 @@
 mod badge;
 mod button;
 mod checkbox;
+mod compound_button;
 mod divider;
 mod field;
 mod input;
@@ -15,10 +16,12 @@ mod spin_button;
 mod spinner;
 mod switch;
 mod textarea;
+mod toggle_button;
 
 pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
 pub use button::{Appearance, Button, ButtonSize, Shape};
 pub use checkbox::{CheckState, Checkbox};
+pub use compound_button::CompoundButton;
 pub use divider::Divider;
 pub use field::{Field, ValidationState};
 pub use input::{Input, InputAppearance, accent_open_for_test};
@@ -31,3 +34,4 @@ pub use spin_button::SpinButton;
 pub use spinner::{Spinner, SpinnerSize};
 pub use switch::Switch;
 pub use textarea::{Textarea, TextareaResize};
+pub use toggle_button::ToggleButton;

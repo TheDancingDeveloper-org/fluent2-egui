@@ -9,8 +9,8 @@
 
 use egui::epaint::{Color32, RectShape};
 use egui::{
-    CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
-    WidgetText, WidgetType,
+    CornerRadius, Galley, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget,
+    WidgetInfo, WidgetText, WidgetType,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -222,22 +222,25 @@ impl Widget for Button<'_> {
                 )
         });
         let state = visual_state(enabled, response.hovered(), response.is_pointer_button_down_on());
-        let colors = colors_of(self.appearance, state, &theme.color);
-
-        if ui.is_rect_visible(rect) {
-            let radius = corner_radius(self.size, self.shape, rect);
-            ui.painter().add(RectShape::new(
-                rect,
-                radius,
-                c(colors.background),
-                Stroke::new(stroke_width::THIN, c(colors.stroke)),
-                StrokeKind::Inside,
-            ));
-            paint_content(ui, rect, &self, galley.as_deref(), c(colors.foreground), metrics);
-            if focus::focus_visible(ui, &response) {
-                focus::paint_focus_ring(ui, rect, radius);
-            }
-        }
+        paint_button(
+            ui,
+            rect,
+            &response,
+            &ButtonStyle {
+                appearance: self.appearance,
+                size: self.size,
+                shape: self.shape,
+                state,
+                checked: false,
+            },
+            &ButtonContent {
+                icon: self.icon,
+                icon_after: self.icon_after,
+                galley: galley.as_deref(),
+                metrics,
+            },
+            &theme,
+        );
 
         let accessible = self.label_string();
         if galley.as_ref().is_some_and(|galley| galley.elided) {
@@ -248,7 +251,99 @@ impl Widget for Button<'_> {
     }
 }
 
-fn ensure_type_ramp(ui: &mut Ui) {
+/// Face, size and checked state for [`paint_button`].
+pub(crate) struct ButtonStyle {
+    /// Visual weight.
+    pub appearance: Appearance,
+    /// Height step.
+    pub size: ButtonSize,
+    /// Corner treatment.
+    pub shape: Shape,
+    /// Rest, hover, pressed or disabled.
+    pub state: VisualState,
+    /// When set, rest uses the Fluent selected colours (ToggleButton).
+    pub checked: bool,
+}
+
+/// Icon and label already laid out by the caller.
+pub(crate) struct ButtonContent<'a> {
+    /// Optional catalogue icon.
+    pub icon: Option<Icon>,
+    /// Draw the icon after the label.
+    pub icon_after: bool,
+    /// Laid-out label, if any.
+    pub galley: Option<&'a Galley>,
+    /// Size metrics.
+    pub metrics: Metrics,
+}
+
+/// Paint a button face, its content and the focus ring.
+pub(crate) fn paint_button(
+    ui: &Ui,
+    rect: Rect,
+    response: &Response,
+    style: &ButtonStyle,
+    content: &ButtonContent<'_>,
+    theme: &Theme,
+) {
+    if !ui.is_rect_visible(rect) {
+        return;
+    }
+    let colors = if style.checked {
+        checked_colors(style.appearance, style.state, &theme.color)
+    } else {
+        colors_of(style.appearance, style.state, &theme.color)
+    };
+    let radius = corner_radius(style.size, style.shape, rect);
+    ui.painter().add(RectShape::new(
+        rect,
+        radius,
+        c(colors.background),
+        Stroke::new(stroke_width::THIN, c(colors.stroke)),
+        StrokeKind::Inside,
+    ));
+    paint_content(ui, rect, content, c(colors.foreground));
+    if focus::focus_visible(ui, response) {
+        focus::paint_focus_ring(ui, rect, radius);
+    }
+}
+
+/// ToggleButton selected colours. Disabled stays the ordinary disabled face.
+pub(crate) fn checked_colors(
+    appearance: Appearance,
+    state: VisualState,
+    color: &fluent2_tokens::generated::colors::AliasColors,
+) -> Face {
+    use Appearance::{Outline, Primary, Secondary, Subtle, Transparent};
+    if matches!(state, VisualState::Disabled) {
+        return colors_of(appearance, state, color);
+    }
+    let clear = Rgba {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    match appearance {
+        Secondary | Outline => Face {
+            foreground: color.neutral_foreground_1,
+            background: color.neutral_background_1_selected,
+            stroke: color.neutral_stroke_1,
+        },
+        Primary => Face {
+            foreground: color.neutral_foreground_on_brand,
+            background: color.brand_background_selected,
+            stroke: clear,
+        },
+        Subtle | Transparent => Face {
+            foreground: color.neutral_foreground_2_brand_selected,
+            background: color.subtle_background_selected,
+            stroke: clear,
+        },
+    }
+}
+
+pub(crate) fn ensure_type_ramp(ui: &mut Ui) {
     use crate::foundation::text::{font_id, style};
     // Strong steps name the `fluent2-semibold` family. That family exists only after
     // `install_system_fonts` loaded a face. Until then, draw the same sizes in the
@@ -271,17 +366,18 @@ fn ensure_type_ramp(ui: &mut Ui) {
     }
 }
 
-struct Metrics {
-    min_height: f32,
-    min_width: f32,
-    h_padding: f32,
-    icon: f32,
-    icon_gap: f32,
-    ramp: TypeRamp,
+#[derive(Clone, Copy)]
+pub(crate) struct Metrics {
+    pub min_height: f32,
+    pub min_width: f32,
+    pub h_padding: f32,
+    pub icon: f32,
+    pub icon_gap: f32,
+    pub ramp: TypeRamp,
 }
 
 impl Metrics {
-    fn of(size: ButtonSize) -> Self {
+    pub(crate) fn of(size: ButtonSize) -> Self {
         match size {
             ButtonSize::Small => Self {
                 min_height: 24.0,
@@ -310,7 +406,7 @@ impl Metrics {
         }
     }
 
-    fn text_style(&self) -> TextStyle {
+    pub(crate) fn text_style(&self) -> TextStyle {
         TextStyle::Name(self.ramp.name().into())
     }
 
@@ -324,14 +420,14 @@ impl Metrics {
 }
 
 #[derive(Clone, Copy)]
-enum VisualState {
+pub(crate) enum VisualState {
     Rest,
     Hover,
     Pressed,
     Disabled,
 }
 
-fn visual_state(enabled: bool, hovered: bool, pressed: bool) -> VisualState {
+pub(crate) fn visual_state(enabled: bool, hovered: bool, pressed: bool) -> VisualState {
     if !enabled {
         VisualState::Disabled
     } else if pressed {
@@ -343,13 +439,13 @@ fn visual_state(enabled: bool, hovered: bool, pressed: bool) -> VisualState {
     }
 }
 
-struct Face {
-    foreground: Rgba,
-    background: Rgba,
-    stroke: Rgba,
+pub(crate) struct Face {
+    pub foreground: Rgba,
+    pub background: Rgba,
+    pub stroke: Rgba,
 }
 
-fn colors_of(
+pub(crate) fn colors_of(
     appearance: Appearance,
     state: VisualState,
     color: &fluent2_tokens::generated::colors::AliasColors,
@@ -464,25 +560,19 @@ fn corner_radius(size: ButtonSize, shape: Shape, rect: Rect) -> CornerRadius {
     CornerRadius::same(rounded_u8(points))
 }
 
-fn paint_content(
-    ui: &Ui,
-    rect: Rect,
-    button: &Button<'_>,
-    galley: Option<&egui::Galley>,
-    foreground: Color32,
-    metrics: Metrics,
-) {
-    let icon_px = if button.icon.is_some() { metrics.icon } else { 0.0 };
-    let text_w = galley.map(|g| g.size().x).unwrap_or(0.0);
-    let gap = if icon_px > 0.0 && galley.is_some() {
+fn paint_content(ui: &Ui, rect: Rect, content: &ButtonContent<'_>, foreground: Color32) {
+    let metrics = content.metrics;
+    let icon_px = if content.icon.is_some() { metrics.icon } else { 0.0 };
+    let text_w = content.galley.map(|g| g.size().x).unwrap_or(0.0);
+    let gap = if icon_px > 0.0 && content.galley.is_some() {
         metrics.icon_gap
     } else {
         0.0
     };
     let total = icon_px + gap + text_w;
     let mut x = rect.center().x - total / 2.0;
-    let icon_first = !button.icon_after;
-    if icon_first && let Some(icon) = button.icon {
+    let icon_first = !content.icon_after;
+    if icon_first && let Some(icon) = content.icon {
         paint_icon(
             ui,
             icon,
@@ -493,13 +583,13 @@ fn paint_content(
         );
         x += icon_px + gap;
     }
-    if let Some(galley) = galley {
+    if let Some(galley) = content.galley {
         let pos = egui::pos2(x, rect.center().y - galley.size().y / 2.0);
         ui.painter()
             .galley(pos, std::sync::Arc::new(galley.clone()), foreground);
         x += text_w + gap;
     }
-    if !icon_first && let Some(icon) = button.icon {
+    if !icon_first && let Some(icon) = content.icon {
         paint_icon(
             ui,
             icon,
