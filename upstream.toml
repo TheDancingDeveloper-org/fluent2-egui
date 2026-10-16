@@ -41,7 +41,7 @@ reviewed = "2026-10-14"
 licence = "MIT"
 role = "generated"
 watch = ["packages/tokens/src"]
-notes = "Source of fluent2-tokens. Use only packages/tokens; the repo's fonts and MDL2 icons fall under aka.ms/fluentui-assets-license and are not used."
+notes = "Source of fluent2-tokens. npm @fluentui/tokens 1.0.0-alpha.24. Use only packages/tokens; the repo's fonts and MDL2 icons fall under aka.ms/fluentui-assets-license and are not used."
 
 [[source]]
 name = "fluentui-system-icons"
