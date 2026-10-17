@@ -22,6 +22,10 @@ pub enum Icon {
     ArrowRight,
     /// `Arrow Sort`.
     ArrowSort,
+    /// `Arrow Sort Down`.
+    ArrowSortDown,
+    /// `Arrow Sort Up`.
+    ArrowSortUp,
     /// `Arrow Up`.
     ArrowUp,
     /// `Attach`.
@@ -477,6 +481,78 @@ pub fn svg(icon: Icon, size: Size, style: Style) -> Option<&'static [u8]> {
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/svg/ic_fluent_arrow_sort_24_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S16, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_16_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S16, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_16_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S20, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_20_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S20, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_20_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S24, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_24_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortDown, Size::S24, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_down_24_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S16, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_16_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S16, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_16_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S20, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_20_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S20, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_20_filled.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S24, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_24_regular.svg"
+            ))
+        }
+        (Icon::ArrowSortUp, Size::S24, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_arrow_sort_up_24_filled.svg"
             ))
         }
         (Icon::ArrowUp, Size::S16, Style::Regular) => {
@@ -2441,6 +2517,8 @@ impl Icon {
         Icon::ArrowLeft,
         Icon::ArrowRight,
         Icon::ArrowSort,
+        Icon::ArrowSortDown,
+        Icon::ArrowSortUp,
         Icon::ArrowUp,
         Icon::Attach,
         Icon::Bookmark,
@@ -2509,6 +2587,8 @@ impl Icon {
             Icon::ArrowLeft => "Arrow Left",
             Icon::ArrowRight => "Arrow Right",
             Icon::ArrowSort => "Arrow Sort",
+            Icon::ArrowSortDown => "Arrow Sort Down",
+            Icon::ArrowSortUp => "Arrow Sort Up",
             Icon::ArrowUp => "Arrow Up",
             Icon::Attach => "Attach",
             Icon::Bookmark => "Bookmark",
