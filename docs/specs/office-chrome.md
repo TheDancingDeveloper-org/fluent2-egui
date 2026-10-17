@@ -16,7 +16,7 @@ reversible by editing this file before the implementation item that depends on i
 |---|---|---|
 | D1 | Office components return responses and never send `ViewportCommand`s. The app maps a returned `WindowAction` to a command with a pure function. **Exception:** `window_resize_edges` (§2) sends `BeginResize` itself, because the app never chooses a resize. | ARCHITECTURE rule 5. The mapping is unit-testable without a window. |
 | D2 | Chrome dimensions (32, 40, 46, 6 pt and so on) are named constants on a `ChromeMetrics` struct held by `Theme` (`Theme::chrome`). They are not Fluent tokens. | Rule 7 forbids magic numbers outside `theme/`. Fluent has no token for these. **Operator decision, see §11.** |
-| D3 | `RibbonState`, `QatState` and `BackstageState` are plain data with public fields. No serde in M1. The app persists them. | Keeps the crate free of a serialization dependency. The app already owns persistence (rule 5). |
+| D3 | `RibbonState`, `QatState` and `BackstageState` are plain data with public fields. No serde in M1. The app persists them. | Keeps the crate free of a serialization dependency. The app already owns persistence (rule 5). Confirmed for M1 on WI-1562: no serde feature, and the serde round-trip test is dropped. |
 | D4 | Control keys are `&'static str`. Duplicate keys within one ribbon, QAT or command bar do not panic. The first key wins and later ones are reported in `conflicts`. | Rule 9 (no panics). Rule 4: keys are caller-chosen constants, never translated labels. |
 | D5 | Ribbon tab and group bodies are built by closures every frame into a data model, before any painting. Measurement and scaling run on that model. | Lets §5 size groups before drawing, in immediate mode. |
 | D6 | Accent colours for contextual tabs are token choices (`ContextualAccent`), never a `Color32` argument. Each accent maps to a different token. | Rule 7. |
@@ -24,6 +24,10 @@ reversible by editing this file before the implementation item that depends on i
 | D8 | The CommandBar overflow uses the hysteresis rule of §5.3. | One fitting rule across the chrome. |
 | D9 | Ribbon widths are computed in the frame they are needed, from fixed control sizes and text layout (`ctx.fonts`), not from a previous frame's measurement. A cache in `ctx.data` only memoises those results. | Text layout is synchronous, so no first frame is guessed and no step is stepped up speculatively. Answers the cold-cache question for WI-1565. |
 | D10 | Resize zones are `egui::Area`s at `Order::Foreground` covering the 6 pt border. They win over the title bar and caption buttons inside that border (§2). | Corners must be reachable. Interior clicks are never intercepted. |
+| D11 | The File tab is the accent tab: brand fill, on-brand text (§4.1, §10). It reports `RibbonEventKind::Clicked` keyed by its own key (`FileTab::new(key, label)`). No separate event variant. | One event shape for every control (§4.6). The app maps the key to the backstage (§7), as it does every other command (rule 5). |
+| D12 | `RibbonTab::contextual` takes a header text. Tabs of one set share it, drawn in the set's accent colour above the set's tabs (§4.3). | The spec gave no text for the header. The header is a `Label` node whose text is its AccessKit value. |
+| D13 | The pin button in the peek (§4.5) belongs to WI-1563, not WI-1562. | WI-1562 builds the strip and peek state, and the pin needs the ribbon body that WI-1563 adds. |
+| D14 | Two behaviours the spec leaves open are fixed as follows (§4.5): a double-click toggles collapsed, and Ctrl+F1 expands a peek. A click on the strip while collapsed opens the peek, even when the clicked tab is already active. | Recorded on WI-1562 review. They keep the keyboard and pointer paths consistent. |
 
 ## Shared vocabulary
 
@@ -279,7 +283,8 @@ impl<'a> Ribbon<'a> {
 
 pub struct FileTab { /* private */ }
 impl FileTab {
-    pub fn new(label: &str) -> Self;
+    /// `key` names the File tab in events and must be unique within the ribbon (D11).
+    pub fn new(key: &'static str, label: &str) -> Self;
     pub fn keytip(self, key: &'static str) -> Self;
 }
 
@@ -289,7 +294,8 @@ impl<'a> RibbonTab<'a> {
     pub fn new(key: &'static str, label: &str, build: impl FnOnce(&mut TabBuilder<'a>) + 'a) -> Self;
     pub fn keytip(self, key: &'static str) -> Self;
     /// Makes this tab part of a contextual set. It shows only while `visible` is true (§4.3).
-    pub fn contextual(self, set: &'static str, accent: ContextualAccent, visible: bool) -> Self;
+    /// `header` is the set's header text (D12). Tabs of one set should pass the same header.
+    pub fn contextual(self, set: &'static str, header: &str, accent: ContextualAccent, visible: bool) -> Self;
 }
 
 pub struct TabBuilder<'a> { /* private */ }
@@ -422,7 +428,7 @@ any of them.
 
 ```rust
 Ribbon::new("main")
-    .file_tab(FileTab::new("File").keytip("F"))
+    .file_tab(FileTab::new("file", "File").keytip("F"))
     .tab(RibbonTab::new("home", "Home", |t| {
         t.group("clipboard", "Clipboard", |g| {
             g.add(RibbonLarge::new("paste", Icon::Paste, "Paste").keytip("V"));
@@ -456,8 +462,9 @@ capture disjoint fields.
 
 - A tab with `.contextual(set, accent, visible)` is added after the content tabs. It shows only
   while `visible` is true. When it appears, the app may set `RibbonState::active` to it.
-- Tabs with the same `set` share a header label above them. The header label is drawn in the
-  accent colour (D6). Token per accent:
+- Tabs with the same `set` share one header, which reads the `header` text given to `contextual`
+  (D12). The header sits in a row above the set's first tab, starts at that tab's left edge, and is
+  drawn in the accent colour (D6) in the `Caption1` step (§10). Token per accent:
 
 | Accent | Token |
 |---|---|
@@ -516,6 +523,10 @@ pub enum RibbonDisplay {
 
 - Clicking a tab in Expanded state only changes `active`.
 - A pinned ribbon in Peek state behaves as Expanded.
+- A double-click on the strip toggles collapsed (D14). Ctrl+F1 from Peek expands (D14).
+- A click on the strip while collapsed opens Peek, even when the clicked tab is already active (D14).
+- The strip takes keyboard focus on click, so the arrow keys work after a click (§9.2).
+- The pin button in Peek is WI-1563's (D13). WI-1562 keeps `pinned` in state and honours it.
 
 ### 4.6 RibbonResponse
 
@@ -539,7 +550,7 @@ pub struct RibbonEvent {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RibbonEventKind {
-    /// A button, split, menu, or dialog launcher was pressed.
+    /// A button, split, menu, dialog launcher or the File tab was pressed (D11).
     Clicked,
     /// The bound state changed this frame. The new value is in the state the control was
     /// given, not in the event.
@@ -1124,6 +1135,8 @@ which mirror Fluent's own (ARCHITECTURE, Theme). `color.` is `Theme::color`.
 | Strong border (menus, popups) | `color.neutral_stroke_2` |
 | Focus ring | `color.stroke_focus_2` |
 | Contextual accents | see §4.3 |
+| File tab fill, hover, pressed | `color.brand_background`, `color.brand_background_hover`, `color.brand_background_pressed` |
+| File tab text | `color.neutral_foreground_on_brand` |
 
 **Sizes and spacing.** These are `ChromeMetrics` fields (D2), not Fluent tokens. Values are
 fixed by this spec.
@@ -1159,6 +1172,8 @@ and tabs, `border_radius::LARGE` (6 pt) for popups.
 |---|---|
 | Title text in the title bar | `Body1Strong` |
 | Ribbon tab labels | `Body1` |
+| File tab label | `Body1Strong` |
+| Contextual header | `Caption1` |
 | Group labels and small ribbon labels | `Caption1` |
 | Large ribbon button labels | `Caption1` |
 | KeyTip badges | `Caption2` with medium weight |
