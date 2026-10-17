@@ -133,23 +133,68 @@ fn enter_on_another_button_does_not_trigger_primary() {
     assert_eq!(probe.borrow().closed_with, Some(CloseReason::Button("Cancel")));
 }
 
+/// Which focus stop of the dialog has focus: one of Save, Cancel, Inside, or the surface.
+/// Panics if focus is on the page behind the dialog, which the trap must prevent.
+fn focus_stop(harness: &Harness<'_>) -> &'static str {
+    assert!(
+        !harness.get_by_label("Open").is_focused(),
+        "focus escaped the dialog to the page"
+    );
+    if harness.get_by_label("Save").is_focused() {
+        "Save"
+    } else if harness.get_by_label("Cancel").is_focused() {
+        "Cancel"
+    } else if harness.get_by_label("Inside").is_focused() {
+        "Inside"
+    } else {
+        assert!(
+            harness
+                .get_by_role_and_label(Role::Dialog, "Dialog title")
+                .is_focused(),
+            "focus is on no stop inside the dialog"
+        );
+        "surface"
+    }
+}
+
 #[test]
-fn tab_cycles_only_inside_dialog() {
+fn tab_and_shift_tab_wrap_inside_dialog() {
     let probe = open_probe();
     let mut harness = dialog_harness(probe.clone(), DialogKind::Modal);
     harness.run();
     harness.run();
-    for _ in 0..12 {
+    // Opening focuses the primary action.
+    assert_eq!(focus_stop(&harness), "Save");
+
+    // Forward: surface, Inside, Cancel, Save, then wrap back to the surface.
+    let mut forward = Vec::new();
+    for _ in 0..4 {
         harness.key_press(egui::Key::Tab);
         harness.run();
-        assert!(
-            !harness.get_by_label("Open").is_focused(),
-            "focus must not leave the dialog for the page behind it"
-        );
+        forward.push(focus_stop(&harness));
     }
+    assert_eq!(
+        forward,
+        ["surface", "Inside", "Cancel", "Save"],
+        "Tab order, wrapping last to first"
+    );
+
+    // Backward from Save: Cancel, Inside, surface, then wrap to Save.
+    let mut backward = Vec::new();
+    for _ in 0..4 {
+        harness.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+        harness.run();
+        backward.push(focus_stop(&harness));
+    }
+    assert_eq!(
+        backward,
+        ["Cancel", "Inside", "surface", "Save"],
+        "Shift+Tab order, wrapping first to last"
+    );
+
     assert!(
         probe.borrow().open,
-        "Tab stays inside and does not close the dialog"
+        "Tab and Shift+Tab stay inside and do not close the dialog"
     );
 }
 
