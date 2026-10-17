@@ -226,8 +226,8 @@ fn normalize_requested(requested: &str) -> Option<String> {
     valid.then_some(key)
 }
 
-/// The first free one-letter key: a letter or digit of the label, then `A` to `Z`, then `1` to
-/// `9`. A key that starts a taken two-letter key is not free.
+/// The first free one-letter key: a letter of the label, then `A` to `Z`, then `1` to `9`. A key
+/// that starts a taken two-letter key is not free.
 fn pick_single(candidate: &KeyTipCandidate, taken: &HashSet<(KeyTipLevel, String)>) -> Option<String> {
     let level = candidate.level;
     candidate
@@ -246,15 +246,18 @@ fn pick_single(candidate: &KeyTipCandidate, taken: &HashSet<(KeyTipLevel, String
         })
 }
 
-/// The first free two-letter key. The first letter is a letter of the label, then `A` to `Z`.
-/// It is never a one-letter key already taken at the level.
+/// The first free two-letter key, per spec §6.2. The first letter is the label's first letter if
+/// that is free, then `A` to `Z`. The second letter is `A` to `Z`. A first letter that is a
+/// one-letter key already taken at the level is skipped.
 fn pick_pair(candidate: &KeyTipCandidate, taken: &HashSet<(KeyTipLevel, String)>) -> Option<String> {
     let level = candidate.level;
-    candidate
+    let label_first = candidate
         .label
         .chars()
-        .filter(char::is_ascii_alphabetic)
-        .map(|ch| ch.to_ascii_uppercase())
+        .find(char::is_ascii_alphabetic)
+        .map(|ch| ch.to_ascii_uppercase());
+    label_first
+        .into_iter()
         .chain('A'..='Z')
         .flat_map(|first| ('A'..='Z').map(move |second| (first, second)))
         .find_map(|(first, second)| {
@@ -596,6 +599,63 @@ mod tests {
         ]);
         let keys: Vec<&str> = out.targets.iter().map(|t| t.key.as_str()).collect();
         assert_eq!(keys, vec!["H", "M", "O"]);
+    }
+
+    #[test]
+    fn pair_first_letter_is_label_first_letter_then_a_to_z() {
+        // 27 targets with one label: the label's first letter Q gives 26 keys, then A to Z.
+        let candidates: Vec<KeyTipCandidate> = (0..27)
+            .map(|_| candidate("t", KeyTipLevel::Root, TargetKind::Control, None, "Quix Tango"))
+            .collect();
+        let out = resolve_keytips(&candidates);
+        let keys: Vec<&str> = out.targets.iter().map(|t| t.key.as_str()).collect();
+        assert_eq!(keys.len(), 27);
+        assert!(keys[..26].iter().all(|k| k.starts_with('Q')), "{keys:?}");
+        assert_eq!(keys[26], "AA");
+        // Later label letters (T, A, ...) are not used as the first letter.
+        assert!(keys.iter().all(|k| !k.starts_with('T')));
+    }
+
+    #[test]
+    fn pair_first_letter_skips_a_one_letter_key_taken_at_the_level() {
+        // A requested "Q" is a one-letter key, so no pair may start with Q.
+        let mut candidates: Vec<KeyTipCandidate> = (0..27)
+            .map(|_| candidate("t", KeyTipLevel::Root, TargetKind::Control, None, "Quix"))
+            .collect();
+        candidates.push(candidate(
+            "req",
+            KeyTipLevel::Root,
+            TargetKind::QatItem,
+            Some("Q"),
+            "Req",
+        ));
+        let out = resolve_keytips(&candidates);
+        let auto: Vec<&str> = out
+            .targets
+            .iter()
+            .filter(|t| t.target == "t")
+            .map(|t| t.key.as_str())
+            .collect();
+        assert!(
+            auto.iter().all(|k| k.len() == 2 && !k.starts_with('Q')),
+            "{auto:?}"
+        );
+        assert_eq!(auto.first().copied(), Some("AA"));
+    }
+
+    #[test]
+    fn pair_first_letter_ignores_leading_non_letters_in_the_label() {
+        let candidates: Vec<KeyTipCandidate> = (0..27)
+            .map(|_| candidate("t", KeyTipLevel::Root, TargetKind::Control, None, "7 Quix"))
+            .collect();
+        let out = resolve_keytips(&candidates);
+        let first = out
+            .targets
+            .iter()
+            .next()
+            .map(|t| t.key.clone())
+            .unwrap_or_default();
+        assert_eq!(first, "QA");
     }
 
     #[test]
