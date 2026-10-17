@@ -17,6 +17,7 @@ use fluent2_egui::{Theme, install};
 struct Probe {
     state: BackstageState,
     response: BackstageResponse,
+    notes: String,
 }
 
 /// A harness with a "File" button (the app's File tab) and a backstage with three pages.
@@ -34,6 +35,7 @@ fn backstage_harness(probe: Rc<RefCell<Probe>>, theme: fn() -> Theme) -> Harness
         }
 
         let mut state = probe.borrow().state.clone();
+        let mut notes = probe.borrow().notes.clone();
         let response = Backstage::new(&mut state)
             .page("home", "Home", |ui| {
                 ui.label("Home body");
@@ -41,12 +43,16 @@ fn backstage_harness(probe: Rc<RefCell<Probe>>, theme: fn() -> Theme) -> Harness
             .page("new", "New", |ui| {
                 ui.label("New body");
             })
+            .page("notes", "Notes", |ui| {
+                ui.add(egui::TextEdit::singleline(&mut notes).hint_text("Notes field"));
+            })
             .bottom_page("options", "Options", |ui| {
                 ui.label("Options body");
             })
             .show(ui);
         // `closed` is true only on the frame that closed, so keep it across the harness's frames.
         let mut probe = probe.borrow_mut();
+        probe.notes = notes;
         probe.state = state;
         probe.response.closed |= response.closed;
         if response.page_changed.is_some() {
@@ -145,12 +151,19 @@ fn arrow_keys_move_the_selection_through_the_entries() {
     harness.run();
     assert_eq!(
         probe.borrow().state.page,
+        Some("notes"),
+        "ArrowDown reaches Notes"
+    );
+    harness.key_press(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        probe.borrow().state.page,
         Some("options"),
         "ArrowDown reaches the bottom group"
     );
     harness.key_press(egui::Key::ArrowUp);
     harness.run();
-    assert_eq!(probe.borrow().state.page, Some("new"), "ArrowUp moves back");
+    assert_eq!(probe.borrow().state.page, Some("notes"), "ArrowUp moves back");
 }
 
 #[test]
@@ -198,4 +211,32 @@ fn nav_column_has_the_spec_roles_and_labels() {
     let _ = harness.get_by_role_and_label(Role::Button, "Home");
     let _ = harness.get_by_role_and_label(Role::Button, "New");
     let _ = harness.get_by_role_and_label(Role::Button, "Options");
+}
+
+#[test]
+fn escape_does_not_close_while_a_text_field_has_focus() {
+    let (probe, mut harness) = open_harness();
+    harness.run();
+    harness.get_by_role_and_label(Role::Button, "Notes").click();
+    harness.run();
+    harness.get_by_role(Role::TextInput).focus();
+    harness.run();
+    assert!(
+        harness.get_by_role(Role::TextInput).is_focused(),
+        "the text field has focus"
+    );
+
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert!(probe.borrow().state.open, "Escape stays with the text field");
+    assert!(!probe.borrow().response.closed);
+
+    harness.get_by_role_and_label(Role::Button, "Home").focus();
+    harness.run();
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert!(
+        !probe.borrow().state.open,
+        "Escape closes once no text field has focus"
+    );
 }
