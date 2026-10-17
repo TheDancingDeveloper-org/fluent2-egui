@@ -12,7 +12,7 @@ use egui::{
 
 use crate::controls::button;
 use crate::foundation::focus::paint_focus_ring;
-use crate::foundation::icon::{IconName, IconSize, IconStyle, paint_icon};
+use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle, paint_icon};
 use crate::foundation::text::{TypeRamp, style};
 use crate::theme::{Theme, c};
 use fluent2_tokens::generated::global::spacing_horizontal;
@@ -38,15 +38,16 @@ type Slot<'s> = Box<dyn FnOnce(&mut Ui) + 's>;
 /// Left to right: app icon, the left slot, the centre slot (or the title), the right slot, then
 /// the caption buttons.
 pub struct TitleBarSlots<'s> {
-    app_icon: Option<IconName>,
+    app_icon: Option<Icon>,
     left: Option<Slot<'s>>,
     center: Option<Slot<'s>>,
     right: Option<Slot<'s>>,
 }
 
 impl<'s> TitleBarSlots<'s> {
-    /// Show `icon` at the far left.
-    pub fn app_icon(&mut self, icon: IconName) {
+    /// Show `icon` at the far left, in the small icon cell. With no tint of its own it uses
+    /// the title foreground.
+    pub fn app_icon(&mut self, icon: Icon) {
         self.app_icon = Some(icon);
     }
 
@@ -191,10 +192,16 @@ impl<'a> TitleBar<'a> {
             )
         };
 
+        // On macOS the traffic lights sit over the left edge of a full-size content view.
+        let inset = if cfg!(target_os = "macos") {
+            metrics.macos_traffic_light_inset
+        } else {
+            0.0
+        };
         let pad = spacing_horizontal::S;
         let content = Rect::from_min_max(
-            pos2(rect.min.x + pad, rect.min.y),
-            pos2((caption_left - pad).max(rect.min.x + pad), rect.max.y),
+            pos2(rect.min.x + inset + pad, rect.min.y),
+            pos2((caption_left - pad).max(rect.min.x + inset + pad), rect.max.y),
         );
 
         let TitleBarSlots {
@@ -216,10 +223,10 @@ impl<'a> TitleBar<'a> {
                         paint_icon(
                             ui,
                             icon_rect,
-                            icon,
-                            IconSize::S16,
-                            IconStyle::Regular,
-                            Some(c(t.neutral_foreground_1)),
+                            icon.name,
+                            icon.size,
+                            icon.style,
+                            Some(icon.tint.unwrap_or(c(t.neutral_foreground_1))),
                         );
                     }
                     if let Some(add) = left {

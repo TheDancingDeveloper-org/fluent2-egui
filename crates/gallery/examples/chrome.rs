@@ -11,7 +11,7 @@
 use eframe::egui;
 use fluent2_egui::office::window_edges::window_resize_edges;
 use fluent2_egui::office::{TitleBar, window_command};
-use fluent2_egui::{IconName, Theme, install};
+use fluent2_egui::{Icon, IconName, Theme, install};
 
 struct ChromeApp;
 
@@ -28,7 +28,7 @@ impl eframe::App for ChromeApp {
                 .maximized(maximized)
                 .focused(focused)
                 .show(ui, |slots| {
-                    slots.app_icon(IconName::Document);
+                    slots.app_icon(Icon::new(IconName::Document));
                     slots.right(|ui| {
                         ui.label("Fluent TitleBar");
                     });

@@ -52,6 +52,9 @@ pub struct ChromeMetrics {
     /// Thickness of the resize zone along each window edge (§2). The top of the title bar
     /// belongs to this zone, not to the drag region.
     pub resize_zone: f32,
+    /// Space left empty at the left of the title bar on macOS for the traffic-light buttons.
+    /// Windows and Linux use no inset (§1).
+    pub macos_traffic_light_inset: f32,
     /// Height of the ribbon tab strip.
     pub tab_strip_height: f32,
     /// Height of the ribbon body, including group labels.
@@ -86,6 +89,7 @@ impl Default for ChromeMetrics {
             caption_button_width: 46.0,
             caption_button_height: 32.0,
             resize_zone: 6.0,
+            macos_traffic_light_inset: 78.0,
             tab_strip_height: 32.0,
             ribbon_body_height: 96.0,
             group_separator: 8.0,
