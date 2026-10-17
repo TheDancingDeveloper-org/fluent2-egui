@@ -17,5 +17,20 @@ log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
 
+[features]
+default = []
+# OS accent, high contrast, reduced motion and colour scheme. Off by default so wasm and
+# headless builds do not pull in platform bindings. See `platform`.
+system-preferences = [
+    "dep:windows",
+    "dep:zbus",
+]
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", optional = true, features = ["UI_ViewManagement"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", optional = true, default-features = false, features = ["blocking-api", "async-io"] }
+
 [dev-dependencies]
 egui_kittest = "0.36"

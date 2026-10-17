@@ -6,6 +6,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ### Added
 - Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).
+- `fluent2_egui::platform`: OS accent, high contrast, reduced motion and colour scheme behind the `system-preferences` feature (Windows and the Linux desktop portal; unknown elsewhere, including wasm). `theme_from_system` picks light, dark or high contrast and sets reduced motion (WI-1541).
 - Tooltip (`Response::fluent_tooltip`) and Popover surfaces (WI-1551).
 - TabList and Card surfaces (WI-1554).
 - Dropdown and Combobox controls (WI-1549). An open Dropdown takes Escape, so an enclosing dialog stays open (WI-1552).

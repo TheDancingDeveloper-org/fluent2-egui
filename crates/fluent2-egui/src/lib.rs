@@ -9,6 +9,7 @@ pub use fluent2_tokens as tokens;
 
 pub mod controls;
 pub mod foundation;
+pub mod platform;
 pub mod surfaces;
 pub mod theme;
 
@@ -18,6 +19,7 @@ pub use controls::{
     SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, SplitButtonResponse, Switch, Textarea,
     TextareaResize, ToggleButton, ValidationState,
 };
+pub use platform::{SystemPreferences, system_preferences, theme_from_system};
 pub use surfaces::{
     Card, CardAppearance, CardHeader, CloseReason, Dialog, DialogActions, DialogKind, DialogResult,
     FluentTooltip, MenuItem, Popover, TabAppearance, TabList, TabSize, TooltipExt, TooltipTone, context_menu,
