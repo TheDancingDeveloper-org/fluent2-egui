@@ -10,25 +10,30 @@ spec adds a rule, it says so under **Decisions**.
 ## Decisions
 
 These are the choices this spec makes that the item and ARCHITECTURE leave open. Each one is
-reversible by editing this file before WI-1559 starts.
+reversible by editing this file before the implementation item that depends on it starts.
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Office components return responses and never send `ViewportCommand`s themselves. The app maps a returned `WindowAction` to a command with a pure function. | ARCHITECTURE rule 5. The mapping is unit-testable without a window. |
+| D1 | Office components return responses and never send `ViewportCommand`s. The app maps a returned `WindowAction` to a command with a pure function. **Exception:** `window_resize_edges` (§2) sends `BeginResize` itself, because the app never chooses a resize. | ARCHITECTURE rule 5. The mapping is unit-testable without a window. |
 | D2 | Chrome dimensions (32, 40, 46, 6 pt and so on) are named constants on a `ChromeMetrics` struct held by `Theme` (`Theme::chrome`). They are not Fluent tokens. | Rule 7 forbids magic numbers outside `theme/`. Fluent has no token for these. **Operator decision, see §11.** |
-| D3 | `RibbonState`, `QatState` and `BackstageState` are plain data with public fields. No serde in M1. The app persists them. | Keeps the crate free of a serialisation dependency. The app already owns persistence (rule 5). |
-| D4 | Control keys (`ControlKey`) are `&'static str`. Duplicate keys within one ribbon, QAT or command bar do not panic. The first key wins and later ones are reported in the response's `conflicts`. | Rule 9 (no panics). Rule 4 (ids from the caller, not from translated labels): keys are caller-chosen constants. |
-| D5 | Ribbon tab and group bodies are built by closures every frame into a data model (`TabModel`), before any painting. Measurement and scaling run on that model. | Lets §5 measure and reduce widths before drawing, in immediate mode. |
-| D6 | Accent colours for contextual tabs are token choices (`ContextualAccent`), never a `Color32` argument. | Rule 7. |
-| D7 | KeyTips are adapted from wordcraft's state machine only (§6). Rendering is written here. | The state machine is pure logic and small. Rendering depends on this library's painter, so copying it would copy the wrong parts. |
-| D8 | The CommandBar overflow algorithm is the one in §8, reusing the hysteresis rule of §5. | One fitting rule across the chrome. |
+| D3 | `RibbonState`, `QatState` and `BackstageState` are plain data with public fields. No serde in M1. The app persists them. | Keeps the crate free of a serialization dependency. The app already owns persistence (rule 5). |
+| D4 | Control keys are `&'static str`. Duplicate keys within one ribbon, QAT or command bar do not panic. The first key wins and later ones are reported in `conflicts`. | Rule 9 (no panics). Rule 4: keys are caller-chosen constants, never translated labels. |
+| D5 | Ribbon tab and group bodies are built by closures every frame into a data model, before any painting. Measurement and scaling run on that model. | Lets §5 size groups before drawing, in immediate mode. |
+| D6 | Accent colours for contextual tabs are token choices (`ContextualAccent`), never a `Color32` argument. Each accent maps to a different token. | Rule 7. |
+| D7 | KeyTips adapt wordcraft's state machine only (§6.5). Rendering is written here. | The state machine is pure logic and small. Rendering depends on this library's painter. |
+| D8 | The CommandBar overflow uses the hysteresis rule of §5.3. | One fitting rule across the chrome. |
+| D9 | Ribbon widths are computed in the frame they are needed, from fixed control sizes and text layout (`ctx.fonts`), not from a previous frame's measurement. A cache in `ctx.data` only memoises those results. | Text layout is synchronous, so no first frame is guessed and no step is stepped up speculatively. Answers the cold-cache question for WI-1565. |
+| D10 | Resize zones are `egui::Area`s at `Order::Foreground` covering the 6 pt border. They win over the title bar and caption buttons inside that border (§2). | Corners must be reachable. Interior clicks are never intercepted. |
 
 ## Shared vocabulary
 
 - **Pt** means logical points (egui units). Every width and height in this spec is in points.
 - **Region** is one of: title bar, QAT, ribbon, content, status bar. F6 cycles regions (§9).
 - **Control key** is a `&'static str` supplied by the app. It names a control in events and state.
-- **Response** means a returned struct. Components never return tuples and never dispatch.
+- **Response** means a returned struct. Components never return tuples and never dispatch,
+  except where D1 says otherwise.
+- **Bound state** is app state a control reads or writes. It is borrowed as `&'a mut` for the
+  frame (§4.1).
 
 ## 1. TitleBar
 
@@ -43,24 +48,24 @@ reversible by editing this file before WI-1559 starts.
 |---|---|
 | Height, no QAT and no search | 32 pt |
 | Height with QAT or search box | 40 pt |
-| Caption button | 46 × 32 pt, close and hover on the same rule |
-| Caption glyphs | Minimise, maximise, restore, close (`Icon` names from the icon catalogue; WI-1534) |
+| Caption button | 46 × 32 pt |
+| Caption glyphs | Minimize, maximize, restore, close (icon catalogue names; WI-1534) |
 | Close hover | background `color.status_danger_background_3`, foreground `color.neutral_foreground_on_brand` |
 | Other caption hover | background `color.subtle_background_hover` |
 | Caption pressed | background `color.subtle_background_pressed` (close: `status_danger_background_3_pressed`) |
 | Inactive window | title and caption glyphs use `color.neutral_foreground_3`; background unchanged |
 
-**Slots.** Left to right: app icon, QAT (§3, when placed in the title bar), centred title or
+**Slots.** Left to right: app icon, QAT (§3, when placed in the title bar), centered title or
 search box, account area on the right, then the caption buttons.
 
 **Signatures.**
 
 ```rust
-/// Which window action the user asked for this frame. The app maps it with `window_command`.
+/// The window action the user asked for this frame. The app maps it with `window_command`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowAction {
     Minimize,
-    /// Toggle between maximised and restored.
+    /// Toggle between maximized and restored.
     ToggleMaximize,
     /// Begin a window drag (the user pressed on a drag region and moved).
     StartDrag,
@@ -69,16 +74,19 @@ pub enum WindowAction {
 
 pub struct TitleBar<'a> { /* builder fields private */ }
 
-pub struct TitleBarSlots<'a, 'b> { /* private; methods below */ }
+pub struct TitleBarSlots<'s> { /* private; methods below */ }
 
-pub struct TitleBarResponse {
+/// What [`TitleBar::show`] returns. `inner` is whatever the slot closure returned.
+pub struct TitleBarResponse<R> {
+    /// The value returned by the slot closure.
+    pub inner: R,
     /// The action requested this frame, if any.
     pub action: Option<WindowAction>,
-    /// Whether the title bar drag region was double-clicked.
+    /// Whether the drag region was double-clicked.
     pub double_clicked: bool,
     /// The region not covered by slots or caption buttons.
     pub drag_region: egui::Response,
-    /// Response for each caption button.
+    /// One response per caption button.
     pub minimize: egui::Response,
     pub maximize: egui::Response,
     pub close: egui::Response,
@@ -87,20 +95,23 @@ pub struct TitleBarResponse {
 }
 
 impl<'a> TitleBar<'a> {
-    /// `id` is caller-supplied. `title` is shown in the centre unless a search box is set.
+    /// `id` is caller-supplied. `title` is shown in the center unless a search box is set.
     pub fn new(id: impl std::hash::Hash, title: impl Into<egui::WidgetText>) -> Self;
-    /// Whether the window is maximised. The maximise button shows *restore* when true.
+    /// Whether the window is maximized. The maximize button shows *restore* when true.
     pub fn maximized(self, maximized: bool) -> Self;
-    /// `ViewportInfo::focused`, passed in by the app so the component stays window-agnostic.
+    /// `ViewportInfo::focused`, passed in so the component stays window-agnostic.
     pub fn focused(self, focused: Option<bool>) -> Self;
-    /// Adds 8 pt to the height and shows a centred search box slot instead of the title text.
+    /// Adds 8 pt to the height and shows a centered search box slot instead of the title text.
     pub fn with_search(self, enabled: bool) -> Self;
     /// `add` fills the slots. It runs once per frame.
-    pub fn show<R>(self, ui: &mut egui::Ui, add: impl FnOnce(&mut TitleBarSlots<'_, '_>) -> R)
-        -> (TitleBarResponse, R);
+    pub fn show<R>(
+        self,
+        ui: &mut egui::Ui,
+        add: impl FnOnce(&mut TitleBarSlots<'_>) -> R,
+    ) -> TitleBarResponse<R>;
 }
 
-impl TitleBarSlots<'_, '_> {
+impl TitleBarSlots<'_> {
     pub fn app_icon(&mut self, icon: Icon);
     pub fn left(&mut self, add: impl FnOnce(&mut egui::Ui));
     pub fn center(&mut self, add: impl FnOnce(&mut egui::Ui));
@@ -119,38 +130,51 @@ pub fn window_command(action: WindowAction, maximized: bool) -> egui::ViewportCo
 - `window_command` maps `Minimize` to `ViewportCommand::Minimized(true)`, `ToggleMaximize` to
   `ViewportCommand::Maximized(!maximized)`, `StartDrag` to `ViewportCommand::StartDrag`, and
   `Close` to `ViewportCommand::Close`.
-- Caption buttons are keyboard reachable (§9). Each has an accessible label: "Minimise",
-  "Maximise", "Restore" (when maximised), "Close".
+- Caption buttons are keyboard reachable (§9). Accessible labels: "Minimize", "Maximize"
+  (or "Restore" when maximized), "Close".
+- The top 6 pt of the title bar belongs to the resize zone, not the drag region (§2, D10).
 
 ## 2. Window resize edges
 
-For undecorated windows only. Edges and corners are hit zones; the app gets a direction and
-starts the native resize.
+For undecorated windows only. Implementation item: WI-1560, which uses these names.
 
-**Geometry.** A 6 pt hit zone along each of the four edges and a 6 × 6 pt corner square.
-Corners win over edges. Zones sit inside the window rectangle, so they do not overlap the
-caption buttons (which are at the top-right, §1). The top edge zone is 6 pt high and is not
-drawn; the title bar drag region takes precedence in its own rectangle.
+**Zones.** Eight zones along the window's inner rect: four edges and four corners. Thickness is
+6 pt (`ChromeMetrics::resize_zone`). A corner zone is a 6 × 6 pt square at each corner.
 
-**Cursors.** Edges use the horizontal, vertical or diagonal resize cursor for their direction.
-Diagonal corners use the matching diagonal cursor.
+**Precedence (D10).** Zones are `egui::Area`s at `Order::Foreground`, one per zone, sized to the
+zone. Inside the 6 pt border:
 
-**Suppression.** When the window is maximised, no zones are active and no cursors change.
+- The top edge zone covers the top 6 pt of the title bar. A press there starts a resize, not a
+  drag. Below 6 pt, the drag region works as normal.
+- The top-right corner zone covers the top-right 6 × 6 pt of the Close caption button. A press
+  there starts a resize. The rest of Close works.
+- Other caption buttons lose only their top 6 pt to the top edge zone.
+- No zone covers the window interior, so nothing there is intercepted.
+
+**Cursors.** Hover over a zone sets `CursorIcon::ResizeHorizontal` (left and right edges),
+`ResizeVertical` (top and bottom), or `ResizeNwSe` and `ResizeNeSw` (corners).
+
+**Suppression.** When `ctx.input(|i| i.viewport().maximized)` or `.fullscreen` is `Some(true)`,
+no zones are created and no cursor changes. The component reads nothing else from the app.
 
 **Signatures.**
 
 ```rust
-/// Returns the resize direction under the pointer, if any, and sets the cursor (a UI concern,
-/// not a window command). The app sends `ViewportCommand::BeginResize(direction)` on press.
-pub fn resize_zone(ui: &egui::Ui, window_rect: egui::Rect, maximized: bool)
-    -> Option<egui::viewport::ResizeDirection>;
+/// Call once per frame in an undecorated window. Sets resize cursors on hover and sends
+/// `ViewportCommand::BeginResize(direction)` on a primary press in a zone (D1 exception).
+pub fn window_resize_edges(ctx: &egui::Context);
+
+/// Pure hit test for WI-1560's unit tests: the direction for `pos` in the 6 pt border of
+/// `screen_rect`, corners first, or `None` for the interior and outside the window.
+pub fn zone_at(
+    pos: egui::Pos2,
+    screen_rect: egui::Rect,
+    thickness: f32,
+) -> Option<egui::viewport::ResizeDirection>;
 ```
 
 `egui::viewport::ResizeDirection` is the type `ViewportCommand::BeginResize` takes. WI-1560
 confirms the path against the pinned egui 0.36.
-
-**Behaviour.** The zone is checked before the title bar drag region on press, so resizing from
-the top corners works. Pointer events inside a zone are not passed to content underneath.
 
 ## 3. Quick Access Toolbar (QAT)
 
@@ -165,8 +189,8 @@ pub struct QatState {
     /// Keys of visible items, in display order.
     pub items: Vec<&'static str>,
     pub position: QatPosition,
-    /// Whether the customise menu is open.
-    pub customise_open: bool,
+    /// Whether the customize menu is open.
+    pub customize_open: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -186,6 +210,8 @@ pub struct QatItem<'a> {
     pub icon: Icon,
     pub label: &'a str,
     pub tooltip: &'a str,
+    /// Keytip for §6. `None` means auto-assigned.
+    pub keytip: Option<&'static str>,
 }
 
 pub struct Qat<'a> { /* private */ }
@@ -193,14 +219,14 @@ pub struct Qat<'a> { /* private */ }
 pub struct QatResponse {
     /// The key of the item clicked this frame.
     pub clicked: Option<&'static str>,
-    /// Customise-menu actions this frame.
-    pub customise: Option<QatCustomise>,
+    /// Customize-menu actions this frame.
+    pub customize: Option<QatCustomize>,
     /// Keys that appear in `items` but not in the offered list, and were dropped.
     pub conflicts: Vec<&'static str>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QatCustomise {
+pub enum QatCustomize {
     Show(&'static str, bool),
     MoveUp(&'static str),
     MoveDown(&'static str),
@@ -213,73 +239,111 @@ impl<'a> Qat<'a> {
 }
 ```
 
-**Customise menu.** Opened from a trailing `…` icon button. Lists every offered item with a
+**Customize menu.** Opened from a trailing `…` icon button. Lists every offered item with a
 checkbox (`Show`), and up and down buttons on each row (`MoveUp`, `MoveDown`). Its last section
 is the position choice (`Position`). It is a `Menu` (WI-1545) with `MenuItem::checked`.
 
 **Rules.**
-- The app applies `QatCustomise` to `QatState`. The component mutates nothing except
-  `customise_open`.
+- The app applies `QatCustomize` to `QatState`. The component mutates nothing except
+  `customize_open`.
 - A click on an item returns its key; the app decides what it does (rule 5).
 - An item the app stops offering is removed from `items` on the next frame and reported in
   `conflicts`.
 
 ## 4. Ribbon model and API
 
-### 4.1 Model
+### 4.1 Lifetimes and the model
 
-Closures run once per frame and fill a `TabModel` (D5). No drawing happens in the closure.
+There is one lifetime model for the whole ribbon.
+
+- `'a` is the frame. Every piece of bound app state is borrowed for `'a` as `&'a mut T`, or as
+  `&'a [T]` for read-only option lists. The ribbon never owns app state.
+- The ribbon stores those borrows only in the per-frame model (D5). `show` drops them when it
+  returns.
+- `RibbonState` is the only state the ribbon owns across frames. It is passed to `show` as
+  `&mut`.
+- Build closures run once per frame, before painting. They add controls to the model. They do
+  not draw.
 
 ```rust
-pub struct Ribbon<'a> { /* private: tab specs with boxed closures */ }
-
-pub struct TabBuilder<'t> { /* private */ }
-pub struct GroupBuilder<'g> { /* private */ }
+pub struct Ribbon<'a> { /* private: file tab and RibbonTab<'a> list */ }
 
 impl<'a> Ribbon<'a> {
     pub fn new(id: impl std::hash::Hash) -> Self;
     /// The File tab. It opens the backstage (§7) and is never a content tab.
-    pub fn file_tab(self, label: &str) -> Self;
-    /// A content tab. `key` is stable; `build` fills the groups.
-    pub fn tab(self, key: &'static str, label: &str, build: impl FnOnce(&mut TabBuilder<'_>) + 'a) -> Self;
-    /// A contextual tab set. Its tabs appear only while `visible` is true, with `accent`.
-    pub fn contextual(self, set: &'static str, label: &str, accent: ContextualAccent, visible: bool,
-        build: impl FnOnce(&mut TabBuilder<'_>) + 'a) -> Self;
+    pub fn file_tab(self, tab: FileTab) -> Self;
+    /// A content or contextual tab (§4.3).
+    pub fn tab(self, tab: RibbonTab<'a>) -> Self;
     pub fn show(self, ui: &mut egui::Ui, state: &mut RibbonState) -> RibbonResponse;
 }
 
-impl TabBuilder<'_> {
-    /// A group. `label` is shown under the group. `build` fills the controls.
-    pub fn group(&mut self, key: &'static str, label: &str, build: impl FnOnce(&mut GroupBuilder<'_>));
+pub struct FileTab { /* private */ }
+impl FileTab {
+    pub fn new(label: &str) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
 }
 
-impl GroupBuilder<'_> {
-    /// Icon above, label below. Large is the default scale step (§5).
-    pub fn large(&mut self, key: &'static str, icon: Icon, label: &str);
-    /// Icon and label side by side.
-    pub fn small(&mut self, key: &'static str, icon: Icon, label: &str);
-    /// A toggle. `value` is the app's state, passed by `&mut`.
-    pub fn toggle(&mut self, key: &'static str, icon: Icon, label: &str, value: &mut bool);
-    /// A main action and a menu. `menu` fills a popup as in `SplitButton::show`.
-    pub fn split(&mut self, key: &'static str, icon: Icon, label: &str,
-        menu: impl FnOnce(&mut egui::Ui) + 'a);
-    /// A button that opens a menu (`MenuButton`).
-    pub fn menu(&mut self, key: &'static str, icon: Icon, label: &str,
-        menu: impl FnOnce(&mut egui::Ui) + 'a);
-    pub fn gallery(&mut self, key: &'static str, label: &str, items: &'a [GalleryItem<'a>],
-        selected: &'a mut Option<usize>);
-    /// A combobox (`Combobox`) with the given options, bound to `selected`.
-    pub fn combobox(&mut self, key: &'static str, label: &str, options: &'a [&'a str],
-        text: &'a mut String);
-    /// A dropdown (`Dropdown`) with the given options, bound to `selected`.
-    pub fn dropdown(&mut self, key: &'static str, label: &str, options: &'a [&'a str],
-        selected: &'a mut usize);
-    /// A checkbox row, bound to `value`.
-    pub fn checkbox(&mut self, key: &'static str, label: &str, value: &mut bool);
-    /// The dialog-launcher button at the group's bottom-right corner.
-    pub fn dialog_launcher(&mut self, key: &'static str);
-    /// Any widget. Its `Response` is returned to the app through `RibbonResponse::custom`.
-    pub fn custom(&mut self, key: &'static str, add: impl FnMut(&mut egui::Ui) -> egui::Response + 'a);
+pub struct RibbonTab<'a> { /* private */ }
+impl<'a> RibbonTab<'a> {
+    /// `build` runs once per frame and adds groups to the tab.
+    pub fn new(key: &'static str, label: &str, build: impl FnOnce(&mut TabBuilder<'a>) + 'a) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+    /// Makes this tab part of a contextual set. It shows only while `visible` is true (§4.3).
+    pub fn contextual(self, set: &'static str, accent: ContextualAccent, visible: bool) -> Self;
+}
+
+pub struct TabBuilder<'a> { /* private */ }
+impl<'a> TabBuilder<'a> {
+    /// A group. `build` adds its controls. `key` is stable and unique within the ribbon.
+    pub fn group(&mut self, key: &'static str, label: &str, build: impl FnOnce(&mut GroupBuilder<'a>));
+}
+
+pub struct GroupBuilder<'a> { /* private */ }
+impl<'a> GroupBuilder<'a> {
+    /// Which scale steps this group may use (§5.1). Default: all four.
+    pub fn steps(&mut self, steps: ScalingSteps);
+    /// Icon of the collapsed button (§5.1). Default: the first control's icon.
+    pub fn icon(&mut self, icon: Icon);
+    pub fn add(&mut self, control: impl Into<RibbonControl<'a>>);
+}
+
+/// Every control kind is a builder. Each has `.keytip(key)` (§6.2).
+pub enum RibbonControl<'a> { /* one variant per kind below; private */ }
+
+/// Large button: icon above the label. Event: `Clicked`.
+pub struct RibbonLarge<'a> { /* private */ }
+impl<'a> RibbonLarge<'a> {
+    pub fn new(key: &'static str, icon: Icon, label: &str) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Small button: icon beside the label. Event: `Clicked`.
+pub struct RibbonSmall<'a> { /* private */ }
+impl<'a> RibbonSmall<'a> {
+    pub fn new(key: &'static str, icon: Icon, label: &str) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Toggle button bound to `value`. Event: `Changed` (`value` is already updated).
+pub struct RibbonToggle<'a> { /* private */ }
+impl<'a> RibbonToggle<'a> {
+    pub fn new(key: &'static str, icon: Icon, label: &str, value: &'a mut bool) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Split button. `Clicked` on the main action. `menu` draws the popup; items in it write app
+/// state, and the app reads that state (`SplitButton::show`, WI-1544).
+pub struct RibbonSplit<'a> { /* private */ }
+impl<'a> RibbonSplit<'a> {
+    pub fn new(key: &'static str, icon: Icon, label: &str, menu: impl FnOnce(&mut egui::Ui) + 'a) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Menu button. `Clicked` when it is pressed to open. `menu` as for `RibbonSplit`.
+pub struct RibbonMenu<'a> { /* private */ }
+impl<'a> RibbonMenu<'a> {
+    pub fn new(key: &'static str, icon: Icon, label: &str, menu: impl FnOnce(&mut egui::Ui) + 'a) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
 }
 
 pub struct GalleryItem<'a> {
@@ -288,65 +352,140 @@ pub struct GalleryItem<'a> {
     pub icon: Icon,
 }
 
+/// Gallery bound to `selected`. Event: `Changed` when the selection changes.
+pub struct RibbonGallery<'a> { /* private */ }
+impl<'a> RibbonGallery<'a> {
+    pub fn new(
+        key: &'static str,
+        label: &str,
+        items: &'a [GalleryItem<'a>],
+        selected: &'a mut Option<usize>,
+    ) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Combobox bound to `text`. Picking an option copies it into `text`. Event: `Changed`.
+pub struct RibbonCombobox<'a> { /* private */ }
+impl<'a> RibbonCombobox<'a> {
+    pub fn new(key: &'static str, label: &str, options: &'a [&'a str], text: &'a mut String) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Dropdown bound to the selected index. Event: `Changed`.
+pub struct RibbonDropdown<'a> { /* private */ }
+impl<'a> RibbonDropdown<'a> {
+    pub fn new(key: &'static str, label: &str, options: &'a [&'a str], selected: &'a mut usize) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Checkbox bound to `value`. Event: `Changed`.
+pub struct RibbonCheckbox<'a> { /* private */ }
+impl<'a> RibbonCheckbox<'a> {
+    pub fn new(key: &'static str, label: &str, value: &'a mut bool) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Dialog launcher at the group's bottom-right corner. Event: `Clicked`.
+pub struct RibbonDialogLauncher { /* private */ }
+impl RibbonDialogLauncher {
+    pub fn new(key: &'static str) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
+/// Caller-drawn widget. `add` receives the scale step it must draw at (§5.1) and returns its
+/// response, which appears in `RibbonResponse::custom`. Widths are declared, not measured.
+pub struct RibbonCustom<'a> { /* private */ }
+impl<'a> RibbonCustom<'a> {
+    pub fn new(
+        key: &'static str,
+        add: impl FnMut(&mut egui::Ui, ScalingStep) -> egui::Response + 'a,
+    ) -> Self;
+    /// Width in points at each step (Large, Medium, Small).
+    pub fn widths(self, large: f32, medium: f32, small: f32) -> Self;
+    pub fn keytip(self, key: &'static str) -> Self;
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ContextualAccent {
     Brand,
     Success,
     Warning,
     Danger,
-    Important,
+    Neutral,
 }
 ```
 
-Notes on the signatures:
-- Lifetimes: `build` closures and bound state are borrowed for `'a`, the frame. Apps build the
-  ribbon each frame, as with any egui widget.
-- `combobox` and `dropdown` bind to app state directly. They are the existing `Combobox` and
-  `Dropdown` controls (WI-1549); the ribbon adds only the group layout.
-- `checkbox` is the existing `Checkbox` control (WI-1546).
+Each control struct converts into `RibbonControl<'a>` (`From`), so `GroupBuilder::add` takes
+any of them.
+
+**Example.** Illustrative only; `Icon` names are not final.
+
+```rust
+Ribbon::new("main")
+    .file_tab(FileTab::new("File").keytip("F"))
+    .tab(RibbonTab::new("home", "Home", |t| {
+        t.group("clipboard", "Clipboard", |g| {
+            g.add(RibbonLarge::new("paste", Icon::Paste, "Paste").keytip("V"));
+            g.add(RibbonSmall::new("cut", Icon::Cut, "Cut"));
+        });
+        t.group("font", "Font", |g| {
+            g.add(RibbonToggle::new("bold", Icon::Bold, "Bold", &mut app.bold).keytip("1"));
+        });
+    }).keytip("H"))
+    .show(ui, &mut app.ribbon_state);
+```
+
+Here `app.bold` is borrowed for the frame and `app.ribbon_state` separately; the closures
+capture disjoint fields.
 
 ### 4.2 Control kinds and what they map to
 
 | Kind | Built on | Notes |
 |---|---|---|
-| Large | Own painter in `office/ribbon/group.rs`, using `Button` colours and tokens | Icon 32 pt, label below. Two lines maximum; then truncates with ellipsis. |
-| Small | `Button` (WI-1542), `ButtonSize::Small`, `Appearance::Subtle` | Icon 16 pt, label beside. |
-| Toggle | `ToggleButton` (WI-1543) | Small or Large form, selected state follows `value`. |
-| Split | `SplitButton` (WI-1544) | Returns `SplitButtonResponse`; the ribbon reports `main` and `menu` as events. |
+| Large, Small | Own painter in `office/ribbon/group.rs`, using `Button` colours and tokens | Scaling per §5.1. |
+| Toggle | `ToggleButton` (WI-1543) | Selected state follows `value`. |
+| Split | `SplitButton` (WI-1544) | Its `SplitButtonResponse` maps to `Clicked` on `key`. |
 | Menu | `MenuButton` (WI-1544) | Popup content is `surfaces::menu` (WI-1545). |
 | Gallery | Own painter, §4.4 | Inline row plus expanded grid. |
-| Combobox, Dropdown | WI-1549 | Width from the group's scale step. |
+| Combobox, Dropdown | WI-1549 | Width from §5.1. |
 | Checkbox | WI-1546 | Label beside. |
-| Custom | Caller's widget | Returned as a `Response` in `RibbonResponse::custom`. |
+| Dialog launcher | `Button::icon_only` (WI-1542) | Fixed 16 pt icon. |
+| Custom | Caller's widget | Response in `RibbonResponse::custom`. |
 
 ### 4.3 Contextual tabs
 
-- Contextual tab sets are added after the content tabs and are visible only while `visible` is
-  true. When they appear, the app may set `RibbonState::active` to one of them.
-- A contextual set has a header label above its tabs, drawn in its accent colour (D6). The
-  accent colour is a theme token: `Brand` → `color.brand_foreground_1`, `Success` →
-  `color.status_success_foreground_1`, `Warning` → `color.status_warning_foreground_1`,
-  `Danger` → `color.status_danger_foreground_1`, `Important` → `color.brand_foreground_1` with
-  the set's own label.
-- When a contextual set disappears while one of its tabs is active, the active tab becomes the
-  first content tab. This is a state change, not a response.
+- A tab with `.contextual(set, accent, visible)` is added after the content tabs. It shows only
+  while `visible` is true. When it appears, the app may set `RibbonState::active` to it.
+- Tabs with the same `set` share a header label above them. The header label is drawn in the
+  accent colour (D6). Token per accent:
+
+| Accent | Token |
+|---|---|
+| `Brand` | `color.brand_foreground_1` |
+| `Success` | `color.status_success_foreground_1` |
+| `Warning` | `color.status_warning_foreground_1` |
+| `Danger` | `color.status_danger_foreground_1` |
+| `Neutral` | `color.neutral_foreground_2` |
+
+- When a contextual tab disappears while it is active, the active tab becomes the first content
+  tab. This is a state change in `RibbonState`, not a response.
 
 ### 4.4 Galleries
 
-- Inline row: shows up to the number of items that fit the group's width at its current step.
-  Two arrow buttons scroll one row at a time. Each item is a 48 × 48 pt tile.
+- Inline row: shows the number of tiles for the group's current step (§5.1). Two arrow buttons
+  scroll one row at a time. Each item is a 48 × 48 pt tile at Large, 32 × 32 pt at Medium.
 - Expanded grid: a drop-down button at the row's right edge opens a popup grid. Its width is the
   group width. The popup closes on selection or on Escape, and returns focus to the gallery.
-- A gallery item click gives `GalleryPicked(index)` and sets `selected`.
+- Selecting an item writes its index to `selected` and gives `Changed` on `key`.
 
 ### 4.5 Collapse and pin
 
-`RibbonState` holds the display state, which is a table (see also §9 for keys):
+`RibbonState` holds the display state:
 
 ```rust
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RibbonState {
-    /// The active content or contextual tab, by key. `None` means the first content tab.
+    /// The active tab, by key. `None` means the first content tab.
     pub active: Option<&'static str>,
     pub display: RibbonDisplay,
     /// Whether the open ribbon stays open after a click outside it (pinned).
@@ -376,7 +515,7 @@ pub enum RibbonDisplay {
 | Expanded | Click outside | Expanded | unchanged |
 
 - Clicking a tab in Expanded state only changes `active`.
-- A pinned ribbon in Peek state is the same as Expanded.
+- A pinned ribbon in Peek state behaves as Expanded.
 
 ### 4.6 RibbonResponse
 
@@ -388,32 +527,30 @@ pub struct RibbonResponse {
     pub tab_changed: Option<&'static str>,
     /// Keys used more than once in this ribbon. The first occurrence keeps its events (D4).
     pub conflicts: Vec<&'static str>,
-    /// Responses of `custom` widgets, keyed by their key.
+    /// Responses of `RibbonCustom` widgets, keyed by their key.
     pub custom: Vec<(&'static str, egui::Response)>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RibbonEvent {
     pub key: &'static str,
     pub kind: RibbonEventKind,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RibbonEventKind {
+    /// A button, split, menu, or dialog launcher was pressed.
     Clicked,
-    /// A split button's menu item or a menu item was clicked (the item's own key).
-    MenuItem(&'static str),
-    /// A toggle or checkbox changed; the new value is also in the bound `&mut bool`.
-    Changed(bool),
-    /// A combobox, dropdown or gallery changed; the index or text is in the bound state.
-    Selected(usize),
-    DialogLauncher,
+    /// The bound state changed this frame. The new value is in the state the control was
+    /// given, not in the event.
+    Changed,
 }
 ```
 
 **Rules.**
-- `RibbonResponse` only reports. The app maps `key` to its command (rule 5).
-- Events for a control that is disabled (`ui.add_enabled(false, …)`) are never produced.
+- `RibbonResponse` only reports. The app maps `key` to its command (rule 5). Items inside a
+  menu or split popup write app state and do not produce events of their own.
+- Events for a disabled control (`ui.add_enabled(false, …)`) are never produced.
 - Keys in `conflicts` are duplicates within the ribbon. The first occurrence keeps its events.
 
 ## 5. Ribbon layout and adaptive scaling
@@ -422,39 +559,67 @@ pub enum RibbonEventKind {
 
 Each group renders at one of four steps, from widest to narrowest:
 
-| Step | Rendering | Example group |
-|---|---|---|
-| `Large` | Large buttons with labels below icons | Clipboard: Paste large |
-| `Medium` | Small buttons with labels beside icons | Clipboard: Paste small with label |
-| `Small` | Icon only, labels in tooltips | Clipboard: Paste icon only |
-| `Collapsed` | One button showing the group's dialog icon or first control; opens a popup with the full group | Any group |
+| Step | Rendering |
+|---|---|
+| `Large` | Large controls, with labels under icons where the control has them |
+| `Medium` | Small controls, with labels beside icons |
+| `Small` | Icon only; labels move into tooltips |
+| `Collapsed` | One 36 pt button, showing the group's icon (`GroupBuilder::icon`, or the first control's icon). Opens a popup with the full group |
 
 ```rust
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ScalingStep { Large, Medium, Small, Collapsed }
 
-/// The steps a group may use, in order. Groups are never stepped beyond `Collapsed`.
-pub struct ScalingSteps { /* the four steps, always in this order */ }
+/// The steps a group may use, widest first. Always ends with `Collapsed`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScalingSteps { /* private */ }
+
+impl ScalingSteps {
+    /// All four steps. The default.
+    pub fn all() -> Self;
+    /// The given steps, sorted widest first, duplicates removed. `Collapsed` is always added.
+    /// Example: `ScalingSteps::new(&[ScalingStep::Large, ScalingStep::Small])` skips Medium.
+    pub fn new(steps: &[ScalingStep]) -> Self;
+}
 ```
 
-Every group has all four steps. The group declares its widths from the controls it holds; the
-ribbon measures them.
+Set on a group with `GroupBuilder::steps`. A group that omits Medium still reduces from Large
+to Small.
+
+**Per-control rendering.** Each control has a rendering at each step the group allows.
+
+| Control | Large | Medium | Small |
+|---|---|---|---|
+| `RibbonLarge` | 32 pt icon above a label of up to two lines | 16 pt icon beside a one-line label | 16 pt icon only |
+| `RibbonSmall` | 16 pt icon beside its label | same as Large | 16 pt icon only |
+| `RibbonToggle` | as `RibbonLarge` | as `RibbonSmall` | as Small |
+| `RibbonSplit` | 32 pt icon above label, chevron below the label | 16 pt icon beside label, chevron after | 16 pt icon with chevron; no label |
+| `RibbonMenu` | as `RibbonLarge`, with chevron after label | as `RibbonSmall`, with chevron | 16 pt icon only |
+| `RibbonGallery` | 6 tiles of 48 pt, with arrows | 3 tiles of 32 pt, with arrows | one 36 pt button showing the selected item's icon; opens the grid |
+| `RibbonCombobox` | 120 pt wide | 96 pt wide | 64 pt wide |
+| `RibbonDropdown` | 120 pt wide | 96 pt wide | 64 pt wide |
+| `RibbonCheckbox` | checkbox and label | checkbox and label | checkbox only; label in tooltip |
+| `RibbonDialogLauncher` | 16 pt icon | 16 pt icon | 16 pt icon |
+| `RibbonCustom` | `add` draws at `Large` | `add` draws at `Medium` | `add` draws at `Small` |
+
+Label text is measured as described in §5.4. Widths in the table are fixed sizes.
 
 ### 5.2 Reduction order
 
 Input: available width `W` (the tab body width minus margins), the active tab's groups in
-visual order, and each group's current step and cached width at each step.
+visual order, and each group's steps.
 
-1. Start every group at `Large`.
+1. Start every group at its widest allowed step.
 2. While the sum of group widths (plus 8 pt separators between groups) is greater than `W`:
    - Take the **rightmost** group that is not yet at `Collapsed`.
-   - Step it one level down (`Large` → `Medium` → `Small` → `Collapsed`).
+   - Step it to the next step it allows (`Large` → `Medium` → `Small` → `Collapsed`, skipping
+     steps the group does not allow).
 3. The tie-break: the reduction always goes to the rightmost group. Two groups at the same step
    never change in any other order.
 4. Stop when the sum fits, or when every group is `Collapsed`.
 
-Growth (when space returns) runs the other way: the **leftmost** group that is not at `Large`
-steps up one level, and only when the available width is at least the new sum plus the
+Growth (when space returns) runs the other way: the **leftmost** group that is not at its
+widest step steps up one allowed level, and only when `W` is at least the new sum plus the
 hysteresis margin (§5.3).
 
 Overflow: if every group is `Collapsed` and the sum still exceeds `W`, the rightmost groups are
@@ -469,15 +634,17 @@ containing that group's controls. The ribbon height never changes.
 
 ### 5.4 Measurement
 
-- Each group's width at each step is measured on the frame it is rendered at that step, and
-  stored in `ctx.data` keyed by the ribbon id and tab key, then the group key and step. The
-  store entry is `(width: f32, content_hash: u64)`.
-- `content_hash` is a hash of the group's control keys and labels. A change in contents
-  invalidates the entry; the group's widths are re-measured on the next frame that renders it.
-- On the first frame of a tab, with no cache, every group is laid out at `Collapsed` and a
-  repaint is requested. The groups grow in the following frames. The first frame is therefore
-  never wider than `W`.
-- Steps the group does not currently render keep their previous cached width.
+- Widths are computed in the frame they are needed, from the table in §5.1 and the label text.
+  Label width comes from `ctx.fonts(|f| f.layout_no_wrap(…))`, which is synchronous. There is no
+  first-frame guess (D9).
+- A `RibbonCustom` has declared widths, so it is never measured.
+- `ctx.data` memoises the computed widths per (ribbon id, tab key, group key), with a content
+  hash over the keys, labels and allowed steps. A hash change recomputes them. The memo is an
+  optimisation only; dropping it changes nothing visible.
+- Padding: 4 pt on each side of a control, and 4 pt between icon and label
+  (`spacing_horizontal::XS`).
+- A label is capped at `ChromeMetrics::large_label_max` (72 pt) for Large controls, and wraps to
+  two lines before it is capped.
 
 ### 5.5 Worked example
 
@@ -490,7 +657,7 @@ Available width `W = 900 pt`. Four groups, widths per step (`L`, `M`, `S`, `C`):
 | Paragraph | 280 | 240 | 200 | 36 |
 | Styles | 360 | 300 | 260 | 36 |
 
-Separators: 3 × 8 = 24 pt.
+Separators: 3 × 8 = 24 pt. All four groups allow all steps.
 
 1. All `Large`: 200 + 320 + 280 + 360 + 24 = **1184 pt**. Above 900, so reduce.
 2. Rightmost not `Collapsed`: Styles. `L → M`: 1184 − (360 − 300) = **1124**. Still above 900.
@@ -503,10 +670,11 @@ Growth with the same state:
 
 - If `W` becomes 1000 pt, Styles would need `S` at 1084 + 8 = 1092. 1000 is less, so it stays
   `C`.
-- If `W` becomes 1100 pt, Styles would step to `S` at a total of 1084; 1100 ≥ 1084 + 8 = 1092.
-  It steps to `S`.
+- If `W` becomes 1100 pt, Styles steps to `S`, because 1100 ≥ 1084 + 8 = 1092.
 - At 1090 pt, it stays `C`: 1090 is in the hysteresis band (1084 to 1092). This is the
   oscillation case the band exists to stop.
+
+These widths are the same on the first frame, because they come from text layout (§5.4).
 
 ## 6. KeyTips
 
@@ -515,26 +683,96 @@ Growth with the same state:
 - Alt, pressed and released with no other key in between, activates KeyTips at the root level.
 - F10 does the same and also toggles KeyTips off when already active.
 - Badges are small rounded rectangles (`ChromeMetrics::keytip_badge`, 16 × 16 pt for one
-  letter, grown to fit two letters) placed at the top-left of the target control's rectangle,
-  offset 2 pt. Tab badges go under the tab label.
-- Badge text is the `Caption1` ramp, medium weight. Colours: background
+  letter, grown to fit two letters) placed at the top-left of the target's rectangle, offset
+  2 pt. Tab badges go under the tab label.
+- Badge text is the `Caption2` ramp, medium weight. Colours: background
   `color.neutral_background_1`, text `color.neutral_foreground_1`, border
   `color.neutral_stroke_1`. The active sequence's prefix is shown in `color.brand_foreground_1`.
 
 ### 6.2 Keys
 
-- **App-supplied**: a control may carry `.keytip("H")` (in the builder), or the app passes keys
-  in its QAT item and in its own keytip list. Supplied keys are used as given, uppercased.
-- **Auto-assigned**: the first letter of the label, uppercased, that is not already used at the
-  same level. If none is free, the next letters of the label are tried, then `A` to `Z`, then
-  digits `1` to `9`.
-- **Multi-letter**: when a level has more than 26 targets, keys become two letters. Two-letter
-  keys are assigned in order, so the first letter selects a group of targets and the second
-  selects one. Such keys are rare. The spec does not require them in M1 beyond the state
-  machine supporting them.
-- **Conflicts**: two targets at the same level with the same key. The first keeps the key. The
-  second is re-assigned by the auto rule. Conflicts are reported in `KeyTipsReport::conflicts`.
-  Nothing panics.
+**App-supplied.** The app sets a key with `.keytip(key)` on: `FileTab`, `RibbonTab`, every
+control struct in §4.1, `RibbonDialogLauncher`, and `QatItem::keytip`. A supplied key is
+uppercased, and must be one ASCII letter, two ASCII letters, or one digit. Anything else is
+invalid: it is listed in `KeyTipsReport::invalid`, and the target is auto-assigned.
+
+**Auto-assigned.** The first letter of the label, uppercased, that is not already used at the
+same level. If none is free, the next letters of the label are tried, then `A` to `Z`, then
+digits `1` to `9`.
+
+**Multi-letter.** When a level has more than 26 targets, keys become two letters. The first
+letter selects a group of targets and the second selects one. The state machine in §6.3
+supports this. M1 does not need it in practice.
+
+**Conflicts.** Two targets at the same level with the same key. The first keeps the key. The
+second is re-assigned by the auto rule and listed in `KeyTipsReport::conflicts`. Nothing panics.
+
+**Types.**
+
+```rust
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyTipLevel {
+    /// Tabs, the File tab, QAT items and app-level targets.
+    Root,
+    /// The controls of one tab, by tab key.
+    Tab(&'static str),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TargetKind { Tab, QatItem, Control, MenuItem }
+
+/// One target as the chrome sees it this frame. Built from the ribbon model (§4) and the
+/// QAT (§3). `requested` is the app's `.keytip(…)`.
+pub struct KeyTipCandidate {
+    pub target: &'static str,
+    pub level: KeyTipLevel,
+    pub kind: TargetKind,
+    pub requested: Option<&'static str>,
+    pub label: String,
+    pub rect: egui::Rect,
+}
+
+/// One target with its final key.
+#[derive(Clone, Debug, PartialEq)]
+pub struct KeyTipTarget {
+    pub target: &'static str,
+    pub level: KeyTipLevel,
+    pub kind: TargetKind,
+    /// The key the user types, uppercased.
+    pub key: String,
+    /// Where the badge is drawn.
+    pub rect: egui::Rect,
+}
+
+/// Every target with its final key, for one frame.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct KeyTipTargets { /* private: Vec<KeyTipTarget> */ }
+
+impl KeyTipTargets {
+    pub fn iter(&self) -> impl Iterator<Item = &KeyTipTarget>;
+    /// The target at `level` with `key`, if any.
+    pub fn find(&self, level: KeyTipLevel, key: &str) -> Option<&KeyTipTarget>;
+}
+
+/// What assignment did, for the app's tests and debug overlay.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct KeyTipsReport {
+    /// Targets whose requested key was already taken at their level.
+    pub conflicts: Vec<&'static str>,
+    /// Requested keys that were not one or two letters or one digit.
+    pub invalid: Vec<&'static str>,
+    /// Targets that had no requested key.
+    pub auto_assigned: Vec<&'static str>,
+}
+
+pub struct KeyTipResolution {
+    pub targets: KeyTipTargets,
+    pub report: KeyTipsReport,
+}
+
+/// Assigns keys to `candidates` by the rules above.
+pub fn resolve_keytips(candidates: &[KeyTipCandidate]) -> KeyTipResolution;
+```
 
 ### 6.3 State machine
 
@@ -543,76 +781,72 @@ Growth with the same state:
 pub enum KeyTipState {
     /// KeyTips are not shown. Alt or F10 leaves this state.
     Idle,
-    /// Root level: tabs, QAT and app-supplied keys are shown.
+    /// Root level: tabs, QAT and app-level targets are shown.
     Root,
-    /// A content tab was chosen. Its controls are shown. `tab` is its key.
+    /// A content tab was chosen. Its controls are shown.
     Tab { tab: &'static str },
-    /// A menu or gallery popup opened from a control is shown. `control` is its key.
+    /// A menu or gallery popup opened from a control is shown.
     Popup { tab: &'static str, control: &'static str },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KeyTipInput {
-    /// A letter or digit key, or a two-letter sequence's second key.
+    /// A letter or digit key.
     Char(char),
     Escape,
     Backspace,
     /// Alt or F10 pressed.
     Activate,
-    /// Mouse click anywhere, or focus moved to a region outside the chrome.
+    /// Mouse click anywhere, or focus moved outside the chrome.
     Dismiss,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KeyTipAction {
     None,
-    /// Show the keytips for a level. The app shows the target list.
+    /// Show the targets for the new state's level.
     Show,
-    /// Select a tab (switches to it and shows its controls).
+    /// Switch to a tab and show its controls.
     SelectTab(&'static str),
-    /// Invoke a control. The app receives this as a normal click for the key.
+    /// Invoke a target as a normal click or activation.
     Invoke(&'static str),
     /// Open a control's popup (menu, gallery).
     OpenPopup(&'static str),
 }
 
-/// Pure transition. Returns the next state and the action for the app.
-pub fn step(state: &KeyTipState, input: KeyTipInput, targets: &KeyTipTargets)
-    -> (KeyTipState, KeyTipAction);
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeyTipStep {
+    pub state: KeyTipState,
+    pub action: KeyTipAction,
+}
+
+/// Pure transition. No egui input is read here, so the table is unit-testable.
+pub fn step(state: &KeyTipState, input: KeyTipInput, targets: &KeyTipTargets) -> KeyTipStep;
 ```
 
-Transitions:
+Transitions (single-letter; two-letter sequences are a sub-state of the same level, completed by
+the next `Char`, and cancelled to their level by Escape):
 
 | State | Input | Next state | Action |
 |---|---|---|---|
 | Idle | Activate | Root | Show |
 | Idle | other | Idle | None |
 | Root | Char matching a tab | Tab(tab) | SelectTab |
-| Root | Char matching a QAT or app key | Idle | Invoke |
+| Root | Char matching a QAT or app-level target | Idle | Invoke |
 | Root | Char no match | Root | None |
-| Root | Escape | Idle | None |
-| Root | Backspace | Idle | None |
-| Root | Activate | Idle | None |
-| Root | Dismiss | Idle | None |
+| Root | Escape, Backspace, Activate, Dismiss | Idle | None |
 | Tab(t) | Char matching a control | Idle | Invoke |
 | Tab(t) | Char matching a menu or gallery control | Popup(t, c) | OpenPopup |
 | Tab(t) | Char no match | Tab(t) | None |
 | Tab(t) | Escape or Backspace | Root | Show |
 | Tab(t) | Activate or Dismiss | Idle | None |
-| Popup(t, c) | Char matching an item | Idle | Invoke (the item key) |
+| Popup(t, c) | Char matching an item | Idle | Invoke (the item's key) |
 | Popup(t, c) | Escape or Backspace | Tab(t) | Show |
 | Popup(t, c) | Activate or Dismiss | Idle | None |
 
-Two-letter sequences: a first letter that is a prefix of a two-letter key moves the state to a
-sub-state inside the same level. The next `Char` completes it. Escape cancels a partial
-sequence to the level it started from. The table above shows single-letter transitions.
-
-`KeyTipTargets` is the list of `(key, level, target)` the app built this frame, derived from the
-ribbon model (§4) and the QAT (§3), so the state machine has no egui dependency.
-
 ### 6.4 Which keytips the app supplies
 
-The app supplies keys for: QAT items (they are its commands), File tab, Save and Undo in the
+The app supplies keys for: QAT items (they are its commands), the File tab, Save and Undo in the
 QAT, and any control whose auto key would be misleading. Everything else is auto-assigned.
 
 ### 6.5 Upstream: adapt or write
@@ -633,10 +867,10 @@ in §6.3 against that file and records any difference.
 A full-window view that replaces the ribbon and the content area while open.
 
 **Layout.** Left navigation column, 240 pt wide. At its top, a back arrow (`Button::icon_only`,
-accessible label "Back"). Below it, page entries, each a 40 pt tall row (`MenuItem`-style,
-selected row uses `color.subtle_background_selected` and a 3 pt brand bar at the left). At the
-bottom, bottom-group entries (Options, Account), separated by a `Divider`. The page area fills
-the rest, with 24 pt padding.
+accessible label "Back"). Below it, page entries, each a 40 pt tall row. The selected row uses
+`color.subtle_background_selected` and a 3 pt brand bar at the left. At the bottom, bottom-group
+entries (Options, Account), separated by a `Divider`. The page area fills the rest, with 24 pt
+padding.
 
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -667,13 +901,13 @@ impl<'a> Backstage<'a> {
 
 **Behaviour.**
 
-- Opened by the File tab (`Ribbon::file_tab`, §4.1) through the app: the File tab click sets
-  `BackstageState::open = true`. The component does not open itself.
+- Opened by the File tab through the app: the File tab click sets `BackstageState::open = true`.
+  The component does not open itself.
 - Escape closes the backstage, but only when no text field in the page has keyboard focus. A
   focused field consumes Escape first.
 - The back arrow closes it and returns focus to the control that opened it (the File tab), or
   to the ribbon's tab strip if that is gone.
-- Page contents are drawn with the normal controls (§4 onwards); pages do not change the
+- Page contents are drawn with the normal controls (§4 onwards). Pages do not change the
   backstage's own keys.
 - A page closure cannot close the backstage directly. It writes to app state it captures; the
   app clears `open` on its next frame (rule 5).
@@ -704,13 +938,13 @@ impl<'a> StatusBar<'a> {
     pub fn new(id: impl std::hash::Hash) -> Self;
     pub fn left(self, add: impl FnOnce(&mut egui::Ui) + 'a) -> Self;
     pub fn right(self, add: impl FnOnce(&mut egui::Ui) + 'a) -> Self;
-    /// Shows the zoom control bound to `percent`. Clamped to 10..=400 when drawn.
+    /// Shows the zoom control bound to `percent`.
     pub fn zoom(self, percent: &'a mut f32) -> Self;
     pub fn show(self, ui: &mut egui::Ui) -> StatusBarResponse;
 }
 ```
 
-Clamping and non-finite values: `percent` is clamped, and a NaN is replaced with 100.0 (rule 9).
+`percent` is clamped to 10..=400 when drawn. A NaN is replaced with 100.0 (rule 9).
 
 ### 8.2 CommandBar
 
@@ -754,7 +988,7 @@ WI-1569 does not need to read it:
 5. Hysteresis: an item comes back out of overflow only when the bar has at least 8 pt spare
    beyond its width (§5.3).
 
-Item widths are measured the frame they render and cached in `ctx.data`, as in §5.4.
+Item widths come from text layout (§5.4), as in the ribbon.
 
 ## 9. Accessibility and keyboard map
 
@@ -766,17 +1000,17 @@ Roles are set through `ctx.accesskit_node_builder` where egui's `WidgetType` has
 | Part | Role | Label |
 |---|---|---|
 | Title bar | `TitleBar` if the pinned accesskit has it, else `Group` | "Title bar" |
-| Caption buttons | `Button` | "Minimise", "Maximise" or "Restore", "Close" |
+| Caption buttons | `Button` | "Minimize", "Maximize" or "Restore", "Close" |
 | QAT | `Toolbar` | "Quick Access Toolbar" |
 | QAT item | `Button` | The item's label |
 | Ribbon tab strip | `TabList` | "Ribbon tabs" |
 | Ribbon tab | `Tab`, with selected state | The tab's label |
 | Ribbon body | `TabPanel` | The tab's label |
 | Group | `Group` | The group's label |
-| Large, small, custom | `Button` | The control's label |
+| Large, Small, Custom | `Button` | The control's label |
 | Toggle | `Button` with toggled state | The label |
 | Split | `Button` for the main action, `Button` with `has_popup` for the arrow | "<label>", "<label> menu" |
-| Menu | `MenuButton` with `has_popup` | The label |
+| Menu | `Button` with `has_popup` | The label |
 | Gallery item | `Button` | The item's label |
 | Dialog launcher | `Button` | "<group label> dialog" |
 | Backstage | `Dialog`-like region | "Backstage" |
@@ -830,13 +1064,13 @@ which mirror Fluent's own (ARCHITECTURE, Theme). `color.` is `Theme::color`.
 | Close hover foreground | `color.neutral_foreground_on_brand` |
 | Primary text, active tab | `color.neutral_foreground_1` |
 | Secondary text, status bar | `color.neutral_foreground_2` |
-| Inactive window text, disabled-looking caption | `color.neutral_foreground_3` |
+| Inactive window text | `color.neutral_foreground_3` |
 | Selected tab underline, KeyTip prefix, Backstage selected bar | `color.brand_foreground_1` |
 | Backstage selected row background | `color.subtle_background_selected` |
 | Border, separators | `color.neutral_stroke_1` |
 | Strong border (menus, popups) | `color.neutral_stroke_2` |
 | Focus ring | `color.stroke_focus_2` |
-| Contextual accent: Success, Warning, Danger | `color.status_success_foreground_1`, `status_warning_foreground_1`, `status_danger_foreground_1` |
+| Contextual accents | see §4.3 |
 
 **Sizes and spacing.** These are `ChromeMetrics` fields (D2), not Fluent tokens. Values are
 fixed by this spec.
@@ -848,7 +1082,6 @@ fixed by this spec.
 | `caption_button_width` | 46 pt |
 | `caption_button_height` | 32 pt |
 | `resize_zone` | 6 pt |
-| `resize_corner` | 6 pt |
 | `tab_strip_height` | 32 pt |
 | `ribbon_body_height` | 96 pt, including group labels |
 | `group_separator` | 8 pt |
@@ -857,6 +1090,10 @@ fixed by this spec.
 | `status_bar_height` | 24 pt |
 | `backstage_nav_width` | 240 pt |
 | `keytip_badge` | 16 pt square for one letter |
+| `icon_small` | 16 pt |
+| `icon_large` | 32 pt |
+| `large_label_max` | 72 pt |
+| `collapsed_button` | 36 pt |
 
 Spacing between items inside a group uses the Fluent spacing constants
 `spacing_horizontal::S` (8 pt) and `spacing_horizontal::XS` (4 pt) from
@@ -881,23 +1118,21 @@ and tabs, `border_radius::LARGE` (6 pt) for popups.
 
 ## 11. Item breakdown check
 
-Checked against the Vogt titles of WI-1559 to WI-1570 (read 2026-10-17) and the index in
-`docs/BACKLOG.md`. This is a check of titles and section citations. I did not re-read each
-item's body, so a body that says something different than its title is not covered by this
-check.
+Checked against the Vogt titles and bodies of WI-1559, WI-1560 and the other M1 items (read
+2026-10-17) and the index in `docs/BACKLOG.md`.
 
 | Section | Covered by | Result |
 |---|---|---|
-| §1 TitleBar | WI-1559 | Covered |
-| §2 Resize edges | WI-1560 | Covered |
+| §1 TitleBar | WI-1559 | Covered. Its labels and `ViewportCommand` mapping match §1. |
+| §2 Resize edges | WI-1560 | Covered. Its `window_resize_edges(ctx)` and `zone_at(pos, screen_rect, thickness)` match §2. No correction needed. |
 | §3 QAT | WI-1561 | Covered |
 | §4 Ribbon model and API | WI-1562 (tabs, contextual, collapse), WI-1563 (groups, controls), WI-1564 (galleries) | Covered, split three ways |
-| §5 Scaling | WI-1565 | Covered |
+| §5 Scaling | WI-1565 | Covered, with one correction below |
 | §6 KeyTips state machine | WI-1566 | Covered |
 | §6 KeyTips UI, §9 F6 | WI-1567 | Covered |
 | §7 Backstage | WI-1568 | Covered |
 | §8 StatusBar, CommandBar | WI-1569 | Covered |
-| §9 Accessibility and keyboard map | WI-1567 (F6 only) | **Gap.** No item owns the AccessKit roles in §9.1, the Tab order in §9.2, or Ctrl+F1 and Escape (§4.5, §9.4). |
+| §9 Accessibility and keyboard map | WI-1567 (F6 only) | **Gap.** No item owns the AccessKit roles in §9.1, the tab order in §9.2, or Ctrl+F1 and Escape (§4.5, §9.4). |
 | §10 Tokens | none | **Gap.** No item cites §10. |
 
 **Corrections to make before implementation starts:**
@@ -907,33 +1142,39 @@ check.
    owner.
 2. Add §10 to every M1 item it applies to, so the tokens are used and not re-chosen. This
    affects WI-1559, WI-1561, WI-1562, WI-1566, WI-1568 and WI-1569.
-3. WI-1562 depends on WI-1555 only. Its tab strip uses `TabList` (WI-1554), which is still
+3. WI-1565 says to cache previous-frame group widths in `ctx.data`. This spec replaces that
+   with same-frame text measurement and a memo (§5.4, D9). WI-1565 should cite §5.4.
+4. WI-1562 depends on WI-1555 only. Its tab strip uses `TabList` (WI-1554), which is still
    open. Add WI-1554 as a direct relation of WI-1562 so the dependency is visible.
-4. WI-1563 uses `Checkbox` (WI-1546), `Combobox` and `Dropdown` (WI-1549). Its backlog row lists
-   these. Confirm the relations in Vogt include WI-1546 and WI-1549.
+5. WI-1563 uses `Checkbox` (WI-1546), `Combobox` and `Dropdown` (WI-1549). Confirm the Vogt
+   relations include WI-1546 and WI-1549.
 
 **Operator decision (see D2).** Chrome metrics live in `ChromeMetrics`, held by `Theme`. That
 adds a field to `Theme`, which WI-1535 owns. The alternative is a private `office/metrics.rs`.
-Recommendation: `Theme::chrome`, because rule 7 then holds without exception.
+Recommendation: `Theme::chrome`, because rule 7 then holds without exception. This must be
+settled before WI-1559 starts.
 
 ## Acceptance
 
 An implementation item author can implement each section without asking a design question.
 The signatures are consistent with ARCHITECTURE rules 1 to 10: builders implement the widget
-pattern, containers take closures, responses are named structs, ids come from the caller,
-nothing dispatches commands, and no colour or size is a literal outside `theme/`.
+pattern, containers take closures, responses are named structs (no tuples), ids come from the
+caller, nothing dispatches commands except `window_resize_edges` (D1), and no colour or size is
+a literal outside `theme/`.
 
 Verified against `main` at 72dbc87: `Button::icon_only`, `ToggleButton::icon_only`,
 `SplitButton::show` and `SplitButtonResponse { main, menu, menu_open }`, `MenuButton::show`,
 `Dropdown::new`, `surfaces::MenuItem`, and `surfaces::{submenu, divider, context_menu}`. The
 `Checkbox`, `Combobox` and `Dropdown` controls the ribbon uses are on `main`. Not on `main`:
-`TabList` (WI-1554, still open). §4 and §8 depend on it or on nothing that is missing. Token
-names in §10 were checked against `crates/fluent2-tokens/src/generated/` (`colors.rs`,
-`web_light.rs`, `global.rs`).
+`TabList` (WI-1554, still open). Token names in §10 were checked against
+`crates/fluent2-tokens/src/generated/` (`colors.rs`, `web_light.rs`, `global.rs`). The accent
+tokens in §4.3 were checked the same way; no `status_important` or `status_severe` token exists,
+which is why `Important` was replaced by `Neutral`.
 
 Not verified here, and checked by the implementation item that cites it: the exact AccessKit
 role names in the pinned accesskit version (§9.1), the `egui::viewport::ResizeDirection` path
-(§2), and the wordcraft and craft-libs algorithms (§6.5, §8.2).
+(§2), the `ctx.fonts` text-layout call used in §5.4, and the wordcraft and craft-libs algorithms
+(§6.5, §8.2).
 
 Deliver: branch `wi-1555-office-chrome-spec`, PR against `main`, naming WI-1555. Do not merge.
 WI-1555 is marked done only after WI-1554 lands.
