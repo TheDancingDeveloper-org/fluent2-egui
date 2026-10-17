@@ -70,14 +70,16 @@ fn toast_expires_after_its_timeout() {
 
 #[test]
 fn hover_pauses_expiry() {
-    let mut harness = stepped_harness(vec![toast("Hover me", Duration::from_millis(1000))]);
+    // The pointer takes a few frames to register as hovering the Area, so the timeout leaves
+    // a second of slack after the entrance settles.
+    let mut harness = stepped_harness(vec![toast("Hover me", Duration::from_secs(2))]);
     harness.step();
     // Let the entrance settle so the toast is where it will stay, then hover it.
     advance(&mut harness, 0.5);
     let centre = harness.get_by_label("Hover me").rect().center();
     harness.hover_at(centre);
-    // Three seconds hovered, well past the one-second timeout.
-    advance(&mut harness, 3.0);
+    // Five seconds hovered, well past the two-second timeout.
+    advance(&mut harness, 5.0);
     assert!(
         harness.query_by_label("Hover me").is_some(),
         "hover should pause the timeout"
@@ -144,4 +146,64 @@ fn gallery_page_pushes_toasts() {
     });
     harness.run();
     let _ = harness.get_by_label("Info toast");
+}
+
+#[derive(Default)]
+struct ActionState {
+    step: u32,
+    id: Option<ToastId>,
+    clicks: Vec<ToastId>,
+}
+
+#[test]
+fn action_click_is_reported() {
+    let mut harness = Harness::builder().with_step_dt(STEP).build_ui_state(
+        |ui, state: &mut ActionState| {
+            let ctx = ui.ctx().clone();
+            install(&ctx, &Theme::default());
+            if state.step == 0 {
+                state.id = Some(Toaster::push(&ctx, toast("Moved", Duration::from_secs(30))));
+            }
+            Toaster::show(&ctx, ToastPosition::BottomEnd);
+            state.clicks.extend(Toaster::take_action_clicks(&ctx));
+            state.step += 1;
+        },
+        ActionState::default(),
+    );
+    harness.step();
+    // Let the entrance settle so the button is where it will stay.
+    advance(&mut harness, 0.5);
+    assert!(harness.state().clicks.is_empty());
+    harness.get_by_label("Undo").click();
+    advance(&mut harness, 0.3);
+    let id = harness.state().id;
+    assert_eq!(harness.state().clicks, id.into_iter().collect::<Vec<_>>());
+}
+
+#[test]
+fn idle_toaster_schedules_the_repaint_that_expires_it() {
+    use std::sync::{Arc, Mutex};
+
+    let mut harness = stepped_harness(vec![toast("Idle", Duration::from_secs(2))]);
+    let delays: Arc<Mutex<Vec<Duration>>> = Arc::default();
+    let sink = Arc::clone(&delays);
+    harness.ctx.set_request_repaint_callback(move |info| {
+        if let Ok(mut delays) = sink.lock() {
+            delays.push(info.delay);
+        }
+    });
+    harness.step();
+    // Past the entrance animation, nothing is moving: only the timeout is pending.
+    advance(&mut harness, 0.5);
+    if let Ok(mut delays) = delays.lock() {
+        delays.clear();
+    }
+    harness.step();
+    let delays = delays.lock().map(|d| d.clone()).unwrap_or_default();
+    assert!(
+        delays
+            .iter()
+            .any(|delay| *delay > Duration::ZERO && *delay <= Duration::from_secs(2)),
+        "show should ask for a repaint at the timeout, got {delays:?}"
+    );
 }
