@@ -137,6 +137,7 @@ impl Toaster {
         let now = ctx.input(|input| input.time);
         let motion = MotionDuration::Normal.seconds() as f64;
         let mut visible: Vec<ToastId> = Vec::new();
+        let mut next_wake: Option<f64> = None;
         ctx.data_mut(|data| {
             let host = data.get_temp_mut_or_default::<Host>(host_id());
             for entry in &mut host.entries {
@@ -158,7 +159,14 @@ impl Toaster {
             // Newest at the bottom: the three newest are the tail, oldest of those first.
             let start = host.entries.len().saturating_sub(MAX_VISIBLE);
             visible = host.entries[start..].iter().map(|entry| entry.id).collect();
+            next_wake = next_wake_secs(&host.entries, now, motion);
         });
+
+        // A reactive app only repaints on input, so ask for the frame that ends the next
+        // animation or timeout. Without this, an idle window keeps an expired toast.
+        if let Some(delay) = next_wake.and_then(|secs| Duration::try_from_secs_f64(secs).ok()) {
+            ctx.request_repaint_after(delay);
+        }
 
         if visible.is_empty() {
             return;
@@ -325,6 +333,27 @@ fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
             });
         }
     }
+}
+
+/// Seconds until some entry next needs a frame: an animation still running, or a timeout.
+/// `None` when nothing is pending (all paused or never expiring).
+fn next_wake_secs(entries: &[Entry], now: f64, motion: f64) -> Option<f64> {
+    entries
+        .iter()
+        .filter_map(|entry| {
+            let started = if entry.exiting { entry.exit_at } else { entry.born };
+            let animating = now - started < motion;
+            if animating {
+                return Some(0.0);
+            }
+            if entry.exiting || entry.pause_started.is_some() {
+                return None;
+            }
+            let limit = timeout_secs(&entry.toast)?;
+            Some((entry.born + entry.paused_for + limit - now).max(0.0))
+        })
+        .filter(|secs| secs.is_finite())
+        .reduce(f64::min)
 }
 
 fn timeout_secs(toast: &Toast) -> Option<f64> {
