@@ -1,7 +1,8 @@
-//! DataGrid: a virtualised table with a sticky header (`docs/specs/data-views.md` §1).
+//! DataGrid: a virtualised table with a sticky header (`docs/specs/data-views.md` §1), with
+//! sorting, resizing and autofit (§2).
 //!
-//! Only the rows in view are laid out and passed to the cell closure. Sorting, resizing,
-//! selection and keyboard handling are later items (§2 to §4).
+//! Only the rows in view are laid out and passed to the cell closure. Selection and keyboard
+//! handling are later items (§3 and §4).
 
 mod column;
 mod header;
@@ -79,17 +80,16 @@ pub enum FocusMode {
 
 /// What a DataGrid reports after `show`.
 ///
-/// Sorting, selection and keyboard fields are filled in by later items; this item leaves them
-/// unset.
+/// Selection and keyboard fields are filled in by later items; this item leaves them unset.
 #[derive(Clone, Debug)]
 pub struct DataGridResponse {
     /// The whole grid.
     pub response: egui::Response,
-    /// The user changed `state.sort` this frame (§2.1).
+    /// The user changed `state.sort` this frame (§2.1). Re-sort before the next frame.
     pub sort_changed: bool,
     /// The selection changed this frame.
     pub selection_changed: bool,
-    /// A column was resized or autofitted this frame.
+    /// A column was resized or autofitted this frame (§2.2, §2.3).
     pub column_resized: Option<&'static str>,
     /// Enter or double-click on a row (or cell, in cell mode).
     pub activated: Option<CellCtx>,
@@ -179,6 +179,11 @@ impl<'a> DataGrid<'a> {
 
     /// Paint the grid. `cell` is called once per visible cell, with a child `Ui` clipped to it.
     ///
+    /// Clicking a sortable header cell cycles its sort (§2.1) and sets `sort_changed`; the app
+    /// sorts its data before the next frame. Dragging a column's right edge resizes it (§2.2);
+    /// double-clicking that edge, or the first show of an [`ColumnWidth::Auto`] column, autofits
+    /// it to the widest visible cell (§2.3).
+    ///
     /// With `row_count == 0` the grid shows only the header and never calls `cell`; the app
     /// draws its own empty state below it.
     pub fn show(
@@ -203,6 +208,7 @@ impl<'a> DataGrid<'a> {
         let separator = (self.size != DataGridSize::ExtraSmall)
             .then(|| Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_2)));
         let hover = c(theme.color.subtle_background_hover);
+        let mut events = header::HeaderEvents::default();
 
         let output = ScrollArea::both()
             .id_salt(self.id)
@@ -211,8 +217,9 @@ impl<'a> DataGrid<'a> {
                 let (content, response) =
                     ui.allocate_exact_size(Vec2::new(total_width, content_height), Sense::hover());
                 let origin = content.min;
+                let rows = visible_rows(viewport, header_height, row_height, self.row_count);
 
-                for row in visible_rows(viewport, header_height, row_height, self.row_count) {
+                for row in rows.clone() {
                     let top = origin.y + header_height + row as f32 * row_height;
                     let row_rect =
                         Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(total_width, row_height));
@@ -223,23 +230,12 @@ impl<'a> DataGrid<'a> {
                         ui.painter().hline(row_rect.x_range(), row_rect.bottom(), stroke);
                     }
                     let id = row_id(row);
-                    let selected = state.selection.selected.contains(&id);
                     for (index, column) in self.columns.iter().enumerate() {
                         let cell_rect = Rect::from_min_size(
                             Pos2::new(origin.x + offsets[index], top),
                             Vec2::new(widths[index], row_height),
                         );
-                        let focused = state.focus.is_some_and(|focus| {
-                            focus.row == id && focus.column.is_none_or(|column_index| column_index == index)
-                        });
-                        let ctx = CellCtx {
-                            row,
-                            row_id: id,
-                            column: column.id,
-                            column_index: index,
-                            selected,
-                            focused,
-                        };
+                        let ctx = cell_ctx(state, row, id, index, column);
                         let mut child = ui.new_child(
                             UiBuilder::new()
                                 .max_rect(padded(cell_rect))
@@ -255,19 +251,74 @@ impl<'a> DataGrid<'a> {
                     Pos2::new(origin.x, origin.y + viewport.min.y),
                     Vec2::new(total_width, header_height),
                 );
-                header::paint(ui, header_rect, self.columns, &widths, &offsets, &theme);
+                let layout = header::HeaderLayout {
+                    id: self.id,
+                    rect: header_rect,
+                    columns: self.columns,
+                    widths: &widths,
+                    offsets: &offsets,
+                };
+                events = header::show(ui, &layout, state, &theme);
+
+                // Autofit (§2.3): a double-clicked handle, and an Auto column on its first show.
+                // Cells are measured in a sizing pass over the visible rows, so the new width
+                // reaches the rows on the next frame.
+                for (index, column) in self.columns.iter().enumerate() {
+                    let first_show =
+                        matches!(column.width, ColumnWidth::Auto) && !state.widths.contains_key(column.id);
+                    if events.autofit != Some(index) && !first_show {
+                        continue;
+                    }
+                    let mut widest = 0.0_f32;
+                    for row in rows.clone() {
+                        let id = row_id(row);
+                        let ctx = cell_ctx(state, row, id, index, column);
+                        let width = header::natural_width(
+                            ui,
+                            row_height,
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |child| cell(ctx, child),
+                        );
+                        widest = widest.max(width);
+                    }
+                    let header_width = header::header_width(ui, column, header_height);
+                    let width = header::autofit_width(
+                        header_width,
+                        widest,
+                        spacing_horizontal::S,
+                        column.min,
+                        column.max,
+                    );
+                    state.widths.insert(column.id.to_owned(), width);
+                    events.resized = Some(column.id);
+                }
                 response
             });
 
         DataGridResponse {
             response: output.inner,
-            sort_changed: false,
+            sort_changed: events.sort_changed,
             selection_changed: false,
-            column_resized: None,
+            column_resized: events.resized,
             activated: None,
             edit_requested: None,
             context_menu: None,
         }
+    }
+}
+
+/// What the cell closure is told about one cell.
+fn cell_ctx(state: &DataGridState, row: usize, row_id: RowId, index: usize, column: &Column) -> CellCtx {
+    let focused = state.focus.is_some_and(|focus| {
+        focus.row == row_id && focus.column.is_none_or(|column_index| column_index == index)
+    });
+    CellCtx {
+        row,
+        row_id,
+        column: column.id,
+        column_index: index,
+        selected: state.selection.selected.contains(&row_id),
+        focused,
     }
 }
 
