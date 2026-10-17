@@ -1,7 +1,7 @@
 //! Office status bar: a bottom strip with left and right slots and a zoom control (spec §8.1,
 //! WI-1569).
 
-use egui::{Align, Id, Layout, Sense, Ui, UiBuilder, WidgetInfo, accesskit, vec2};
+use egui::{Align, Id, Layout, Sense, Ui, UiBuilder, WidgetInfo, WidgetType, accesskit, vec2};
 
 use crate::controls::{Appearance, Button, ButtonSize, Slider};
 use crate::foundation::text::{TypeRamp, font_id};
@@ -11,6 +11,8 @@ use crate::theme::{Theme, c};
 const ZOOM_MIN: f32 = 10.0;
 const ZOOM_MAX: f32 = 400.0;
 const ZOOM_RESET: f32 = 100.0;
+/// Change per press of the − and + buttons, in percentage points.
+const ZOOM_STEP: f32 = 10.0;
 
 /// A caller's slot content, run once per frame.
 type Slot<'a> = Box<dyn FnOnce(&mut Ui) + 'a>;
@@ -132,6 +134,8 @@ impl<'a> StatusBar<'a> {
         if let Some(percent) = zoom {
             let value = clean_zoom(*percent);
             let mut slider_value = f64::from(value);
+            let enabled = right_ui.is_enabled();
+            // Right to left: the percentage label sits at the far right, then +, the slider and −.
             let label = format!("{value:.0}%");
             if right_ui
                 .add(
@@ -143,13 +147,28 @@ impl<'a> StatusBar<'a> {
             {
                 out.zoom_reset = true;
             }
-            let enabled = right_ui.is_enabled();
+            let zoom_in = right_ui.add(
+                Button::new("+")
+                    .appearance(Appearance::Subtle)
+                    .size(ButtonSize::Small),
+            );
+            zoom_in.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "Zoom in"));
+            let mut step = if zoom_in.clicked() { ZOOM_STEP } else { 0.0 };
             let slider = right_ui.add(Slider::new(&mut slider_value, 10.0..=400.0).step(Some(1.0)));
             slider.widget_info(|| WidgetInfo::slider(enabled, slider_value, "Zoom"));
+            let zoom_out = right_ui.add(
+                Button::new("\u{2212}")
+                    .appearance(Appearance::Subtle)
+                    .size(ButtonSize::Small),
+            );
+            zoom_out.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "Zoom out"));
+            if zoom_out.clicked() {
+                step -= ZOOM_STEP;
+            }
             *percent = if out.zoom_reset {
                 ZOOM_RESET
             } else {
-                slider_value as f32
+                clean_zoom(slider_value as f32 + step)
             };
             out.zoom = Some(slider);
         }
