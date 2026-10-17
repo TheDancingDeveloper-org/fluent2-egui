@@ -2,6 +2,7 @@
 
 use egui::Color32;
 use fluent2_egui::theme::{Theme, ThemeKind};
+use fluent2_egui::{system_preferences, theme_from_system};
 use fluent2_tokens::Rgba;
 
 use crate::pages::{self, Page};
@@ -13,6 +14,8 @@ pub struct GalleryApp {
     kind: ThemeKind,
     /// Seed shown in the accent picker. High contrast ignores it.
     accent: Color32,
+    /// The theme follows the OS reading taken when the toggle was last turned on.
+    follow_system: bool,
 }
 
 impl GalleryApp {
@@ -25,7 +28,20 @@ impl GalleryApp {
             selected: 0,
             kind: ThemeKind::Light,
             accent,
+            follow_system: false,
         }
+    }
+
+    /// Read the OS appearance once and install the theme it implies. Called when the toggle
+    /// turns on, not every frame.
+    fn follow(&mut self, ctx: &egui::Context) {
+        let prefs = system_preferences();
+        let theme = theme_from_system(ctx, &prefs);
+        self.kind = theme.kind;
+        if let Some(accent) = prefs.accent {
+            self.accent = accent.to_color32();
+        }
+        fluent2_egui::install(ctx, &theme);
     }
 }
 
@@ -40,9 +56,19 @@ impl eframe::App for GalleryApp {
                     ("Dark", ThemeKind::Dark),
                     ("High contrast", ThemeKind::HighContrast),
                 ] {
-                    if ui.selectable_label(self.kind == kind, label).clicked() {
+                    if ui
+                        .selectable_label(!self.follow_system && self.kind == kind, label)
+                        .clicked()
+                    {
+                        self.follow_system = false;
                         self.kind = kind;
                         apply(&ctx, self.kind, self.accent);
+                    }
+                }
+                if ui.selectable_label(self.follow_system, "Follow system").clicked() {
+                    self.follow_system = !self.follow_system;
+                    if self.follow_system {
+                        self.follow(&ctx);
                     }
                 }
                 ui.separator();
@@ -54,6 +80,7 @@ impl eframe::App for GalleryApp {
                 )
                 .changed()
                 {
+                    self.follow_system = false;
                     apply(&ctx, self.kind, self.accent);
                 }
             });

@@ -72,10 +72,11 @@ impl Rgba {
         }
     }
 
-    /// Round to 8-bit channels for egui.
+    /// Round to 8-bit channels for egui. The channels are straight (unmultiplied) alpha, so
+    /// egui premultiplies them.
     #[must_use]
     pub fn to_color32(self) -> egui::Color32 {
-        egui::Color32::from_rgba_premultiplied(
+        egui::Color32::from_rgba_unmultiplied(
             (self.r * 255.0).round() as u8,
             (self.g * 255.0).round() as u8,
             (self.b * 255.0).round() as u8,

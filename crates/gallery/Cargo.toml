@@ -11,6 +11,12 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+# Reads the OS appearance for the "Follow system" toggle. The app turns it on; the library
+# keeps it off by default. Without it, "Follow system" falls back to the light theme.
+default = ["system-preferences"]
+system-preferences = ["fluent2-egui/system-preferences"]
+
 [dependencies]
 eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "accesskit", "x11", "wayland"] }
 egui = { workspace = true }
