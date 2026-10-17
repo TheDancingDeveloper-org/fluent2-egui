@@ -700,9 +700,14 @@ invalid: it is listed in `KeyTipsReport::invalid`, and the target is auto-assign
 same level. If none is free, the next letters of the label are tried, then `A` to `Z`, then
 digits `1` to `9`.
 
-**Multi-letter.** When a level has more than 26 targets, keys become two letters. The first
-letter selects a group of targets and the second selects one. The state machine in §6.3
-supports this. M1 does not need it in practice.
+**Multi-letter.** When a level has more than 26 targets, every auto-assigned key at that level
+is two letters: the first letter selects a group, the second selects one. The first letter is
+the label's first letter if free, then `A` to `Z`. The second is `A` to `Z`. Two-letter keys
+never use a letter that is already a one-letter key at the same level, so the keys stay
+prefix-free. Requested one-letter keys are kept as they are. A two-letter request whose first
+letter is a one-letter key at that level is a conflict, so it is re-assigned and listed in
+`KeyTipsReport::conflicts`. Once a level has no free key, the target is listed in
+`KeyTipsReport::unassigned` and is not drawn. Nothing panics.
 
 **Conflicts.** Two targets at the same level with the same key. The first keeps the key. The
 second is re-assigned by the auto rule and listed in `KeyTipsReport::conflicts`. Nothing panics.
@@ -716,32 +721,39 @@ pub enum KeyTipLevel {
     Root,
     /// The controls of one tab, by tab key.
     Tab(&'static str),
+    /// The items of one open menu or gallery, by control key.
+    Popup(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TargetKind { Tab, QatItem, Control, MenuItem }
+pub enum TargetKind {
+    Tab,
+    QatItem,
+    Control,
+    /// A control that opens a menu or gallery popup.
+    PopupControl,
+    MenuItem,
+}
 
 /// One target as the chrome sees it this frame. Built from the ribbon model (§4) and the
-/// QAT (§3). `requested` is the app's `.keytip(…)`.
+/// QAT (§3). `requested` is the app's `.keytip(…)`. The pure types carry no `egui::Rect`:
+/// the badge rectangles live beside the targets in the renderer (WI-1567).
 pub struct KeyTipCandidate {
     pub target: &'static str,
     pub level: KeyTipLevel,
     pub kind: TargetKind,
     pub requested: Option<&'static str>,
     pub label: String,
-    pub rect: egui::Rect,
 }
 
 /// One target with its final key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyTipTarget {
     pub target: &'static str,
     pub level: KeyTipLevel,
     pub kind: TargetKind,
     /// The key the user types, uppercased.
     pub key: String,
-    /// Where the badge is drawn.
-    pub rect: egui::Rect,
 }
 
 /// Every target with its final key, for one frame.
@@ -763,6 +775,8 @@ pub struct KeyTipsReport {
     pub invalid: Vec<&'static str>,
     /// Targets that had no requested key.
     pub auto_assigned: Vec<&'static str>,
+    /// Targets left without a key because their level has no free key left.
+    pub unassigned: Vec<&'static str>,
 }
 
 pub struct KeyTipResolution {
@@ -787,6 +801,9 @@ pub enum KeyTipState {
     Tab { tab: &'static str },
     /// A menu or gallery popup opened from a control is shown.
     Popup { tab: &'static str, control: &'static str },
+    /// The first letter of a two-letter key was typed. `parent` is the state it was typed in;
+    /// Escape or Backspace returns to it.
+    Prefix { parent: Box<KeyTipState>, first: char },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -836,13 +853,21 @@ the next `Char`, and cancelled to their level by Escape):
 | Root | Char no match | Root | None |
 | Root | Escape, Backspace, Activate, Dismiss | Idle | None |
 | Tab(t) | Char matching a control | Idle | Invoke |
-| Tab(t) | Char matching a menu or gallery control | Popup(t, c) | OpenPopup |
+| Tab(t) | Char matching a menu or gallery control (`TargetKind::PopupControl`) | Popup(t, c) | OpenPopup(c) |
 | Tab(t) | Char no match | Tab(t) | None |
 | Tab(t) | Escape or Backspace | Root | Show |
 | Tab(t) | Activate or Dismiss | Idle | None |
-| Popup(t, c) | Char matching an item | Idle | Invoke (the item's key) |
+| Popup(t, c) | Char matching an item (`TargetKind::MenuItem` at `Popup(c)`) | Idle | Invoke(item) |
+| Popup(t, c) | Char no match | Popup(t, c) | None |
 | Popup(t, c) | Escape or Backspace | Tab(t) | Show |
 | Popup(t, c) | Activate or Dismiss | Idle | None |
+| Root, Tab(t), Popup(t, c) | Char that starts a two-letter key at the level, with no one-letter match | Prefix { parent, first } | None |
+| Prefix { parent, first } | Char completing a key at the level (`first` + Char) | as the parent's row for that target | as the parent's row |
+| Prefix { parent, first } | Char no match | Prefix { parent, first } | None |
+| Prefix { parent, first } | Escape or Backspace | parent | Show |
+| Prefix { parent, first } | Activate or Dismiss | Idle | None |
+
+A one-letter key that matches wins over a two-letter key that starts with the same letter.
 
 ### 6.4 Which keytips the app supplies
 
