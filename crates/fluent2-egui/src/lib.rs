@@ -19,8 +19,8 @@ pub use controls::{
     TextareaResize, ToggleButton, ValidationState,
 };
 pub use surfaces::{
-    FluentTooltip, MenuItem, Popover, TooltipExt, TooltipTone, context_menu, divider, group_header,
-    menu_frame, submenu,
+    Card, CardAppearance, CardHeader, FluentTooltip, MenuItem, Popover, TabAppearance, TabList, TabSize,
+    TooltipExt, TooltipTone, context_menu, divider, group_header, menu_frame, submenu,
 };
 pub use theme::{Theme, ThemeKind};
 
@@ -29,10 +29,10 @@ pub mod prelude {
     pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
     pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
     pub use crate::{
-        Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton,
-        Divider, Dropdown, Field, FluentTooltip, Input, Link, MenuButton, ProgressBar, ProgressBarSize,
-        RadioGroup, SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea,
-        Theme, ThemeKind, ToggleButton, TooltipExt, ValidationState,
+        Badge, BadgeAppearance, BadgeColor, BadgeSize, Card, CardHeader, CheckState, Checkbox, Combobox,
+        CompoundButton, Divider, Dropdown, Field, FluentTooltip, Input, Link, MenuButton, ProgressBar,
+        ProgressBarSize, RadioGroup, SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton,
+        Switch, TabList, Textarea, Theme, ThemeKind, ToggleButton, TooltipExt, ValidationState,
     };
 }
 
