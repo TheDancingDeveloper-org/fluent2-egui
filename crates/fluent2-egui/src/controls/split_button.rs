@@ -200,19 +200,19 @@ impl<'a> SplitButton<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct Metrics {
+pub(crate) struct Metrics {
     pub(super) min_height: f32,
-    pub(super) min_width: f32,
-    pub(super) h_padding: f32,
-    pub(super) icon: f32,
-    pub(super) icon_gap: f32,
+    pub(crate) min_width: f32,
+    pub(crate) h_padding: f32,
+    pub(crate) icon: f32,
+    pub(crate) icon_gap: f32,
     /// Chevron hit region: the icon box of the size (24 / 32 / 40).
     chevron: f32,
     ramp: TypeRamp,
 }
 
 impl Metrics {
-    pub(super) fn of(size: ButtonSize) -> Self {
+    pub(crate) fn of(size: ButtonSize) -> Self {
         match size {
             ButtonSize::Small => Self {
                 min_height: 24.0,
@@ -448,7 +448,7 @@ fn split_rects(rect: Rect, chevron: f32) -> (Rect, Rect) {
     (main, menu)
 }
 
-pub(super) fn natural_width(ui: &Ui, text: &WidgetText, has_icon: bool, metrics: Metrics) -> f32 {
+pub(crate) fn natural_width(ui: &Ui, text: &WidgetText, has_icon: bool, metrics: Metrics) -> f32 {
     let text_w = text
         .clone()
         .into_galley(ui, None, f32::INFINITY, metrics.text_style())
@@ -491,7 +491,7 @@ fn menu_corners(radius: CornerRadius) -> CornerRadius {
     }
 }
 
-pub(super) fn ensure_type_ramp(ui: &mut Ui) {
+pub(crate) fn ensure_type_ramp(ui: &mut Ui) {
     use crate::foundation::text::{font_id, style};
     let semibold_ready = ui.fonts(|fonts| {
         fonts.families().iter().any(|family| {

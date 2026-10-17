@@ -17,7 +17,7 @@ mod search_box;
 mod slider;
 mod spin_button;
 mod spinner;
-mod split_button;
+pub(crate) mod split_button;
 mod switch;
 mod textarea;
 mod toggle_button;
