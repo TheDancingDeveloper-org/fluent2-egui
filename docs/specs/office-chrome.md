@@ -887,6 +887,34 @@ If WI-1566 adapts it, WI-1566 follows `UPSTREAM.md`: it adds the file header, an
 This spec did not compare the wordcraft code line by line. WI-1566 checks the transition table
 in §6.3 against that file and records any difference.
 
+**WI-1566 result: not adapted.** Wordcraft's keytips code is coupled to `WordApp`, its command
+registry, egui ids and `keys::key_name`, so nothing was copied. `upstream.toml` and `NOTICE` are
+unchanged. The state machine is written from §6.3. The comparison against wordcraft at `cf8aea6`
+(`handle_key`, `activate`, `logic`, `Phase`) is:
+
+| §6.3 row | wordcraft at `cf8aea6` | Result |
+|---|---|---|
+| Idle, Activate → Root, Show | `activate()` sets `Phase::Tabs` | Match |
+| Idle, other → Idle, None | `handle_key` returns early when Off | Match |
+| Root, tab letter → Tab(t), SelectTab | `ui.tab` runs, then `Phase::Commands` | Match, except File |
+| Root, tab letter File → Tab(File) | Opens the Backstage and goes Off | Difference (spec has no Backstage step) |
+| Root, QAT or app target → Idle, Invoke | Digits at Tabs call `qat_key` | Partial: wordcraft uses digits only |
+| Root, no match → Root, None | Any other key goes Off | Difference |
+| Root, Escape/Backspace/Activate/Dismiss → Idle, None | Escape and Alt go Off; Dismiss by suppression. Backspace not checked (`keys::key_name` not fetched) | Match, Backspace unverified |
+| Tab(t), control → Idle, Invoke | Commands hit runs and goes Off | Match |
+| Tab(t), PopupControl → Popup, OpenPopup | No popup phase; the command runs | Difference (no popup level) |
+| Tab(t), no match → Tab(t), None | Any other key goes Off | Difference |
+| Tab(t), Escape/Backspace → Root, Show | Escape goes Off | Difference |
+| Tab(t), Activate/Dismiss → Idle, None | Alt goes back to Tabs, not Off | Difference |
+| Popup rows | No popup phase | Not in wordcraft |
+| Prefix rows | Prefix only at the tab level, from `keytip_prefix`; Commands has none | Partial: spec generalises it |
+| One-letter match beats prefix | `hit.is_none() && starts_with` | Match |
+
+Wordcraft has behaviour the spec does not: a `Q` key opens Search, digits are QAT keys at the tab
+level, Alt arms on release, and macOS never arms from Alt. In the code read, F10 does not
+toggle KeyTips. The §6.3 table is the spec. These differences are kept as the spec's decisions, not
+copied from wordcraft.
+
 ## 7. Backstage
 
 A full-window view that replaces the ribbon and the content area while open.
