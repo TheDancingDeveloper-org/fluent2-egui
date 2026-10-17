@@ -142,6 +142,17 @@ impl Widget for Dropdown<'_> {
                 response.request_focus();
             }
             if open {
+                // Egui clears focus on Escape unless the focused widget asks for it, and an
+                // open popup needs Escape to close itself before any enclosing Dialog sees it.
+                ui.memory_mut(|memory| {
+                    memory.set_focus_lock_filter(
+                        response.id,
+                        egui::EventFilter {
+                            escape: true,
+                            ..Default::default()
+                        },
+                    );
+                });
                 let count = self.options.len();
                 if input.key_pressed(egui::Key::ArrowDown) {
                     active = Some(step(active.or(*self.selected), count, 1));
@@ -151,6 +162,8 @@ impl Widget for Dropdown<'_> {
                 }
                 if input.key_pressed(egui::Key::Escape) {
                     open = false;
+                    // Consume the press so an enclosing Dialog does not also read it as its own Escape.
+                    ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
                 }
                 let was_open = ui
                     .ctx()

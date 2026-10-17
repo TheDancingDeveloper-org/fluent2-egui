@@ -5,9 +5,10 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).
 - Tooltip (`Response::fluent_tooltip`) and Popover surfaces (WI-1551).
 - TabList and Card surfaces (WI-1554).
-- Dropdown and Combobox controls (WI-1549).
+- Dropdown and Combobox controls (WI-1549). An open Dropdown takes Escape, so an enclosing dialog stays open (WI-1552).
 - Display controls: `Link`, `Badge`, `Divider`, `Field`, `ProgressBar` and `Spinner` (WI-1550).
 - ToggleButton and CompoundButton controls (WI-1543).
 - SplitButton and MenuButton controls (WI-1544).
