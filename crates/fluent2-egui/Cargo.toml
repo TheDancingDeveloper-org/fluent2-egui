@@ -26,6 +26,9 @@ default = ["bundled-font"]
 bundled-font = []
 # Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
 serde = ["dep:serde"]
+# Pixel snapshots through a wgpu adapter. Off in `cargo test`; see tests/font_snapshots.rs.
+# Also turns on egui's default fonts, so the egui-default option has its Ubuntu-Light face.
+snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot", "egui/default_fonts"]
 # OS accent, high contrast, reduced motion and colour scheme. Off by default so wasm and
 # headless builds do not pull in platform bindings. See `platform`.
 system-preferences = [
