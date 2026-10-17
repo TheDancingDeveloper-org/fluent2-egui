@@ -78,6 +78,8 @@ pub enum Icon {
     LockClosed,
     /// `Mail`.
     Mail,
+    /// `Maximize`.
+    Maximize,
     /// `More Horizontal`.
     MoreHorizontal,
     /// `Navigation`.
@@ -104,8 +106,12 @@ pub enum Icon {
     Settings,
     /// `Share`.
     Share,
+    /// `Square Multiple`.
+    SquareMultiple,
     /// `Star`.
     Star,
+    /// `Subtract`.
+    Subtract,
     /// `Table`.
     Table,
     /// `Text Bold`.
@@ -1481,6 +1487,42 @@ pub fn svg(icon: Icon, size: Size, style: Style) -> Option<&'static [u8]> {
                 "/svg/ic_fluent_mail_24_filled.svg"
             ))
         }
+        (Icon::Maximize, Size::S16, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_16_regular.svg"
+            ))
+        }
+        (Icon::Maximize, Size::S16, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_16_filled.svg"
+            ))
+        }
+        (Icon::Maximize, Size::S20, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_20_regular.svg"
+            ))
+        }
+        (Icon::Maximize, Size::S20, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_20_filled.svg"
+            ))
+        }
+        (Icon::Maximize, Size::S24, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_24_regular.svg"
+            ))
+        }
+        (Icon::Maximize, Size::S24, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_maximize_24_filled.svg"
+            ))
+        }
         (Icon::MoreHorizontal, Size::S16, Style::Regular) => {
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -1949,6 +1991,42 @@ pub fn svg(icon: Icon, size: Size, style: Style) -> Option<&'static [u8]> {
                 "/svg/ic_fluent_share_24_filled.svg"
             ))
         }
+        (Icon::SquareMultiple, Size::S16, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_16_regular.svg"
+            ))
+        }
+        (Icon::SquareMultiple, Size::S16, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_16_filled.svg"
+            ))
+        }
+        (Icon::SquareMultiple, Size::S20, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_20_regular.svg"
+            ))
+        }
+        (Icon::SquareMultiple, Size::S20, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_20_filled.svg"
+            ))
+        }
+        (Icon::SquareMultiple, Size::S24, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_24_regular.svg"
+            ))
+        }
+        (Icon::SquareMultiple, Size::S24, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_square_multiple_24_filled.svg"
+            ))
+        }
         (Icon::Star, Size::S16, Style::Regular) => {
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -1983,6 +2061,42 @@ pub fn svg(icon: Icon, size: Size, style: Style) -> Option<&'static [u8]> {
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/svg/ic_fluent_star_24_filled.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S16, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_16_regular.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S16, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_16_filled.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S20, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_20_regular.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S20, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_20_filled.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S24, Style::Regular) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_24_regular.svg"
+            ))
+        }
+        (Icon::Subtract, Size::S24, Style::Filled) => {
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/svg/ic_fluent_subtract_24_filled.svg"
             ))
         }
         (Icon::Table, Size::S16, Style::Regular) => {
@@ -2355,6 +2469,7 @@ impl Icon {
         Icon::Link,
         Icon::LockClosed,
         Icon::Mail,
+        Icon::Maximize,
         Icon::MoreHorizontal,
         Icon::Navigation,
         Icon::Open,
@@ -2368,7 +2483,9 @@ impl Icon {
         Icon::Search,
         Icon::Settings,
         Icon::Share,
+        Icon::SquareMultiple,
         Icon::Star,
+        Icon::Subtract,
         Icon::Table,
         Icon::TextBold,
         Icon::TextItalic,
@@ -2420,6 +2537,7 @@ impl Icon {
             Icon::Link => "Link",
             Icon::LockClosed => "Lock Closed",
             Icon::Mail => "Mail",
+            Icon::Maximize => "Maximize",
             Icon::MoreHorizontal => "More Horizontal",
             Icon::Navigation => "Navigation",
             Icon::Open => "Open",
@@ -2433,7 +2551,9 @@ impl Icon {
             Icon::Search => "Search",
             Icon::Settings => "Settings",
             Icon::Share => "Share",
+            Icon::SquareMultiple => "Square Multiple",
             Icon::Star => "Star",
+            Icon::Subtract => "Subtract",
             Icon::Table => "Table",
             Icon::TextBold => "Text Bold",
             Icon::TextItalic => "Text Italic",
