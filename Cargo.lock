@@ -1284,6 +1284,7 @@ version = "0.0.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui_kittest",
  "fluent2-egui",
  "fluent2-icons",
  "fluent2-tokens",

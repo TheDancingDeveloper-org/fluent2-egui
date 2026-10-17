@@ -123,13 +123,19 @@ impl<'a> Backstage<'a> {
         let ctx = ui.ctx().clone();
         let opener_key = id.with("opener");
         let seen_key = id.with("seen");
+        let text_focus_key = id.with("text_focus");
+        let pending_key = id.with("pending");
 
         if !state.open {
-            // Closed by the app: give focus back once, then forget the opening.
+            // Closed by the app: forget the opening, then give focus back to the opener once it
+            // is drawn again.
             if ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false)) {
-                restore_focus(&ctx, opener_key);
-                ctx.data_mut(|data| data.insert_temp(seen_key, false));
+                ctx.data_mut(|data| {
+                    data.insert_temp(seen_key, false);
+                    data.insert_temp(pending_key, true);
+                });
             }
+            restore_focus(&ctx, opener_key, pending_key);
             return BackstageResponse::default();
         }
 
@@ -147,11 +153,14 @@ impl<'a> Backstage<'a> {
         let keys: Vec<&'static str> = pages.iter().chain(bottom.iter()).map(|page| page.key).collect();
         let mut page_changed = None;
 
-        // Escape closes unless a text field has the keyboard, which keeps Escape for itself.
-        let escape = !ctx.text_edit_focused()
-            && ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
+        // Escape closes unless a text field has the keyboard, which keeps Escape for itself. egui
+        // releases focus on Escape before this frame's widgets run, so the field's focus is read
+        // from the end of the previous frame as well.
+        let text_focused = ctx.text_edit_focused()
+            || ctx.data(|data| data.get_temp::<bool>(text_focus_key).unwrap_or(false));
+        let escape = !text_focused && ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
         if escape {
-            return close(state, &ctx, seen_key, opener_key);
+            return close(state, &ctx, seen_key, pending_key);
         }
 
         // The entries are focusable, so egui moves focus between them with the arrow keys. The
@@ -226,7 +235,7 @@ impl<'a> Backstage<'a> {
         });
 
         if back_clicked {
-            return close(state, &ctx, seen_key, opener_key);
+            return close(state, &ctx, seen_key, pending_key);
         }
         if let Some(key) = clicked_key
             && Some(key) != selected
@@ -234,6 +243,8 @@ impl<'a> Backstage<'a> {
             state.page = Some(key);
             page_changed = Some(key);
         }
+        let text_focused_now = ctx.text_edit_focused();
+        ctx.data_mut(|data| data.insert_temp(text_focus_key, text_focused_now));
         BackstageResponse {
             closed: false,
             page_changed,
@@ -242,10 +253,12 @@ impl<'a> Backstage<'a> {
 }
 
 /// Close the backstage: clear `open`, give focus back to the opener, and report it.
-fn close(state: &mut BackstageState, ctx: &Context, seen_key: Id, opener_key: Id) -> BackstageResponse {
+fn close(state: &mut BackstageState, ctx: &Context, seen_key: Id, pending_key: Id) -> BackstageResponse {
     state.open = false;
-    ctx.data_mut(|data| data.insert_temp(seen_key, false));
-    restore_focus(ctx, opener_key);
+    ctx.data_mut(|data| {
+        data.insert_temp(seen_key, false);
+        data.insert_temp(pending_key, true);
+    });
     BackstageResponse {
         closed: true,
         page_changed: None,
@@ -293,10 +306,26 @@ fn nav_row(ui: &mut Ui, id: Id, label: &str, selected: bool) -> Response {
     response
 }
 
-/// Give focus back to the widget that had it when the backstage opened.
-fn restore_focus(ctx: &Context, opener_key: Id) {
-    if let Some(opener) = ctx.data(|data| data.get_temp::<Option<Id>>(opener_key)).flatten() {
-        ctx.memory_mut(|memory| memory.request_focus(opener));
+/// Give focus back to the widget that had it when the backstage opened, once that widget is drawn.
+///
+/// The opener is usually hidden while the backstage is open, so the request waits until the
+/// opener is drawn this pass. Requesting focus for a widget that is not in this pass's tree
+/// would leave focus on a node that does not exist. The opener must therefore be drawn before
+/// [`Backstage::show`] in the frame that restores it.
+fn restore_focus(ctx: &Context, opener_key: Id, pending_key: Id) {
+    if !ctx.data(|data| data.get_temp::<bool>(pending_key).unwrap_or(false)) {
+        return;
+    }
+    let opener = ctx.data(|data| data.get_temp::<Option<Id>>(opener_key)).flatten();
+    match opener {
+        None => {
+            ctx.data_mut(|data| data.insert_temp(pending_key, false));
+        }
+        Some(opener) if ctx.read_response(opener).is_some() => {
+            ctx.memory_mut(|memory| memory.request_focus(opener));
+            ctx.data_mut(|data| data.insert_temp(pending_key, false));
+        }
+        Some(_) => {}
     }
 }
 
