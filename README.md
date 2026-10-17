@@ -6,6 +6,8 @@ the pieces desktop productivity apps need: title bar, quick access toolbar, ribb
 backstage/File view, command bar, status bar, data grid and tree view. It runs natively on
 Windows and Linux, and on the web through wasm.
 
+**Live gallery:** https://thedancingdeveloper.github.io/fluent2-egui/
+
 **Status: scaffold (0.0.0).** Nothing is usable yet. Milestones:
 
 | milestone | contents |
