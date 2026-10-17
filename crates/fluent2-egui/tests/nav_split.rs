@@ -5,9 +5,10 @@ use std::cell::{Cell, RefCell};
 use egui::accesskit::Role;
 use egui::{Key, Modifiers, Vec2};
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use fluent2_egui::data::nav_view::{NavState, NavigationView, PaneMode};
 use fluent2_egui::data::split_view::{SplitAxis, SplitSize, SplitState, SplitView};
+use fluent2_egui::foundation::motion;
 use fluent2_egui::{Theme, install};
 use fluent2_icons::Icon;
 
@@ -15,20 +16,29 @@ use fluent2_icons::Icon;
 struct NavProbe {
     state: RefCell<NavState>,
     selected: RefCell<Vec<&'static str>>,
+    /// The width of the `Ui` the view was laid out in, read on the first frame.
+    width: Cell<f32>,
 }
 
 fn nav_probe() -> &'static NavProbe {
     Box::leak(Box::new(NavProbe {
         state: RefCell::new(NavState::default()),
         selected: RefCell::new(Vec::new()),
+        width: Cell::new(0.0),
     }))
 }
 
 fn nav_harness(width: f32, probe: &'static NavProbe) -> Harness<'static> {
+    build_nav(width, probe, false)
+}
+
+fn build_nav(width: f32, probe: &'static NavProbe, reduced_motion: bool) -> Harness<'static> {
     let mut harness = Harness::builder()
         .with_size(Vec2::new(width, 600.0))
         .build_ui(move |ui| {
             install(ui.ctx(), &Theme::default());
+            motion::set_reduced_motion(ui.ctx(), reduced_motion);
+            probe.width.set(ui.available_width());
             let mut state = probe.state.borrow_mut();
             let response = NavigationView::new("nav")
                 .title("Library")
@@ -316,4 +326,163 @@ fn navigation_and_split_render_in_every_theme() {
             });
         harness.run();
     }
+}
+
+/// The pane width the harness shows, or `None` when there is no pane (Minimal mode).
+fn pane_width(harness: &Harness<'_>) -> Option<f32> {
+    harness
+        .query_all_by_role(Role::Navigation)
+        .next()
+        .map(|node| node.rect().width())
+}
+
+#[test]
+fn breakpoints_are_exact_at_the_boundaries() {
+    // The `Ui` the view sits in is narrower than the window by the panel margin. Measure the
+    // margin once, then lay the view out at exact `Ui` widths.
+    let probe = nav_probe();
+    let _ = nav_harness(1000.0, probe);
+    let margin = 1000.0 - probe.width.get();
+
+    // (Ui width, expected pane width): Minimal has no pane, Compact a 48 pt rail, Expanded 260.
+    let cases = [
+        (640.0, None),
+        (641.0, Some(48.0)),
+        (1007.0, Some(48.0)),
+        (1008.0, Some(260.0)),
+    ];
+    for (ui_width, expected) in cases {
+        let probe = nav_probe();
+        let harness = nav_harness(ui_width + margin, probe);
+        assert!(
+            (probe.width.get() - ui_width).abs() < 0.5,
+            "laid out at {} not {ui_width}",
+            probe.width.get()
+        );
+        match (pane_width(&harness), expected) {
+            (None, None) => {
+                harness.get_by_role_and_label(Role::Button, "Open navigation");
+            }
+            (Some(actual), Some(want)) => {
+                assert!(
+                    (actual - want).abs() < 1.0,
+                    "at {ui_width} pt the pane is {actual} wide, want {want}"
+                );
+            }
+            (actual, want) => panic!("at {ui_width} pt the pane is {actual:?}, want {want:?}"),
+        }
+    }
+}
+
+#[test]
+fn the_overlay_slides_in_and_snaps_under_reduced_motion() {
+    for reduced in [false, true] {
+        let probe = nav_probe();
+        probe.state.borrow_mut().mode = PaneMode::Minimal;
+        let mut harness = build_nav(400.0, probe, reduced);
+        harness
+            .get_by_role_and_label(Role::Button, "Open navigation")
+            .click();
+        // The click opens the overlay on the next frame; the slide starts from there.
+        harness.run_steps(2);
+        let x = harness.get_by_role(Role::Navigation).rect().min.x;
+        harness.run();
+        let settled = harness.get_by_role(Role::Navigation).rect().min.x;
+        if reduced {
+            assert!(
+                (x - settled).abs() < 0.5,
+                "reduced motion should snap: {x} then {settled}"
+            );
+        } else {
+            assert!(
+                x < settled - 1.0,
+                "overlay should still be sliding in: {x} before {settled}"
+            );
+        }
+    }
+}
+
+#[test]
+fn items_are_tabs_in_a_vertical_tablist_and_headings_are_level_two() {
+    let harness = nav_harness(1200.0, nav_probe());
+    let list = harness.get_by_role(Role::TabList);
+    let files = harness.get_by_role_and_label(Role::Tab, "Files");
+    let node = files.accesskit_node();
+    let data = node.data();
+    assert_eq!(data.position_in_set(), Some(2), "Files is item 2");
+    assert_eq!(data.size_of_set(), Some(4), "four items in the navigation order");
+    assert_eq!(
+        list.accesskit_node().data().orientation(),
+        Some(egui::accesskit::Orientation::Vertical)
+    );
+    assert!(
+        list.children_recursive()
+            .any(|child| child.accesskit_node().id() == node.id()),
+        "Files sits inside the TabList"
+    );
+    let found: Vec<_> = harness
+        .query_all_by_role(Role::Heading)
+        .map(|n| {
+            (
+                n.accesskit_node().data().label().map(String::from),
+                n.accesskit_node().data().level(),
+            )
+        })
+        .collect();
+    assert!(
+        found.iter().any(|(label, _)| label.as_deref() == Some("Other")),
+        "headings: {found:?}"
+    );
+    let heading = harness.get_by_role_and_label(Role::Heading, "Other");
+    assert_eq!(heading.accesskit_node().data().level(), Some(2));
+}
+
+/// Count the 1 pt-high filled rectangles one frame of `build` paints: the divider lines.
+fn one_point_lines(build: impl Fn(&mut egui::Ui)) -> usize {
+    let ctx = egui::Context::default();
+    install(&ctx, &Theme::default());
+    let mut lines = 0;
+    for _ in 0..2 {
+        let raw = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                Vec2::new(800.0, 600.0),
+            )),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(raw, |ui| build(ui));
+        lines = output
+            .shapes
+            .iter()
+            .filter(|clipped| matches!(&clipped.shape, egui::Shape::Rect(rect) if rect.rect.height() == 1.0))
+            .count();
+        // egui panics if texture deltas are dropped unhandled; this test does not upload them.
+        output.textures_delta.clear();
+    }
+    lines
+}
+
+#[test]
+fn a_compact_section_draws_a_divider_line() {
+    let compact = |with_section: bool| {
+        move |ui: &mut egui::Ui| {
+            let mut state = NavState {
+                mode: PaneMode::Compact,
+                ..NavState::default()
+            };
+            let mut nav = NavigationView::new("lines").item("home", Icon::Home, "Home");
+            if with_section {
+                nav = nav.section("Other");
+            }
+            nav.item("files", Icon::Document, "Files")
+                .show(ui, &mut state, |_| {});
+        }
+    };
+    let without = one_point_lines(compact(false));
+    let with = one_point_lines(compact(true));
+    assert_eq!(
+        with,
+        without + 1,
+        "a section in the rail becomes one divider line"
+    );
 }
