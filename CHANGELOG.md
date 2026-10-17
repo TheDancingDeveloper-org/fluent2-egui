@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- TabList and Card surfaces (WI-1554).
 - Dropdown and Combobox controls (WI-1549).
 - Display controls: `Link`, `Badge`, `Divider`, `Field`, `ProgressBar` and `Spinner` (WI-1550).
 - ToggleButton and CompoundButton controls (WI-1543).
