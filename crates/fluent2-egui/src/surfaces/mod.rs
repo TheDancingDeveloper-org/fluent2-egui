@@ -11,5 +11,6 @@ pub use card::{Card, CardAppearance, CardHeader};
 pub use dialog::{CloseReason, Dialog, DialogActions, DialogKind, DialogResult};
 pub use menu::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use popover::Popover;
+pub(crate) use tab_list::tab_widths;
 pub use tab_list::{TabAppearance, TabList, TabSize};
 pub use tooltip::{FluentTooltip, TooltipExt, TooltipTone};

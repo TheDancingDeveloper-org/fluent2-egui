@@ -5,6 +5,10 @@
 
 use std::marker::PhantomData;
 
+use egui::Color32;
+
+use crate::theme::{Theme, c};
+
 /// Accent of a contextual tab set. Each accent maps to one theme token (spec §4.3, D6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ContextualAccent {
@@ -20,6 +24,20 @@ pub enum ContextualAccent {
     Neutral,
 }
 
+impl ContextualAccent {
+    /// The colour of this accent's header label in `theme`.
+    pub fn color(self, theme: &Theme) -> Color32 {
+        let color = &theme.color;
+        match self {
+            Self::Brand => c(color.brand_foreground_1),
+            Self::Success => c(color.status_success_foreground_1),
+            Self::Warning => c(color.status_warning_foreground_1),
+            Self::Danger => c(color.status_danger_foreground_1),
+            Self::Neutral => c(color.neutral_foreground_2),
+        }
+    }
+}
+
 /// Adds the groups of one tab body. The body is empty until WI-1563 adds groups.
 pub struct TabBuilder<'a> {
     _bound: PhantomData<&'a ()>,
@@ -32,9 +50,10 @@ impl TabBuilder<'_> {
 }
 
 /// Placement of a tab in a contextual set (spec §4.3).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Contextual {
     pub set: &'static str,
+    pub label: String,
     pub accent: ContextualAccent,
     pub visible: bool,
 }
@@ -45,7 +64,7 @@ pub(crate) struct Contextual {
 /// # use fluent2_egui::office::ribbon::{ContextualAccent, RibbonTab};
 /// let home = RibbonTab::new("home", "Home", |_tab| {});
 /// let table = RibbonTab::new("table", "Table design", |_tab| {})
-///     .contextual("table", ContextualAccent::Brand, false);
+///     .contextual("table", "Table tools", ContextualAccent::Brand, false);
 /// ```
 pub struct RibbonTab<'a> {
     pub(crate) key: &'static str,
@@ -65,15 +84,23 @@ impl<'a> RibbonTab<'a> {
         }
     }
 
-    /// Makes this tab part of contextual set `set`. It shows only while `visible` is true.
+    /// Makes this tab part of contextual set `set`. Tabs of one set share a header that reads
+    /// `header`, drawn in the accent colour above them. Every tab of a set should pass the same
+    /// header; the first visible tab's text is used. The tab shows only while `visible` is true.
     #[must_use]
-    pub fn contextual(mut self, set: &'static str, accent: ContextualAccent, visible: bool) -> Self {
-        self.contextual = Some(Contextual { set, accent, visible });
+    pub fn contextual(
+        mut self,
+        set: &'static str,
+        header: &str,
+        accent: ContextualAccent,
+        visible: bool,
+    ) -> Self {
+        self.contextual = Some(Contextual {
+            set,
+            label: header.to_owned(),
+            accent,
+            visible,
+        });
         self
-    }
-
-    /// The accent of this tab's contextual set, or `None` for a content tab.
-    pub fn accent(&self) -> Option<ContextualAccent> {
-        self.contextual.map(|placement| placement.accent)
     }
 }

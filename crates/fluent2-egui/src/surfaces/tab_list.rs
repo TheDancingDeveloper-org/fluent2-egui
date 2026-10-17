@@ -326,6 +326,27 @@ fn metrics_of(size: TabSize) -> TabMetrics {
     }
 }
 
+/// Main-axis width of each tab in a horizontal list, as [`TabList::show`] lays them out with
+/// no icons and no gap. `selected` is the tab drawn in the strong step. The ribbon uses this
+/// to place a contextual header over its tabs.
+pub(crate) fn tab_widths(ui: &mut Ui, labels: &[&str], selected: usize, size: TabSize) -> Vec<f32> {
+    button::ensure_type_ramp(ui);
+    let metrics = metrics_of(size);
+    labels
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            let galley = WidgetText::from(*label).into_galley(
+                ui,
+                Some(egui::TextWrapMode::Extend),
+                f32::INFINITY,
+                metrics.text_style(index == selected),
+            );
+            finite(metrics.padding * 2.0 + galley.size().x)
+        })
+        .collect()
+}
+
 /// Place each tab inside `rect`.
 ///
 /// `sizes` are each tab's desired size. `vertical` stacks on Y. `gap` is the space between

@@ -6,7 +6,9 @@ use egui::accesskit::Role;
 use egui::{Event, Key, Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use fluent2_egui::office::ribbon::{ContextualAccent, Ribbon, RibbonDisplay, RibbonState, RibbonTab};
+use fluent2_egui::office::ribbon::{
+    ContextualAccent, FileTab, Ribbon, RibbonDisplay, RibbonEventKind, RibbonState, RibbonTab,
+};
 use fluent2_egui::{Theme, install};
 
 /// Ribbon state and the flags a test flips between frames. Leaked so the harness closure
@@ -17,6 +19,7 @@ struct Shared {
     duplicate_key: Cell<bool>,
     conflicts: RefCell<Vec<&'static str>>,
     tab_changed: Cell<Option<&'static str>>,
+    file_clicks: Cell<u32>,
 }
 
 fn shared() -> &'static Shared {
@@ -26,6 +29,7 @@ fn shared() -> &'static Shared {
         duplicate_key: Cell::new(false),
         conflicts: RefCell::new(Vec::new()),
         tab_changed: Cell::new(None),
+        file_clicks: Cell::new(0),
     }))
 }
 
@@ -38,13 +42,23 @@ fn ribbon_harness(shared: &'static Shared) -> Harness<'static> {
             .tab(RibbonTab::new("insert", "Insert", |_tab| {}))
             .tab(RibbonTab::new("table", "Table design", |_tab| {}).contextual(
                 "table",
+                "Table tools",
                 ContextualAccent::Brand,
                 shared.context_visible.get(),
             ));
+        ribbon = ribbon.file_tab(FileTab::new("file", "File"));
         if shared.duplicate_key.get() {
             ribbon = ribbon.tab(RibbonTab::new("home", "Home again", |_tab| {}));
         }
         let response = ribbon.show(ui, &mut state);
+        let file_clicks = response
+            .events
+            .iter()
+            .filter(|event| event.key == "file" && event.kind == RibbonEventKind::Clicked)
+            .count();
+        shared
+            .file_clicks
+            .set(shared.file_clicks.get() + file_clicks as u32);
         shared.conflicts.replace(response.conflicts);
         if response.tab_changed.is_some() {
             shared.tab_changed.set(response.tab_changed);
@@ -232,4 +246,37 @@ fn ribbon_state_defaults_to_expanded_first_tab() {
     assert_eq!(state.display, RibbonDisplay::Expanded);
     assert_eq!(state.active, None);
     assert!(!state.pinned);
+}
+
+#[test]
+fn file_tab_click_reports_clicked_and_enter_activates() {
+    let shared = shared();
+    let mut harness = ribbon_harness(shared);
+    harness.get_by_role_and_label(Role::Button, "File").click();
+    harness.run();
+    assert_eq!(shared.file_clicks.get(), 1);
+
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(shared.file_clicks.get(), 2);
+}
+
+#[test]
+fn contextual_header_shows_only_while_the_set_is_visible() {
+    let shared = shared();
+    let mut harness = ribbon_harness(shared);
+    assert!(!header_shown(&harness, "Table tools"));
+
+    shared.context_visible.set(true);
+    harness.run();
+    assert!(header_shown(&harness, "Table tools"));
+}
+
+/// Whether the contextual header with `text` is in the accessibility tree. A header is a
+/// `Label` node, which keeps its text in `value`.
+fn header_shown(harness: &Harness<'static>, text: &str) -> bool {
+    harness
+        .query_all(egui_kittest::kittest::by().role(Role::Label).value(text))
+        .next()
+        .is_some()
 }
