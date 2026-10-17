@@ -24,4 +24,9 @@ Bundled:
 Source provenance
 
 Code adapted from other projects is listed here and in upstream.toml ([[adaptation]]), with the
-upstream repository, path, revision and copyright holder. None yet.
+upstream repository, path, revision and copyright holder.
+
+- craft-libs (storytold/craft-libs, MIT OR Apache-2.0): `crates/ui/src/layout/geometry.rs` and
+  `resize.rs` @ 457a078809690994b22debdffb703ff36d3129df, adapted into
+  `crates/fluent2-egui/src/data/split_view.rs`. Copyright (c) 2026 ArtCraft Team and the
+  craft-libs contributors. The licence text is in the upstream repository.

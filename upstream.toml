@@ -94,9 +94,9 @@ branch = "main"
 rev = "457a078809690994b22debdffb703ff36d3129df"
 reviewed = "2026-10-14"
 licence = "MIT OR Apache-2.0"
-role = "reference"
+role = "adapted"
 watch = ["crates/ui", "docs/ui-components-audit.md", "docs/theme-infrastructure.md", "docs/ui-docking.md"]
-notes = "craft-ui: toolbar fitting, split/resize geometry, docking model, accessible tabs. Candidate for adaptation (becomes role=adapted when we copy code). Never copy docs/brand or use the ArtCraft name."
+notes = "craft-ui: split/resize geometry adapted into data/split_view.rs (WI-1585). Toolbar fitting, docking model and accessible tabs stay candidates. Never copy docs/brand or use the ArtCraft name."
 
 [[source]]
 name = "wordcraft"
@@ -159,3 +159,17 @@ notes = "Our own gpui library (parked 2026-10-14). Component inventory and API s
 # path     = "crates/ui-egui/src/keytips.rs"
 # rev      = "<full sha the code was taken at>"
 # notes    = "state machine only; rendering rewritten"
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/src/data/split_view.rs"
+source   = "craft-libs"
+path     = "crates/ui/src/layout/geometry.rs"
+rev      = "457a078809690994b22debdffb703ff36d3129df"
+notes    = "SplitAxis, SplitSize, split_rect and SplitLayout::resized; clamp_first takes two minima; serde derives behind the serde feature; SplitLayout is pub(crate)."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/src/data/split_view.rs"
+source   = "craft-libs"
+path     = "crates/ui/src/layout/resize.rs"
+rev      = "457a078809690994b22debdffb703ff36d3129df"
+notes    = "ResizeHandle is pub(crate) with a String label and a caller Id; theme colours; Shift scales arrow steps by 10. Pointer, focus and AccessKit behaviour kept."
