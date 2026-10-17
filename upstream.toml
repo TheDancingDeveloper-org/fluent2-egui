@@ -63,7 +63,18 @@ reviewed = "2026-10-14"
 licence = "OFL-1.1"
 role = "reference"
 watch = ["fonts", "LICENSE.txt"]
-notes = "Open Segoe UI fallback for non-Windows platforms. Not bundled yet; becomes role=generated if we ship it."
+notes = "Metric-compatible Segoe UI fallback. Considered for WI-1588 and not chosen: Inter is the bundled fallback. Stays reference."
+
+[[source]]
+name = "inter"
+repo = "rsms/inter"
+branch = "main"
+rev = "e3a3d4c57d5ecc01453a575621882a384c1995a3"
+reviewed = "2026-10-17"
+licence = "OFL-1.1"
+role = "generated"
+watch = ["extras/ttf/Inter-Regular.ttf", "extras/ttf/Inter-SemiBold.ttf", "LICENSE.txt"]
+notes = "Source of the bundled UI fallback (crates/fluent2-egui/fonts): static Regular and SemiBold copied from the v4.1 release (tag v4.1), no edits. Re-bump by copying the new files and reviewing the OFL text."
 
 [[source]]
 name = "winui-gallery"

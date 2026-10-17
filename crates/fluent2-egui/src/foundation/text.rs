@@ -4,9 +4,11 @@
 //! no line-height field, so each step's line height is recorded beside its size for callers that
 //! lay text out themselves.
 //!
-//! No font file ships with this crate. On Windows the system UI face is read from the OS at
-//! runtime; everywhere else egui's own defaults stay in place. A font file that cannot be read
-//! is skipped and logged at debug.
+//! Fonts, in order of preference: on Windows the system UI face is read from the OS at runtime
+//! (Segoe UI, never shipped). Everywhere else, and on Windows without Segoe UI, the bundled Inter
+//! Regular and SemiBold faces are used (OFL-1.1, see `fonts/`; cargo feature `bundled-font`).
+//! With that feature off, egui's own defaults stay in place. A font file that cannot be read is
+//! skipped and logged at debug.
 
 use egui::{FontDefinitions, FontFamily, FontId, RichText, TextStyle};
 
@@ -179,39 +181,73 @@ pub fn install_text_styles(ctx: &egui::Context) {
     });
 }
 
-/// Load the OS UI font and register the `fluent2-semibold` family.
+/// Load the UI font and register the `fluent2-semibold` family.
 ///
 /// On Windows this tries `%WINDIR%\Fonts\SegUIVar.ttf` first (Segoe UI Variable, used for both
-/// the regular and the semibold family), then `segoeui.ttf` with `seguisb.ttf`. Any file that
-/// cannot be read is skipped and egui's defaults remain. Linux, macOS and wasm keep egui's
-/// defaults; the open fallback face is a later decision.
+/// the regular and the semibold family), then `segoeui.ttf` with `seguisb.ttf`. When neither is
+/// readable, and on every other platform, the bundled Inter faces are used if the
+/// `bundled-font` feature is on. Otherwise egui's defaults remain.
 ///
 /// Calling this twice does not add the font a second time: a face already present under the
 /// same name is left as it is.
 pub fn install_system_fonts(ctx: &egui::Context) {
     #[cfg(all(target_os = "windows", not(target_arch = "wasm32")))]
-    if let Some(faces) = windows_faces() {
-        install_windows_faces(ctx, faces);
+    let os_faces = windows_faces();
+    #[cfg(not(all(target_os = "windows", not(target_arch = "wasm32"))))]
+    let os_faces: Option<Vec<Face>> = None;
+
+    if let Some(faces) = os_faces.or_else(bundled_faces) {
+        install_faces(ctx, faces);
         return;
     }
 
-    // No OS face. The semibold family still has to resolve, so point it at whatever egui
-    // already uses for proportional text. Fonts exist only after the first pass, so a call
+    // No face to install. The semibold family still has to resolve, so point it at whatever
+    // egui already uses for proportional text. Fonts exist only after the first pass, so a call
     // before that queues the fallback and a later call sees it already registered.
     install_semibold_fallback(ctx);
 }
 
-/// A face read from the OS, ready to go first in a family.
-#[cfg(all(target_os = "windows", not(target_arch = "wasm32")))]
-struct SystemFace {
+/// A face ready to go first in a family.
+struct Face {
     name: String,
     family: FontFamily,
-    bytes: Vec<u8>,
+    data: egui::FontData,
+}
+
+/// Regular and SemiBold Inter (OFL-1.1). Static faces, so the semibold step draws a real weight;
+/// egui cannot select a weight on a variable font.
+#[cfg(feature = "bundled-font")]
+const INTER_REGULAR: &[u8] = include_bytes!("../../fonts/Inter-Regular.ttf");
+#[cfg(feature = "bundled-font")]
+const INTER_SEMIBOLD: &[u8] = include_bytes!("../../fonts/Inter-SemiBold.ttf");
+
+/// The bundled Inter faces: `Inter` for the proportional family, `Inter SemiBold` for the
+/// semibold family.
+#[cfg(feature = "bundled-font")]
+fn bundled_faces() -> Option<Vec<Face>> {
+    Some(vec![
+        Face {
+            name: "Inter".to_owned(),
+            family: FontFamily::Proportional,
+            data: egui::FontData::from_static(INTER_REGULAR),
+        },
+        Face {
+            name: "Inter SemiBold".to_owned(),
+            family: FontFamily::Name(SEMIBOLD_FAMILY.into()),
+            data: egui::FontData::from_static(INTER_SEMIBOLD),
+        },
+    ])
+}
+
+/// Without the `bundled-font` feature there is nothing to install.
+#[cfg(not(feature = "bundled-font"))]
+fn bundled_faces() -> Option<Vec<Face>> {
+    None
 }
 
 /// Segoe UI Variable if present, otherwise Segoe UI regular plus its semibold face.
 #[cfg(all(target_os = "windows", not(target_arch = "wasm32")))]
-fn windows_faces() -> Option<Vec<SystemFace>> {
+fn windows_faces() -> Option<Vec<Face>> {
     let Some(dir) = std::env::var_os("WINDIR").map(std::path::PathBuf::from) else {
         log::debug!("fluent2-egui: WINDIR is unset; keeping egui's default fonts");
         return None;
@@ -222,37 +258,37 @@ fn windows_faces() -> Option<Vec<SystemFace>> {
         // One variable face for both families. The item uses it as both regular and semibold;
         // egui has no per-style weight axis, so both families point at the same bytes.
         return Some(vec![
-            SystemFace {
+            Face {
                 name: "Segoe UI Variable".to_owned(),
                 family: FontFamily::Proportional,
-                bytes: bytes.clone(),
+                data: egui::FontData::from_owned(bytes.clone()),
             },
-            SystemFace {
+            Face {
                 name: "Segoe UI Variable Semibold".to_owned(),
                 family: FontFamily::Name(SEMIBOLD_FAMILY.into()),
-                bytes,
+                data: egui::FontData::from_owned(bytes),
             },
         ]);
     }
 
     let regular = read_font(&fonts.join("segoeui.ttf"))?;
-    let mut faces = vec![SystemFace {
+    let mut faces = vec![Face {
         name: "Segoe UI".to_owned(),
         family: FontFamily::Proportional,
-        bytes: regular,
+        data: egui::FontData::from_owned(regular.clone()),
     }];
     if let Some(semibold) = read_font(&fonts.join("seguisb.ttf")) {
-        faces.push(SystemFace {
+        faces.push(Face {
             name: "Segoe UI Semibold".to_owned(),
             family: FontFamily::Name(SEMIBOLD_FAMILY.into()),
-            bytes: semibold,
+            data: egui::FontData::from_owned(semibold),
         });
     } else {
         // Regular face also fills the semibold family so every ramp step still resolves.
-        faces.push(SystemFace {
+        faces.push(Face {
             name: "Segoe UI".to_owned(),
             family: FontFamily::Name(SEMIBOLD_FAMILY.into()),
-            bytes: faces[0].bytes.clone(),
+            data: egui::FontData::from_owned(regular),
         });
     }
     Some(faces)
@@ -272,25 +308,23 @@ fn read_font(path: &std::path::Path) -> Option<Vec<u8>> {
     }
 }
 
-/// Insert the Windows faces first in their families, then replace the font definitions.
+/// Insert the faces first in their families, then replace the font definitions.
 ///
 /// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an
 /// equal definition, and [`egui::Context::add_font`] skips a name it already has.
-#[cfg(all(target_os = "windows", not(target_arch = "wasm32")))]
-fn install_windows_faces(ctx: &egui::Context, faces: Vec<SystemFace>) {
+fn install_faces(ctx: &egui::Context, faces: Vec<Face>) {
     let mut fonts = FontDefinitions::default();
     for face in faces {
         insert_first(&mut fonts, &face.family, face.name.clone());
         fonts
             .font_data
             .entry(face.name)
-            .or_insert_with(|| std::sync::Arc::new(egui::FontData::from_owned(face.bytes)));
+            .or_insert_with(|| std::sync::Arc::new(face.data));
     }
     ctx.set_fonts(fonts);
 }
 
 /// Put `name` first in `family`, leaving the existing fallbacks after it.
-#[cfg(all(target_os = "windows", not(target_arch = "wasm32")))]
 fn insert_first(fonts: &mut FontDefinitions, family: &FontFamily, name: String) {
     let list = fonts.families.entry(family.clone()).or_default();
     if !list.contains(&name) {
@@ -312,7 +346,7 @@ fn install_semibold_fallback(ctx: &egui::Context) {
 /// The definition [`install_semibold_fallback`] installs.
 ///
 /// `None` when egui was built without `default_fonts` and so has no proportional face to alias.
-/// The semibold family then stays unresolved until a later item supplies an open fallback face.
+/// The semibold family then stays unresolved.
 fn semibold_fallback_definitions() -> Option<FontDefinitions> {
     let mut fonts = FontDefinitions::default();
     let name = fonts
@@ -416,5 +450,51 @@ mod tests {
         assert_no_duplicate_names(&after_once);
         assert_no_duplicate_names(&after_twice);
         assert_eq!(after_once, after_twice);
+    }
+
+    #[cfg(all(feature = "bundled-font", not(target_os = "windows")))]
+    #[test]
+    fn bundled_inter_leads_both_families() {
+        let ctx = egui::Context::default();
+        let _ = family_names(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
+        let families = family_names(&ctx);
+        let first = |family: &FontFamily| {
+            families
+                .iter()
+                .find(|(f, _)| f == family)
+                .and_then(|(_, names)| names.first().cloned())
+        };
+        assert_eq!(
+            first(&FontFamily::Proportional).as_deref(),
+            Some("Inter"),
+            "regular text should use Inter"
+        );
+        assert_eq!(
+            first(&FontFamily::Name(SEMIBOLD_FAMILY.into())).as_deref(),
+            Some("Inter SemiBold"),
+            "semibold steps should use the static SemiBold face"
+        );
+    }
+
+    #[cfg(all(feature = "bundled-font", not(target_os = "windows")))]
+    #[test]
+    fn bundled_faces_are_truetype_and_registered_once() {
+        // TrueType outline magic. A wrong or truncated file fails here, not at first paint.
+        assert_eq!(&INTER_REGULAR[..4], &[0x00, 0x01, 0x00, 0x00]);
+        assert_eq!(&INTER_SEMIBOLD[..4], &[0x00, 0x01, 0x00, 0x00]);
+
+        let ctx = egui::Context::default();
+        let _ = family_names(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
+        crate::install(&ctx, &crate::Theme::default());
+        let families = family_names(&ctx);
+        assert_no_duplicate_names(&families);
+        let inter_entries = families
+            .iter()
+            .flat_map(|(_, names)| names.iter())
+            .filter(|name| name.as_str() == "Inter")
+            .count();
+        assert_eq!(inter_entries, 1, "Inter should appear once in Proportional");
     }
 }

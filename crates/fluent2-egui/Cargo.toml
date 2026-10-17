@@ -19,7 +19,11 @@ fluent2-icons = { workspace = true }
 serde = { version = "1", optional = true, features = ["derive"] }
 
 [features]
-default = []
+default = ["bundled-font"]
+# Inter Regular and SemiBold (OFL-1.1, `fonts/`) as the UI font wherever the OS has no Segoe UI:
+# every non-Windows target, and Windows without Segoe UI. Adds about 830 KB. Turn it off with
+# `default-features = false` to keep egui's default face instead.
+bundled-font = []
 # Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
 serde = ["dep:serde"]
 # OS accent, high contrast, reduced motion and colour scheme. Off by default so wasm and
