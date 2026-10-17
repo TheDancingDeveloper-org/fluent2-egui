@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- Quick Access Toolbar (`office::qat`): icon-only commands with tooltips, a customise menu to show, hide and reorder items and pick the position, and `QatState` owned by the app with `QatState::apply` (WI-1561).
 - DataGrid core (`fluent2_egui::data::DataGrid`): columns with fixed, auto and fraction widths clamped to min and max, a virtualised body that calls the cell closure only for visible rows, and a sticky header. `Theme::data` holds the data-view sizes (`DataMetrics`); the optional `serde` feature makes `DataGridState` serialisable (WI-1581).
 - Data views spec (`docs/specs/data-views.md`): DataGrid, TreeView, List, NavigationView, SplitView and the docking decision (WI-1580).
 - `StatusBar` (bottom strip with left and right slots and a zoom slider) and `CommandBar` (priority overflow into a `More` menu), with `Theme::chrome` holding the office chrome sizes (WI-1569).
