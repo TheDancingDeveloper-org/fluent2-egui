@@ -1084,6 +1084,8 @@ dependencies = [
  "fluent2-icons",
  "fluent2-tokens",
  "log",
+ "windows",
+ "zbus",
 ]
 
 [[package]]
