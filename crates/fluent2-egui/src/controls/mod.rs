@@ -1,7 +1,7 @@
 //! Fluent controls. One file per control; see `docs/ARCHITECTURE.md`.
 
 mod badge;
-mod button;
+pub(crate) mod button;
 mod checkbox;
 mod combobox;
 mod compound_button;
