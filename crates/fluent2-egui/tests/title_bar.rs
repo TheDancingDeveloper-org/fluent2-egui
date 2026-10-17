@@ -7,7 +7,7 @@ use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use fluent2_egui::office::{TitleBar, WindowAction, window_command};
-use fluent2_egui::{IconName, Theme, install};
+use fluent2_egui::{Icon, IconName, Theme, install};
 
 /// Harness state a test reads back. Each test owns its own cells.
 struct Probe {
@@ -31,7 +31,7 @@ fn title_bar_harness(probe: &'static Probe, maximized: bool, focused: Option<boo
             .maximized(maximized)
             .focused(focused)
             .show(ui, |slots| {
-                slots.app_icon(IconName::Document);
+                slots.app_icon(Icon::new(IconName::Document));
                 slots.left(|ui| {
                     ui.label("Left slot");
                 });
