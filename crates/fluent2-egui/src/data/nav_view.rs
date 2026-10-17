@@ -297,6 +297,7 @@ impl NavigationView {
                 rail,
                 hamburger_open,
                 scope: "pane",
+                interactive: true,
                 selected: state.selected.as_deref(),
                 focus,
             };
@@ -328,18 +329,37 @@ impl NavigationView {
             .scope_builder(UiBuilder::new().max_rect(content_rect), content)
             .inner;
 
-        if overlay_open && mode != PaneMode::Expanded {
-            let overlay_rect = Rect::from_min_size(full.min, Vec2::new(expanded_w, full.height()));
+        // The overlay slides in and out (§7.2). Motion snaps under reduced motion.
+        let overlay_w = expanded_w;
+        let slide = if mode == PaneMode::Expanded {
+            0.0
+        } else {
+            let target = if overlay_open { 0.0 } else { -overlay_w };
+            motion::animate(
+                ui.ctx(),
+                id.with("overlay_slide"),
+                target,
+                Duration::Normal,
+                Curve::DecelerateMid,
+            )
+        };
+        let overlay_visible = mode != PaneMode::Expanded && (overlay_open || slide > -overlay_w + 0.5);
+        if overlay_visible {
+            let overlay_rect = Rect::from_min_size(
+                Pos2::new(full.min.x + slide, full.min.y),
+                Vec2::new(overlay_w, full.height()),
+            );
             let look = PaneLook {
                 rail: false,
                 hamburger_open: true,
                 scope: "overlay",
+                interactive: overlay_open,
                 selected: state.selected.as_deref(),
                 focus: focus_out,
             };
             let out = Area::new(id.with("overlay"))
                 .order(Order::Foreground)
-                .fixed_pos(full.min)
+                .fixed_pos(overlay_rect.min)
                 .show(ui.ctx(), |ui| {
                     paint_shadow(
                         ui.painter(),
@@ -351,23 +371,25 @@ impl NavigationView {
                     self.draw_pane(ui, overlay_rect, &theme, &plan, look)
                 })
                 .inner;
-            if out.hamburger_clicked {
-                pane_toggled = true;
-                overlay_next = false;
-            }
-            if out.selected.is_some() {
-                selected = out.selected;
-                overlay_next = false;
-            }
-            focus_out = out.focus;
-            let (escape, outside) = ui.input(|input| {
-                let pointer = input.pointer.interact_pos();
-                let outside = input.pointer.any_click()
-                    && pointer.is_some_and(|p| !overlay_rect.contains(p) && !anchor.contains(p));
-                (input.key_pressed(Key::Escape), outside)
-            });
-            if escape || outside {
-                overlay_next = false;
+            if overlay_open {
+                if out.hamburger_clicked {
+                    pane_toggled = true;
+                    overlay_next = false;
+                }
+                if out.selected.is_some() {
+                    selected = out.selected;
+                    overlay_next = false;
+                }
+                focus_out = out.focus;
+                let (escape, outside) = ui.input(|input| {
+                    let pointer = input.pointer.interact_pos();
+                    let outside = input.pointer.any_click()
+                        && pointer.is_some_and(|p| !overlay_rect.contains(p) && !anchor.contains(p));
+                    (input.key_pressed(Key::Escape), outside)
+                });
+                if escape || outside {
+                    overlay_next = false;
+                }
             }
         }
 
@@ -485,7 +507,12 @@ impl NavigationView {
             y += h;
         }
 
-        let pane = ui.interact(rect, id, Sense::click());
+        let sense = if look.interactive {
+            Sense::click()
+        } else {
+            Sense::hover()
+        };
+        let pane = ui.interact(rect, id, sense);
         let pointer = pane.interact_pointer_pos();
         let mut nav_rects = vec![Rect::NOTHING; plan.nav.len()];
         for &(slot, row) in &rows {
@@ -539,140 +566,152 @@ impl NavigationView {
                 .iter()
                 .position(|&entry| matches!(&self.entries[entry], Entry::Item(item) if item.key == key))
         });
-        for &(slot, row) in &rows {
-            match slot {
-                Slot::Item { entry, nav } => {
-                    let Entry::Item(item) = &self.entries[entry] else {
-                        continue;
-                    };
-                    let rect = nav_rects[nav];
-                    let hovered = ui.rect_contains_pointer(rect);
-                    let pressed = hovered && pane.is_pointer_button_down_on();
-                    let is_selected = selected_key == Some(item.key);
-                    let fill = if pressed {
-                        Some(c(theme.color.neutral_background_4_pressed))
-                    } else if hovered {
-                        Some(c(theme.color.neutral_background_4_hover))
-                    } else {
-                        None
-                    };
-                    if let Some(fill) = fill {
-                        ui.painter()
-                            .rect_filled(rect, CornerRadius::same(border_radius::MEDIUM as u8), fill);
-                    }
-                    let text_color = if is_selected {
-                        c(theme.color.neutral_foreground_2_brand_selected)
-                    } else {
-                        c(theme.color.neutral_foreground_2)
-                    };
-                    let icon_rect = if look.rail {
-                        Rect::from_center_size(rect.center(), Vec2::splat(ICON_SIZE))
-                    } else {
-                        Rect::from_min_size(
-                            Pos2::new(
-                                rect.min.x + spacing_horizontal::M_NUDGE,
-                                rect.center().y - ICON_SIZE / 2.0,
-                            ),
-                            Vec2::splat(ICON_SIZE),
-                        )
-                    };
-                    paint_icon(
-                        ui,
-                        icon_rect,
-                        item.icon,
-                        IconSize::S20,
-                        IconStyle::Regular,
-                        Some(text_color),
-                    );
-                    if !look.rail {
-                        let ramp = if is_selected {
-                            TypeRamp::Body1Strong
-                        } else {
-                            TypeRamp::Body1
+        let list_rect = Rect::from_min_max(Pos2::new(rect.min.x, hamburger_row.max.y), rect.max);
+        let list_id = id.with("list");
+        let item_count = plan.nav.len();
+        ui.scope_builder(UiBuilder::new().id(list_id).max_rect(list_rect), |ui| {
+            ui.interact(list_rect, list_id, Sense::hover())
+                .widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Navigation items"));
+            ui.ctx().accesskit_node_builder(list_id, |node| {
+                node.set_role(accesskit::Role::TabList);
+                node.set_orientation(accesskit::Orientation::Vertical);
+            });
+            for &(slot, row) in &rows {
+                match slot {
+                    Slot::Item { entry, nav } => {
+                        let Entry::Item(item) = &self.entries[entry] else {
+                            continue;
                         };
-                        let x = icon_rect.max.x + spacing_horizontal::M;
-                        let galley = WidgetText::from(item.label.as_str()).into_galley(
+                        let rect = nav_rects[nav];
+                        let hovered = ui.rect_contains_pointer(rect);
+                        let pressed = hovered && pane.is_pointer_button_down_on();
+                        let is_selected = selected_key == Some(item.key);
+                        let fill = if pressed {
+                            Some(c(theme.color.neutral_background_4_pressed))
+                        } else if hovered {
+                            Some(c(theme.color.neutral_background_4_hover))
+                        } else {
+                            None
+                        };
+                        if let Some(fill) = fill {
+                            ui.painter().rect_filled(
+                                rect,
+                                CornerRadius::same(border_radius::MEDIUM as u8),
+                                fill,
+                            );
+                        }
+                        let text_color = if is_selected {
+                            c(theme.color.neutral_foreground_2_brand_selected)
+                        } else {
+                            c(theme.color.neutral_foreground_2)
+                        };
+                        let icon_rect = if look.rail {
+                            Rect::from_center_size(rect.center(), Vec2::splat(ICON_SIZE))
+                        } else {
+                            Rect::from_min_size(
+                                Pos2::new(
+                                    rect.min.x + spacing_horizontal::M_NUDGE,
+                                    rect.center().y - ICON_SIZE / 2.0,
+                                ),
+                                Vec2::splat(ICON_SIZE),
+                            )
+                        };
+                        paint_icon(
+                            ui,
+                            icon_rect,
+                            item.icon,
+                            IconSize::S20,
+                            IconStyle::Regular,
+                            Some(text_color),
+                        );
+                        if !look.rail {
+                            let ramp = if is_selected {
+                                TypeRamp::Body1Strong
+                            } else {
+                                TypeRamp::Body1
+                            };
+                            let x = icon_rect.max.x + spacing_horizontal::M;
+                            let galley = WidgetText::from(item.label.as_str()).into_galley(
+                                ui,
+                                Some(TextWrapMode::Truncate),
+                                (rect.max.x - x - spacing_horizontal::S).max(0.0),
+                                TextStyle::Name(ramp.name().into()),
+                            );
+                            let pos = Pos2::new(x, rect.center().y - galley.size().y / 2.0);
+                            ui.painter().galley(pos, galley, text_color);
+                        } else if hovered {
+                            ui.interact(rect, id.with(("tip", nav)), Sense::hover())
+                                .fluent_tooltip(item.label.as_str());
+                        }
+                        if selected_nav == Some(nav) {
+                            let y = motion::animate(
+                                ui.ctx(),
+                                id.with("indicator_y"),
+                                rect.min.y,
+                                Duration::Normal,
+                                Curve::DecelerateMax,
+                            );
+                            let h = motion::animate(
+                                ui.ctx(),
+                                id.with("indicator_h"),
+                                rect.height(),
+                                Duration::Normal,
+                                Curve::DecelerateMax,
+                            );
+                            let bar = Rect::from_min_size(
+                                Pos2::new(rect.min.x, y),
+                                Vec2::new(stroke_width::THICKER, h),
+                            );
+                            paint_indicator(ui, bar, theme);
+                        }
+                        // A hover-only widget gives the item its accessibility bounds; the pane
+                        // still takes the click.
+                        let item_id = id.with(("item", nav));
+                        let label = item.label.clone();
+                        ui.interact(rect, item_id, Sense::hover()).widget_info(|| {
+                            WidgetInfo::labeled(WidgetType::SelectableLabel, true, label.as_str())
+                        });
+                        ui.ctx().accesskit_node_builder(item_id, |node| {
+                            node.set_role(accesskit::Role::Tab);
+                            node.set_label(label);
+                            node.set_selected(is_selected);
+                            node.set_position_in_set(nav + 1);
+                            node.set_size_of_set(item_count);
+                        });
+                    }
+                    Slot::Section(entry) => {
+                        if look.rail {
+                            paint_divider(ui, row, theme);
+                            continue;
+                        }
+                        let Entry::Section(label) = &self.entries[entry] else {
+                            continue;
+                        };
+                        let galley = WidgetText::from(label.as_str()).into_galley(
                             ui,
                             Some(TextWrapMode::Truncate),
-                            (rect.max.x - x - spacing_horizontal::S).max(0.0),
-                            TextStyle::Name(ramp.name().into()),
+                            (row.width() - 2.0 * spacing_horizontal::M_NUDGE).max(0.0),
+                            TextStyle::Name(TypeRamp::Caption1.name().into()),
                         );
-                        let pos = Pos2::new(x, rect.center().y - galley.size().y / 2.0);
-                        ui.painter().galley(pos, galley, text_color);
-                    } else if hovered {
-                        ui.interact(rect, id.with(("tip", nav)), Sense::hover())
-                            .fluent_tooltip(item.label.as_str());
+                        let pos = Pos2::new(
+                            row.min.x + spacing_horizontal::M_NUDGE,
+                            row.min.y + spacing_vertical::S,
+                        );
+                        ui.painter()
+                            .galley(pos, galley, c(theme.color.neutral_foreground_3));
+                        let section_id = id.with(("section", entry));
+                        ui.interact(row, section_id, Sense::hover())
+                            .widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.as_str()));
+                        ui.ctx().accesskit_node_builder(section_id, |node| {
+                            node.set_role(accesskit::Role::Heading);
+                            node.set_level(2);
+                            node.set_label(label.as_str());
+                        });
                     }
-                    if selected_nav == Some(nav) {
-                        let y = motion::animate(
-                            ui.ctx(),
-                            id.with("indicator_y"),
-                            rect.min.y,
-                            Duration::Normal,
-                            Curve::DecelerateMax,
-                        );
-                        let h = motion::animate(
-                            ui.ctx(),
-                            id.with("indicator_h"),
-                            rect.height(),
-                            Duration::Normal,
-                            Curve::DecelerateMax,
-                        );
-                        let bar = Rect::from_min_size(
-                            Pos2::new(rect.min.x, y),
-                            Vec2::new(stroke_width::THICKER, h),
-                        );
-                        paint_indicator(ui, bar, theme);
-                    }
-                    // A hover-only widget gives the item its accessibility bounds; the pane
-                    // still takes the click.
-                    let item_id = id.with(("item", nav));
-                    let label = item.label.clone();
-                    ui.interact(rect, item_id, Sense::hover()).widget_info(|| {
-                        WidgetInfo::labeled(WidgetType::SelectableLabel, true, label.as_str())
-                    });
-                    ui.ctx().accesskit_node_builder(item_id, |node| {
-                        node.set_role(accesskit::Role::Tab);
-                        node.set_label(label);
-                        node.set_selected(is_selected);
-                    });
-                }
-                Slot::Section(entry) => {
-                    if look.rail {
-                        continue;
-                    }
-                    let Entry::Section(label) = &self.entries[entry] else {
-                        continue;
-                    };
-                    let galley = WidgetText::from(label.as_str()).into_galley(
-                        ui,
-                        Some(TextWrapMode::Truncate),
-                        (row.width() - 2.0 * spacing_horizontal::M_NUDGE).max(0.0),
-                        TextStyle::Name(TypeRamp::Caption1.name().into()),
-                    );
-                    let pos = Pos2::new(
-                        row.min.x + spacing_horizontal::M_NUDGE,
-                        row.min.y + spacing_vertical::S,
-                    );
-                    ui.painter()
-                        .galley(pos, galley, c(theme.color.neutral_foreground_3));
-                    let section_id = id.with(("section", entry));
-                    ui.interact(row, section_id, Sense::hover())
-                        .widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.as_str()));
-                    ui.ctx()
-                        .accesskit_node_builder(section_id, |node| node.set_role(accesskit::Role::Heading));
-                }
-                Slot::Divider => {
-                    let y = row.center().y;
-                    let line = Rect::from_min_max(
-                        Pos2::new(row.min.x + spacing_horizontal::S, y),
-                        Pos2::new(row.max.x - spacing_horizontal::S, y + stroke_width::THIN),
-                    );
-                    ui.painter()
-                        .rect_filled(line, CornerRadius::ZERO, c(theme.color.neutral_stroke_2));
+                    Slot::Divider => paint_divider(ui, row, theme),
                 }
             }
-        }
+        });
 
         if focus::focus_visible(ui, &pane)
             && let Some(&rect) = nav_rects.get(focus)
@@ -717,6 +756,17 @@ impl NavigationView {
     }
 }
 
+/// A 1 pt divider line across the middle of `row`.
+fn paint_divider(ui: &Ui, row: Rect, theme: &Theme) {
+    let y = row.center().y;
+    let line = Rect::from_min_max(
+        Pos2::new(row.min.x + spacing_horizontal::S, y),
+        Pos2::new(row.max.x - spacing_horizontal::S, y + stroke_width::THIN),
+    );
+    ui.painter()
+        .rect_filled(line, CornerRadius::ZERO, c(theme.color.neutral_stroke_2));
+}
+
 /// How one pane is drawn this frame.
 #[derive(Clone, Copy)]
 struct PaneLook<'a> {
@@ -726,6 +776,8 @@ struct PaneLook<'a> {
     hamburger_open: bool,
     /// Keeps ids of the pane and the overlay apart.
     scope: &'static str,
+    /// `false` while the overlay slides out: it is drawn but takes no input.
+    interactive: bool,
     /// Key of the selected item.
     selected: Option<&'a str>,
     /// Navigation position that keyboard focus is on.
