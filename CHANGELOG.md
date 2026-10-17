@@ -19,6 +19,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Ribbon tab strip: `office::ribbon::Ribbon` with the File tab, content and contextual tabs (with headers), double-click and Ctrl+F1 collapse, and the peek popup. Groups are not built yet (WI-1562).
 - Backstage: full-window File view with a navigation column, page closures, Escape and back-arrow close, and focus return to the opener (`office::backstage`, WI-1568).
 - Gallery Backstage page: a File button opens the backstage with Home, New, Open, Info and Options placeholder pages (WI-1568).
+- `MessageBar` (Info, Success, Warning and Error, with title, actions and dismiss) and the `Toaster` toast host (WI-1553).
 - GitHub Pages workflow: the wasm gallery is built with trunk and deployed on push to main (WI-1540).
 - Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).
 - `fluent2_egui::platform`: OS accent, high contrast, reduced motion and colour scheme behind the `system-preferences` feature (Windows and the Linux desktop portal; unknown elsewhere, including wasm). `theme_from_system` picks light, dark or high contrast and sets reduced motion (WI-1541).
