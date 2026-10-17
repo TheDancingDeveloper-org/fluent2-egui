@@ -29,6 +29,77 @@ pub struct Theme {
     pub shadow: Shadows,
     /// Brand ramp the theme was built with.
     pub brand: BrandRamp,
+    /// Office chrome sizes. These are not Fluent tokens, so they are the same for every kind.
+    pub chrome: ChromeMetrics,
+}
+
+/// Sizes of the Office chrome, in points. Fixed by `docs/specs/office-chrome.md` §10 (D2).
+///
+/// ```
+/// let metrics = fluent2_egui::theme::ChromeMetrics::default();
+/// assert_eq!(metrics.title_bar_height, 32.0);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChromeMetrics {
+    /// Title bar height with no QAT and no search box.
+    pub title_bar_height: f32,
+    /// Title bar height with a QAT or a search box.
+    pub title_bar_height_extended: f32,
+    /// Width of one caption button.
+    pub caption_button_width: f32,
+    /// Height of one caption button.
+    pub caption_button_height: f32,
+    /// Thickness of the resize zone along each window edge (§2). The top of the title bar
+    /// belongs to this zone, not to the drag region.
+    pub resize_zone: f32,
+    /// Height of the ribbon tab strip.
+    pub tab_strip_height: f32,
+    /// Height of the ribbon body, including group labels.
+    pub ribbon_body_height: f32,
+    /// Gap between ribbon groups.
+    pub group_separator: f32,
+    /// Gap between CommandBar items.
+    pub command_bar_gap: f32,
+    /// Hysteresis band used when scaling the ribbon and CommandBar (§5.3).
+    pub hysteresis: f32,
+    /// Height of the status bar.
+    pub status_bar_height: f32,
+    /// Width of the Backstage navigation column.
+    pub backstage_nav_width: f32,
+    /// Side of a KeyTip badge for one letter.
+    pub keytip_badge: f32,
+    /// Small icon size.
+    pub icon_small: f32,
+    /// Large icon size.
+    pub icon_large: f32,
+    /// Maximum width of a large ribbon button label.
+    pub large_label_max: f32,
+    /// Side of a collapsed ribbon button.
+    pub collapsed_button: f32,
+}
+
+impl Default for ChromeMetrics {
+    fn default() -> Self {
+        Self {
+            title_bar_height: 32.0,
+            title_bar_height_extended: 40.0,
+            caption_button_width: 46.0,
+            caption_button_height: 32.0,
+            resize_zone: 6.0,
+            tab_strip_height: 32.0,
+            ribbon_body_height: 96.0,
+            group_separator: 8.0,
+            command_bar_gap: 4.0,
+            hysteresis: 8.0,
+            status_bar_height: 24.0,
+            backstage_nav_width: 240.0,
+            keytip_badge: 16.0,
+            icon_small: 16.0,
+            icon_large: 32.0,
+            large_label_max: 72.0,
+            collapsed_button: 36.0,
+        }
+    }
 }
 
 impl Theme {
@@ -40,6 +111,7 @@ impl Theme {
             color: fluent2_tokens::light(&brand),
             shadow: fluent2_tokens::generated::web_light::SHADOWS,
             brand,
+            chrome: ChromeMetrics::default(),
         }
     }
 
@@ -51,6 +123,7 @@ impl Theme {
             color: fluent2_tokens::dark(&brand),
             shadow: fluent2_tokens::generated::web_dark::SHADOWS,
             brand,
+            chrome: ChromeMetrics::default(),
         }
     }
 
@@ -62,6 +135,7 @@ impl Theme {
             color: fluent2_tokens::high_contrast(),
             shadow: fluent2_tokens::generated::high_contrast::SHADOWS,
             brand: fluent2_tokens::FLUENT,
+            chrome: ChromeMetrics::default(),
         }
     }
 
