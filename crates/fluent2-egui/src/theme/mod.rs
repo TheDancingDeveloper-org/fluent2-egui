@@ -31,6 +31,9 @@ pub struct Theme {
     pub brand: BrandRamp,
     /// Office chrome sizes. These are not Fluent tokens, so they are the same for every kind.
     pub chrome: ChromeMetrics,
+    /// Data view sizes (DataGrid, TreeView, List, NavigationView). Not Fluent tokens, so they
+    /// are the same for every kind. See `docs/specs/data-views.md` §10 and D6.
+    pub data: DataMetrics,
 }
 
 /// Sizes of the Office chrome, in points. Fixed by `docs/specs/office-chrome.md` §10 (D2).
@@ -106,6 +109,62 @@ impl Default for ChromeMetrics {
     }
 }
 
+/// Sizes of the data views, in points. Fixed by `docs/specs/data-views.md` §10 (D6).
+///
+/// ```
+/// let metrics = fluent2_egui::theme::DataMetrics::default();
+/// assert_eq!(metrics.grid_row_height_medium, 44.0);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DataMetrics {
+    /// DataGrid row height at `DataGridSize::Medium`.
+    pub grid_row_height_medium: f32,
+    /// DataGrid row height at `DataGridSize::Small`.
+    pub grid_row_height_small: f32,
+    /// DataGrid row height at `DataGridSize::ExtraSmall`.
+    pub grid_row_height_extra_small: f32,
+    /// DataGrid header row height.
+    pub grid_header_height: f32,
+    /// Width of the selection checkbox column in Multi selection mode.
+    pub selection_cell_width: f32,
+    /// TreeView row height at Medium.
+    pub tree_row_height_medium: f32,
+    /// TreeView row height at Small.
+    pub tree_row_height_small: f32,
+    /// List row height.
+    pub list_row_height: f32,
+    /// NavigationView pane width when expanded.
+    pub nav_pane_width_expanded: f32,
+    /// NavigationView pane width when compact.
+    pub nav_pane_width_compact: f32,
+    /// Window width below which the NavigationView pane is compact (§7.2).
+    pub nav_breakpoint_expanded: f32,
+    /// Window width below which the NavigationView pane is an overlay (§7.2).
+    pub nav_breakpoint_compact: f32,
+    /// NavigationView item height.
+    pub nav_item_height: f32,
+}
+
+impl Default for DataMetrics {
+    fn default() -> Self {
+        Self {
+            grid_row_height_medium: 44.0,
+            grid_row_height_small: 34.0,
+            grid_row_height_extra_small: 24.0,
+            grid_header_height: 32.0,
+            selection_cell_width: 44.0,
+            tree_row_height_medium: 32.0,
+            tree_row_height_small: 24.0,
+            list_row_height: 32.0,
+            nav_pane_width_expanded: 260.0,
+            nav_pane_width_compact: 48.0,
+            nav_breakpoint_expanded: 1008.0,
+            nav_breakpoint_compact: 641.0,
+            nav_item_height: 40.0,
+        }
+    }
+}
+
 impl Theme {
     /// The light theme for a brand ramp.
     #[must_use]
@@ -116,6 +175,7 @@ impl Theme {
             shadow: fluent2_tokens::generated::web_light::SHADOWS,
             brand,
             chrome: ChromeMetrics::default(),
+            data: DataMetrics::default(),
         }
     }
 
@@ -128,6 +188,7 @@ impl Theme {
             shadow: fluent2_tokens::generated::web_dark::SHADOWS,
             brand,
             chrome: ChromeMetrics::default(),
+            data: DataMetrics::default(),
         }
     }
 
@@ -140,6 +201,7 @@ impl Theme {
             shadow: fluent2_tokens::generated::high_contrast::SHADOWS,
             brand: fluent2_tokens::FLUENT,
             chrome: ChromeMetrics::default(),
+            data: DataMetrics::default(),
         }
     }
 

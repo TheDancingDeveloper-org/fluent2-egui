@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- DataGrid core (`fluent2_egui::data::DataGrid`): columns with fixed, auto and fraction widths clamped to min and max, a virtualised body that calls the cell closure only for visible rows, and a sticky header. `Theme::data` holds the data-view sizes (`DataMetrics`); the optional `serde` feature makes `DataGridState` serialisable (WI-1581).
 - Data views spec (`docs/specs/data-views.md`): DataGrid, TreeView, List, NavigationView, SplitView and the docking decision (WI-1580).
 - GitHub Pages workflow: the wasm gallery is built with trunk and deployed on push to main (WI-1540).
 - Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).

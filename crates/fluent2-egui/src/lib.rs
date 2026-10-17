@@ -8,6 +8,7 @@
 pub use fluent2_tokens as tokens;
 
 pub mod controls;
+pub mod data;
 pub mod foundation;
 pub mod office;
 pub mod platform;
@@ -19,6 +20,9 @@ pub use controls::{
     Dropdown, Field, Input, InputAppearance, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup,
     SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, SplitButtonResponse, Switch, Textarea,
     TextareaResize, ToggleButton, ValidationState,
+};
+pub use data::{
+    CellCtx, DataGrid, DataGridResponse, DataGridSize, DataGridState, FocusMode, RowId, SelectionMode,
 };
 pub use platform::{SystemPreferences, system_preferences, theme_from_system};
 pub use surfaces::{
