@@ -9,6 +9,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).
 - `fluent2_egui::platform`: OS accent, high contrast, reduced motion and colour scheme behind the `system-preferences` feature (Windows and the Linux desktop portal; unknown elsewhere, including wasm). `theme_from_system` picks light, dark or high contrast and sets reduced motion (WI-1541).
 - Window resize edges for undecorated windows: `office::window_edges::window_resize_edges` (WI-1560).
+- Office `TitleBar` for undecorated windows: caption buttons, drag, double-click maximise and slots. `Theme::chrome` holds the chrome sizes (`ChromeMetrics`). Gallery example `chrome` (WI-1559).
 - Caption glyphs in the `fluent2-icons` catalogue: Subtract (minimise), Maximize and Square Multiple (restore) (WI-1559).
 - Tooltip (`Response::fluent_tooltip`) and Popover surfaces (WI-1551).
 - TabList and Card surfaces (WI-1554).
