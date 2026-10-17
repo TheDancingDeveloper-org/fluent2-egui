@@ -18,7 +18,7 @@ pub use controls::{
     SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, SplitButtonResponse, Switch, Textarea,
     TextareaResize, ToggleButton, ValidationState,
 };
-pub use surfaces::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
+pub use surfaces::{Intent, MenuItem, MessageBar, MessageBarResponse, Toast, ToastId, ToastPosition, Toaster, context_menu, divider, group_header, menu_frame, submenu};
 pub use theme::{Theme, ThemeKind};
 
 /// Names a caller usually wants in scope.
@@ -28,8 +28,8 @@ pub mod prelude {
     pub use crate::{
         Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton,
         Divider, Dropdown, Field, Input, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup,
-        SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea, Theme, ThemeKind,
-        ToggleButton, ValidationState,
+        Intent, MessageBar, SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, Switch, Textarea,
+        Theme, ThemeKind, Toast, Toaster, ToggleButton, ValidationState,
     };
 }
 

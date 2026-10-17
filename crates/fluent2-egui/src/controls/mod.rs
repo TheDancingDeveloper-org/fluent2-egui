@@ -43,3 +43,5 @@ pub use split_button::{SplitButton, SplitButtonResponse};
 pub use switch::Switch;
 pub use textarea::{Textarea, TextareaResize};
 pub use toggle_button::ToggleButton;
+
+pub(crate) use button::{ensure_type_ramp, Appearance as ButtonAppearance, Shape as ButtonShape};
