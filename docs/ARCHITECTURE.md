@@ -104,6 +104,7 @@ open fallback chosen in a dedicated item. **Never commit or embed a Microsoft fo
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo test -p fluent2-egui --features serde
 cargo check -p fluent2-egui --target wasm32-unknown-unknown
 ```
 
