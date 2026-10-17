@@ -204,10 +204,13 @@ impl<'a> Dialog<'a> {
                 ui.set_max_width(width);
                 ui.set_min_width(width.min(ui.available_width().max(0.0)));
 
+                // Strong steps need the semibold family, which may not be bound yet. Draw in the
+                // proportional family until it is, as the buttons do.
+                crate::controls::ensure_type_ramp(ui);
                 let title_text = self.title.text().to_owned();
                 let title_response = ui
                     .push_id(title_id, |ui| {
-                        ui.label(text::rich(title_text.clone(), TypeRamp::Body1))
+                        ui.label(text::rich(title_text.clone(), TypeRamp::Subtitle1))
                     })
                     .inner;
 

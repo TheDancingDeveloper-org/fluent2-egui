@@ -23,6 +23,7 @@ mod textarea;
 mod toggle_button;
 
 pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
+pub(crate) use button::ensure_type_ramp;
 pub use button::{Appearance, Button, ButtonSize, Shape};
 pub use checkbox::{CheckState, Checkbox};
 pub use combobox::Combobox;
