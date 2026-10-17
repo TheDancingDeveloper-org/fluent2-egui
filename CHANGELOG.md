@@ -11,6 +11,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Bundled Inter Regular and SemiBold (OFL-1.1) as the UI font wherever Segoe UI is not available: Linux, macOS, wasm, and Windows without Segoe UI. Segoe UI stays first on Windows. Cargo feature `bundled-font`, on by default (WI-1588).
 - KeyTips state machine as pure logic: `office::keytips::state` with `step`, `resolve_keytips` and two-letter keys. No rendering yet (WI-1566).
 - Ribbon tab strip: `office::ribbon::Ribbon` with the File tab, content and contextual tabs (with headers), double-click and Ctrl+F1 collapse, and the peek popup. Groups are not built yet (WI-1562).
+- Backstage: full-window File view with a navigation column, page closures, Escape and back-arrow close, and focus return to the opener (`office::backstage`, WI-1568).
 - GitHub Pages workflow: the wasm gallery is built with trunk and deployed on push to main (WI-1540).
 - Dialog surface: modal, non-modal and alert kinds, focus trap, Escape and default-button policy, focus restoration to the opener (WI-1552).
 - `fluent2_egui::platform`: OS accent, high contrast, reduced motion and colour scheme behind the `system-preferences` feature (Windows and the Linux desktop portal; unknown elsewhere, including wasm). `theme_from_system` picks light, dark or high contrast and sets reduced motion (WI-1541).
