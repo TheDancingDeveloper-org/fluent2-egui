@@ -16,9 +16,12 @@ egui_extras = { version = "0.36", default-features = false, features = ["svg"] }
 log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
+serde = { version = "1", optional = true, features = ["derive"] }
 
 [features]
 default = []
+# Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
+serde = ["dep:serde"]
 # OS accent, high contrast, reduced motion and colour scheme. Off by default so wasm and
 # headless builds do not pull in platform bindings. See `platform`.
 system-preferences = [
