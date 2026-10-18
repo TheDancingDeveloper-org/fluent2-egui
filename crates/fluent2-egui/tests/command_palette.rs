@@ -204,3 +204,57 @@ fn closed_palette_draws_nothing() {
     harness.run();
     assert!(harness.query_by_role(Role::Dialog).is_none());
 }
+
+#[test]
+fn rows_are_children_of_the_list_inside_the_dialog() {
+    let probe = open_probe();
+    let mut harness = harness(probe, Theme::default());
+    harness.run();
+    for label in ["Open file", "Save", "Close file", "Zoom in"] {
+        let row = harness.get_by_role_and_label(Role::ListBoxOption, label);
+        let parent = row.parent().map(|node| node.accesskit_node().role());
+        assert_eq!(parent, Some(Role::ListBox), "{label} hangs under the list");
+    }
+    // The scroll area adds plain containers between the list and the dialog; the nearest
+    // ancestor with a role is the dialog.
+    let list = harness.get_by_role(Role::ListBox);
+    let mut ancestor = list.parent();
+    while let Some(node) = &ancestor {
+        if node.accesskit_node().role() != Role::GenericContainer {
+            break;
+        }
+        ancestor = node.parent();
+    }
+    assert_eq!(
+        ancestor.map(|node| node.accesskit_node().role()),
+        Some(Role::Dialog)
+    );
+    let search = harness.get_by_role_and_label(Role::TextInput, "Command palette");
+    let mut ancestor = search.parent();
+    while let Some(node) = &ancestor {
+        if node.accesskit_node().role() == Role::Dialog {
+            break;
+        }
+        ancestor = node.parent();
+    }
+    assert!(ancestor.is_some(), "the search box is inside the dialog");
+}
+
+#[test]
+fn search_text_is_cleared_after_close() {
+    let probe = open_probe();
+    let mut harness = harness(probe.clone(), Theme::default());
+    harness.run();
+    harness.run();
+    harness.event(egui::Event::Text("zoom".to_owned()));
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert_eq!(probe.borrow().chosen, ["view.zoom"]);
+    probe.borrow_mut().open = true;
+    harness.run();
+    harness.run();
+    let input = harness.get_by_role_and_label(Role::TextInput, "Command palette");
+    assert_eq!(input.accesskit_node().value().unwrap_or_default(), "");
+    assert_eq!(harness.query_all_by_role(Role::ListBoxOption).count(), 4);
+}

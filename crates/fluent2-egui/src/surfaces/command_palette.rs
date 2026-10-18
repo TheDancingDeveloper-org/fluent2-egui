@@ -19,7 +19,7 @@ use egui::epaint::RectShape;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
     Align2, Area, Context, CornerRadius, Frame, Id, Key, Modal, Order, Rect, Sense, Stroke, TextWrapMode, Ui,
-    UiKind, Vec2, WidgetInfo, WidgetType,
+    UiBuilder, UiKind, Vec2, WidgetInfo, WidgetType,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -214,19 +214,36 @@ pub fn rank<S: AsRef<str>>(
         .collect()
 }
 
-/// Lowercase per character, so character indices stay aligned with the original text.
-fn fold(text: &str) -> Vec<char> {
-    text.chars()
-        .map(|ch| ch.to_lowercase().next().unwrap_or(ch))
-        .collect()
+/// Lowercase per character, trim, and collapse each run of whitespace to one space, as the
+/// query is. Returns the folded characters and, for each, its character index in `text`, so
+/// match positions can be mapped back to the original label.
+fn fold(text: &str) -> (Vec<char>, Vec<usize>) {
+    let mut chars = Vec::new();
+    let mut origins = Vec::new();
+    let mut pending_space = None;
+    for (index, ch) in text.chars().enumerate() {
+        if ch.is_whitespace() {
+            if !chars.is_empty() && pending_space.is_none() {
+                pending_space = Some(index);
+            }
+            continue;
+        }
+        if let Some(space) = pending_space.take() {
+            chars.push(' ');
+            origins.push(space);
+        }
+        chars.push(ch.to_lowercase().next().unwrap_or(ch));
+        origins.push(index);
+    }
+    (chars, origins)
 }
 
 fn normalize(query: &str) -> Vec<char> {
-    fold(&query.split_whitespace().collect::<Vec<_>>().join(" "))
+    fold(query).0
 }
 
 fn score_command(command: &PaletteCommand, query: &[char]) -> Option<(i32, Vec<usize>)> {
-    let label = fold(&command.label);
+    let (label, origins) = fold(&command.label);
     let mut best = tier_score(
         &label,
         query,
@@ -236,7 +253,15 @@ fn score_command(command: &PaletteCommand, query: &[char]) -> Option<(i32, Vec<u
             SUBSTRING_MATCH_SCORE,
             FUZZY_MATCH_SCORE,
         ],
-    );
+    )
+    .map(|(score, positions)| {
+        // Positions index the folded label; map them back to the label as drawn.
+        let positions = positions
+            .iter()
+            .filter_map(|&position| origins.get(position).copied())
+            .collect();
+        (score, positions)
+    });
     let others = command
         .subtitle
         .iter()
@@ -244,7 +269,7 @@ fn score_command(command: &PaletteCommand, query: &[char]) -> Option<(i32, Vec<u
         .chain(command.group.iter().map(|text| (text, GROUP_MATCH_SCORE)))
         .chain(command.keywords.iter().map(|text| (text, KEYWORD_MATCH_SCORE)));
     for (text, base) in others {
-        if let Some((score, _)) = tier_score(&fold(text), query, [base + 20, base + 10, base, 0])
+        if let Some((score, _)) = tier_score(&fold(text).0, query, [base + 20, base + 10, base, 0])
             && best.as_ref().is_none_or(|(current, _)| score > *current)
         {
             best = Some((score, Vec::new()));
@@ -523,150 +548,166 @@ impl<'a> CommandPalette<'a> {
             .frame(frame)
             .area(area)
             .show(ctx, |ui| {
-                ui.set_width(
-                    width
-                        .min(ui.ctx().content_rect().width() - 2.0 * spacing_horizontal::L)
-                        .max(1.0),
-                );
-                crate::controls::ensure_type_ramp(ui);
-                let before = state.query.clone();
-                let search = ui.add(
-                    SearchBox::new(&mut state.query)
-                        .placeholder(self.placeholder.clone())
-                        .label(self.label.clone())
-                        .id_salt(search_salt),
-                );
-                if opening || !search.has_focus() {
-                    search.request_focus();
-                }
+                // The body runs in its own Ui so the Dialog node is the parent of everything in it.
+                ui.scope_builder(UiBuilder::new().id(surface_id), |ui| {
+                    let surface_node = ui.unique_id();
+                    ui.set_width(
+                        width
+                            .min(ui.ctx().content_rect().width() - 2.0 * spacing_horizontal::L)
+                            .max(1.0),
+                    );
+                    crate::controls::ensure_type_ramp(ui);
+                    let before = state.query.clone();
+                    let search = ui.add(
+                        SearchBox::new(&mut state.query)
+                            .placeholder(self.placeholder.clone())
+                            .label(self.label.clone())
+                            .id_salt(search_salt),
+                    );
+                    if opening || !search.has_focus() {
+                        search.request_focus();
+                    }
 
-                let rows = rank(self.commands, &state.query, self.recents, self.max_results);
-                let row_of = |id: &Option<String>| {
-                    id.as_ref().and_then(|id| {
-                        rows.iter().position(|found| {
-                            self.commands
-                                .get(found.index)
-                                .is_some_and(|command| &command.id == id)
+                    let rows = rank(self.commands, &state.query, self.recents, self.max_results);
+                    let row_of = |id: &Option<String>| {
+                        id.as_ref().and_then(|id| {
+                            rows.iter().position(|found| {
+                                self.commands
+                                    .get(found.index)
+                                    .is_some_and(|command| &command.id == id)
+                            })
                         })
-                    })
-                };
-                let mut selected = row_of(&state.selected);
-                if before != state.query
-                    || selected
-                        .is_none_or(|row| next_enabled(&rows, self.commands, Some(row), 0) != Some(row))
-                {
-                    selected = next_enabled(&rows, self.commands, None, 1);
-                }
-                let mut moved = false;
-                if down && let Some(row) = next_enabled(&rows, self.commands, selected, 1) {
-                    selected = Some(row);
-                    moved = true;
-                }
-                if up
-                    && let Some(row) =
-                        selected.and_then(|row| next_enabled(&rows, self.commands, Some(row), -1))
-                {
-                    selected = Some(row);
-                    moved = true;
-                }
+                    };
+                    let mut selected = row_of(&state.selected);
+                    if before != state.query
+                        || selected
+                            .is_none_or(|row| next_enabled(&rows, self.commands, Some(row), 0) != Some(row))
+                    {
+                        selected = next_enabled(&rows, self.commands, None, 1);
+                    }
+                    let mut moved = false;
+                    if down && let Some(row) = next_enabled(&rows, self.commands, selected, 1) {
+                        selected = Some(row);
+                        moved = true;
+                    }
+                    if up
+                        && let Some(row) =
+                            selected.and_then(|row| next_enabled(&rows, self.commands, Some(row), -1))
+                    {
+                        selected = Some(row);
+                        moved = true;
+                    }
 
-                ui.add_space(spacing_vertical::S);
-                let headers =
-                    section_headers(&rows, self.commands, state.query.is_empty(), &self.recent_label);
-                // The area keeps last frame's size as its limit, so the list asks for its own
-                // height; otherwise it could never grow past the first frame's content.
-                let header_height = TypeRamp::Caption1.line_height() + spacing_vertical::XS;
-                let content_height: f32 = rows
-                    .iter()
-                    .filter_map(|found| self.commands.get(found.index))
-                    .map(|command| {
-                        if command.subtitle.is_some() {
-                            ROW_HEIGHT_TWO_LINES
-                        } else {
-                            ROW_HEIGHT
-                        }
-                    })
-                    .sum::<f32>()
-                    + headers.iter().flatten().count() as f32 * header_height;
-                let list_height = content_height.clamp(ROW_HEIGHT, LIST_MAX_HEIGHT);
-                let mut clicked = None;
-                let list = egui::ScrollArea::vertical()
-                    .max_height(list_height)
-                    .min_scrolled_height(list_height)
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-                        if rows.is_empty() {
-                            ui.label(
-                                text::rich(self.empty_text.clone(), TypeRamp::Body1)
-                                    .color(c(theme.color.neutral_foreground_3)),
-                            );
-                        }
-                        for ((row, found), header) in rows.iter().enumerate().zip(&headers) {
-                            let Some(command) = self.commands.get(found.index) else {
-                                continue;
-                            };
-                            if let Some(header) = header {
-                                ui.add_space(spacing_vertical::XS);
-                                ui.label(
-                                    text::rich(header.to_owned(), TypeRamp::Caption1)
-                                        .color(c(theme.color.neutral_foreground_3)),
-                                );
+                    ui.add_space(spacing_vertical::S);
+                    let headers =
+                        section_headers(&rows, self.commands, state.query.is_empty(), &self.recent_label);
+                    // The area keeps last frame's size as its limit, so the list asks for its own
+                    // height; otherwise it could never grow past the first frame's content.
+                    let header_height = TypeRamp::Caption1.line_height() + spacing_vertical::XS;
+                    let content_height: f32 = rows
+                        .iter()
+                        .filter_map(|found| self.commands.get(found.index))
+                        .map(|command| {
+                            if command.subtitle.is_some() {
+                                ROW_HEIGHT_TWO_LINES
+                            } else {
+                                ROW_HEIGHT
                             }
-                            let is_selected = selected == Some(row);
-                            let response =
-                                paint_row(ui, &theme, self.row_id(&command.id), command, found, is_selected);
-                            if is_selected && moved {
-                                response.scroll_to_me(None);
-                            }
-                            if response.clicked() && !command.disabled {
-                                clicked = Some(command.id.clone());
-                            }
-                        }
-                    });
-                let list_rect = list.inner_rect;
-                let _ = ui.interact(list_rect, list_id, Sense::hover());
-                let label = self.label.clone();
-                let active = selected
-                    .and_then(|row| rows.get(row))
-                    .and_then(|found| self.commands.get(found.index))
-                    .map(|command| self.row_id(&command.id));
-                ui.ctx().accesskit_node_builder(list_id, |node| {
-                    node.set_role(egui::accesskit::Role::ListBox);
-                    node.set_label(label.clone());
-                });
-                if let Some(active) = active {
-                    ui.ctx().accesskit_node_builder(search.id, |node| {
-                        node.set_active_descendant(active.accesskit_id());
-                        node.push_controlled(list_id.accesskit_id());
-                    });
-                }
-                let _ = ui.interact(ui.min_rect(), surface_id, Sense::hover());
-                ui.ctx().accesskit_node_builder(surface_id, |node| {
-                    node.set_role(egui::accesskit::Role::Dialog);
-                    node.set_label(label);
-                });
-
-                let chosen_by_key = if enter {
-                    selected
+                        })
+                        .sum::<f32>()
+                        + headers.iter().flatten().count() as f32 * header_height;
+                    let list_height = content_height.clamp(ROW_HEIGHT, LIST_MAX_HEIGHT);
+                    let mut clicked = None;
+                    let list = egui::ScrollArea::vertical()
+                        .max_height(list_height)
+                        .min_scrolled_height(list_height)
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            // The rows run in their own Ui so the ListBox node is their parent.
+                            ui.scope_builder(UiBuilder::new().id(list_id), |ui| {
+                                ui.spacing_mut().item_spacing.y = 0.0;
+                                if rows.is_empty() {
+                                    ui.label(
+                                        text::rich(self.empty_text.clone(), TypeRamp::Body1)
+                                            .color(c(theme.color.neutral_foreground_3)),
+                                    );
+                                }
+                                for ((row, found), header) in rows.iter().enumerate().zip(&headers) {
+                                    let Some(command) = self.commands.get(found.index) else {
+                                        continue;
+                                    };
+                                    if let Some(header) = header {
+                                        ui.add_space(spacing_vertical::XS);
+                                        ui.label(
+                                            text::rich(header.to_owned(), TypeRamp::Caption1)
+                                                .color(c(theme.color.neutral_foreground_3)),
+                                        );
+                                    }
+                                    let is_selected = selected == Some(row);
+                                    let response = paint_row(
+                                        ui,
+                                        &theme,
+                                        self.row_id(&command.id),
+                                        command,
+                                        found,
+                                        is_selected,
+                                    );
+                                    if is_selected && moved {
+                                        response.scroll_to_me(None);
+                                    }
+                                    if response.clicked() && !command.disabled {
+                                        clicked = Some(command.id.clone());
+                                    }
+                                }
+                                ui.unique_id()
+                            })
+                            .inner
+                        });
+                    let list_node = list.inner;
+                    let label = self.label.clone();
+                    let active = selected
                         .and_then(|row| rows.get(row))
                         .and_then(|found| self.commands.get(found.index))
-                        .filter(|command| !command.disabled)
-                        .map(|command| command.id.clone())
-                } else {
-                    None
-                };
-                state.selected = selected
-                    .and_then(|row| rows.get(row))
-                    .and_then(|found| self.commands.get(found.index))
-                    .map(|command| command.id.clone());
-                clicked.or(chosen_by_key)
+                        .map(|command| self.row_id(&command.id));
+                    ui.ctx().accesskit_node_builder(list_node, |node| {
+                        node.set_role(egui::accesskit::Role::ListBox);
+                        node.set_label(label.clone());
+                    });
+                    if let Some(active) = active {
+                        ui.ctx().accesskit_node_builder(search.id, |node| {
+                            node.set_active_descendant(active.accesskit_id());
+                            node.push_controlled(list_node.accesskit_id());
+                        });
+                    }
+                    ui.ctx().accesskit_node_builder(surface_node, |node| {
+                        node.set_role(egui::accesskit::Role::Dialog);
+                        node.set_label(label);
+                    });
+
+                    let chosen_by_key = if enter {
+                        selected
+                            .and_then(|row| rows.get(row))
+                            .and_then(|found| self.commands.get(found.index))
+                            .filter(|command| !command.disabled)
+                            .map(|command| command.id.clone())
+                    } else {
+                        None
+                    };
+                    state.selected = selected
+                        .and_then(|row| rows.get(row))
+                        .and_then(|found| self.commands.get(found.index))
+                        .map(|command| command.id.clone());
+                    clicked.or(chosen_by_key)
+                })
+                .inner
             });
 
         let chosen = shown.inner;
         let close = chosen.is_some() || escape || shown.backdrop_response.clicked();
         if close {
             *open = false;
+            // The next opening starts with an empty search box.
+            state.query.clear();
             if let Some(opener) = state.opener {
                 ctx.memory_mut(|memory| memory.request_focus(opener));
             }
@@ -997,5 +1038,16 @@ mod tests {
             section_headers(&rows, &commands, true, "Recent"),
             [Some("File"), None, Some("View")]
         );
+    }
+
+    #[test]
+    fn label_whitespace_is_collapsed_and_positions_map_back() {
+        let commands = [PaletteCommand::new("a", "  Open   file ")];
+        let found = rank(&commands, "open file", NO_RECENTS, None);
+        assert_eq!(
+            found[0].score, 100,
+            "double spaces in the label still match exactly"
+        );
+        assert_eq!(found[0].label_matches, vec![2, 3, 4, 5, 6, 9, 10, 11, 12]);
     }
 }
