@@ -166,6 +166,56 @@ fn popup_selects_by_keyboard_and_escape_closes() {
 }
 
 #[test]
+fn arrow_down_follows_rows_that_stop_at_a_category() {
+    // Four columns, categories at 0 and 6: rows 0..4, 4..6, then 6..10.
+    let shared = shared(20);
+    let mut harness = harness(shared, Theme::default());
+    harness.run();
+    harness.get_by_label("More Styles").focus();
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    for _ in 0..4 {
+        harness.key_press(Key::ArrowRight);
+        harness.run();
+    }
+    harness.key_press(Key::ArrowDown);
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(*shared.selected.borrow(), Some(6));
+
+    harness.key_press(Key::Enter);
+    harness.run();
+    harness.key_press(Key::ArrowUp);
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(*shared.selected.borrow(), Some(4));
+}
+
+#[test]
+fn enter_on_a_focused_footer_item_activates_it() {
+    let shared = shared(20);
+    let mut harness = harness(shared, Theme::default());
+    harness.run();
+    harness.get_by_label("More Styles").focus();
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert!(shared.popup_open.get());
+
+    harness.key_press(Key::Tab);
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(shared.footer_clicks.get(), 1);
+    assert_eq!(*shared.selected.borrow(), None, "the grid tile was not picked");
+    assert_eq!(shared.changes.get(), 0);
+    assert!(!shared.popup_open.get());
+}
+
+#[test]
 fn footer_click_closes_the_popup() {
     let shared = shared(20);
     let mut harness = harness(shared, Theme::default());
