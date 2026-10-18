@@ -7,6 +7,7 @@
 //! (spec §4.5).
 
 mod controls;
+mod gallery;
 mod group;
 mod tab;
 
@@ -31,6 +32,7 @@ pub use controls::{
     RibbonLarge, RibbonMenu, RibbonSmall, RibbonSplit, RibbonToggle,
 };
 pub use group::{GroupBuilder, ScalingStep};
+pub use gallery::{Gallery, GalleryItemState, GalleryResponse, GalleryTileSize};
 pub use tab::{ContextualAccent, RibbonTab, TabBuilder};
 
 use group::{Group, paint_body};
