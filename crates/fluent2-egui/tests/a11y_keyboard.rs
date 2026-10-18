@@ -264,3 +264,45 @@ fn indeterminate_progress_is_still_under_reduced_motion() {
         .any(|viewport| viewport.repaint_delay.is_zero());
     assert!(!repaint, "indeterminate progress still asks for every frame");
 }
+
+/// Focus returns to the opener when the dialog closes. Found by the Orca walk: the opener is
+/// focused once by Tab, not re-requested every frame.
+#[test]
+fn escape_returns_focus_to_a_keyboard_opener() {
+    use fluent2_egui::Dialog;
+    let mut harness = Harness::new_ui_state(
+        |ui, open: &mut bool| {
+            install(ui.ctx(), &Theme::default());
+            ui.add(Button::new("Before"));
+            if ui.add(Button::new("Open dialog")).clicked() {
+                *open = true;
+            }
+            let _ = Dialog::new("walk")
+                .title("Save changes?")
+                .actions(|actions| actions.secondary("Cancel"))
+                .show(ui.ctx(), open, |ui| {
+                    ui.label("Body");
+                });
+        },
+        false,
+    );
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    assert!(
+        harness.get_by_label("Open dialog").is_focused(),
+        "Tab reached the opener"
+    );
+    harness.key_press(egui::Key::Space);
+    harness.run();
+    assert!(*harness.state(), "Space opened the dialog");
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert!(!*harness.state(), "Escape closed the dialog");
+    assert!(
+        harness.get_by_label("Open dialog").is_focused(),
+        "focus did not return to the opener"
+    );
+}

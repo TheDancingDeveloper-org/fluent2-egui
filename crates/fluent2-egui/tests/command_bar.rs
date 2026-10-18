@@ -76,7 +76,7 @@ fn clicking_an_overflowed_item_in_the_menu_reports_it() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "More").click();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Print").click();
+    harness.get_by_role_and_label(Role::MenuItem, "Print").click();
     harness.run();
     harness.run();
     assert_eq!(activated.get(), Some("print"));

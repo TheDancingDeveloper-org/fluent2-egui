@@ -165,6 +165,16 @@ impl<'a> Dialog<'a> {
         let opener_key = id.with("opener");
         let seen_key = id.with("seen");
 
+        // A close requests focus for the opener while the modal still blocks it, and egui
+        // drops a focus request for a widget that was not interactive last frame. Ask again on
+        // the first frame after the close (found by the WI-1586 Orca walk).
+        if let Some(opener) = ctx.data_mut(|data| {
+            data.remove_temp::<Option<Id>>(opener_key.with("pending"))
+                .flatten()
+        }) {
+            ctx.memory_mut(|memory| memory.request_focus(opener));
+        }
+
         if !*open {
             // Closed by the app: forget the open state so the next opening captures the opener again.
             if ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false)) {
@@ -333,6 +343,7 @@ struct ActionState {
 fn restore_focus(ctx: &Context, opener_key: Id) {
     if let Some(opener) = ctx.data(|data| data.get_temp::<Option<Id>>(opener_key)).flatten() {
         ctx.memory_mut(|memory| memory.request_focus(opener));
+        ctx.data_mut(|data| data.insert_temp(opener_key.with("pending"), Some(opener)));
     }
 }
 

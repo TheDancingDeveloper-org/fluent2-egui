@@ -219,6 +219,8 @@ impl<'a> List<'a> {
                 }
 
                 let mut clicked = false;
+                // The focused row, for the list's active descendant (see TreeView).
+                let mut active_row = None;
                 for index in visible.clone() {
                     let top = origin.y + index as f32 * row_height;
                     let row_rect =
@@ -227,6 +229,9 @@ impl<'a> List<'a> {
                     // The row's own response goes first, so the content drawn after it takes
                     // clicks in its own rects.
                     let hit = ui.interact(row_rect.intersect(clip), id.with(("row", row_id)), Sense::CLICK);
+                    if focus_index == Some(index) {
+                        active_row = Some(hit.id.accesskit_id());
+                    }
                     if hit.clicked() {
                         clicked = true;
                         let modifiers = ui.input(|input| input.modifiers);
@@ -264,10 +269,12 @@ impl<'a> List<'a> {
                         node.set_size_of_set(row_count);
                     });
 
+                    // Hang the row's content under its option node, so it is read as the row.
                     let mut child = ui.new_child(
                         UiBuilder::new()
                             .max_rect(row_rect.shrink2(Vec2::new(spacing_horizontal::S, 0.0)))
-                            .layout(Layout::left_to_right(Align::Center)),
+                            .layout(Layout::left_to_right(Align::Center))
+                            .accessibility_parent(hit.id),
                     );
                     child.set_clip_rect(row_rect.intersect(clip));
                     // A selectable label would take the click meant for the row (§3).
@@ -313,6 +320,9 @@ impl<'a> List<'a> {
                     }
                     if mode == SelectionMode::Multi {
                         node.set_multiselectable();
+                    }
+                    if let Some(row) = active_row {
+                        node.set_active_descendant(row);
                     }
                 });
 

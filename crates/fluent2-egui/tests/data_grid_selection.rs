@@ -307,12 +307,15 @@ fn enter_moves_focus_into_a_cell_child_and_escape_returns_it() {
 
     harness.key_press(Key::Escape);
     harness.run_steps(3);
+    // The grid holds focus; its active descendant (the focused cell or row) is what
+    // AccessKit reports as focused.
+    let focused_role = harness
+        .query_all(egui_kittest::kittest::by().predicate(|node| node.is_focused()))
+        .map(|node| node.accesskit_node().role())
+        .next();
     assert!(
-        harness
-            .get_by_role_and_label(Role::Grid, "Items")
-            .accesskit_node()
-            .is_focused(),
-        "Escape did not return focus to the grid"
+        matches!(focused_role, Some(Role::Grid | Role::Row | Role::GridCell)),
+        "Escape did not return focus to the grid: {focused_role:?}"
     );
 }
 

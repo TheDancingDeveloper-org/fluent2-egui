@@ -74,7 +74,9 @@ fn zone(ctx: &egui::Context, name: &'static str, direction: ResizeDirection, rec
         .movable(false)
         .interactable(true)
         .show(ctx, |ui| {
-            let (_, response) = ui.allocate_exact_size(rect.size(), Sense::click_and_drag());
+            // Pointer only: resize zones are not Tab stops. Focusable, they were eight silent
+            // stops ahead of the QAT for screen readers (WI-1586 Orca walk).
+            let (_, response) = ui.allocate_exact_size(rect.size(), Sense::CLICK | Sense::DRAG);
             if response.hovered() {
                 ctx.set_cursor_icon(cursor_for(direction));
                 if ctx.input(|input| input.pointer.primary_pressed()) {

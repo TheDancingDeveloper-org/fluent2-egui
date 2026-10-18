@@ -184,7 +184,9 @@ impl Widget for Combobox<'_> {
             egui::pos2(rect.right() - pad_x - icon_px / 2.0, rect.center().y),
             Vec2::splat(icon_px),
         );
-        let chevron_response = ui.interact(chevron, id.with("chevron"), Sense::click());
+        // Pointer only: the field is the Tab stop and Alt+Down opens the list. A focusable
+        // chevron was a silent extra Tab stop (WI-1586 Orca walk).
+        let chevron_response = ui.interact(chevron, id.with("chevron"), Sense::CLICK);
         if chevron_response.clicked() && enabled {
             open = !open;
             response.request_focus();

@@ -72,12 +72,14 @@ impl eframe::App for GalleryApp {
                     }
                 }
                 ui.separator();
-                ui.label("Accent");
+                let label = ui.label("Accent");
+                // Name the swatch for screen readers; Orca read it as a bare "button".
                 if egui::color_picker::color_edit_button_srgba(
                     ui,
                     &mut self.accent,
                     egui::color_picker::Alpha::Opaque,
                 )
+                .labelled_by(label.id)
                 .changed()
                 {
                     self.follow_system = false;
@@ -86,7 +88,7 @@ impl eframe::App for GalleryApp {
             });
         });
 
-        egui::Panel::left("pages").show(ui, |ui| {
+        egui::Panel::left("pages").resizable(false).show(ui, |ui| {
             ui.heading("Gallery");
             ui.add_space(4.0);
             for (index, page) in self.pages.iter().enumerate() {

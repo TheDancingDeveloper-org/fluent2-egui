@@ -140,17 +140,61 @@ Fluent HC draws boundaries with strokes, not fills. Every component was checked:
 - **Already fine:** Input, Dropdown, Combobox, SpinButton, Checkbox, Radio, Switch, Slider rail, Card (Filled uses `transparent_stroke`, Outline uses `neutral_stroke_1`), Menu, Popover, normal Tooltip, MessageBar, Toast, KeyTips, TitleBar, Ribbon, StatusBar, DataGrid, TreeView, List, NavigationView, SplitView. Subtle and Transparent buttons have no edge at rest, as in Fluent.
 - **Open (WI-1845):** CardHeader text and ribbon gallery tile content keep the resting foreground on the HC highlight fill. The TabList and NavigationView selected indicator is the highlight colour on a highlight fill; selection still shows through the fill.
 
-## 4. Screen reader (AccessKit)
+## 4. Screen reader
 
-A live walk with Narrator, NVDA and Orca was **not** done: this session is headless. It is filed as WI-1846. What screen readers receive was checked through the AccessKit tree in kittest. Fixes:
+### 4.1 Orca (Linux): done
 
-- **Switch** reported the CheckBox role ("check box, checked"). It now sets `Role::Switch`.
-- **TabList:** the TabList role sat on an id no widget owned. The focusable strip came out as an unnamed "button" with the selected tab's label. The strip now has the TabList role, and its active descendant is the selected Tab, so focus reads as "Home, tab, selected".
-- **RadioGroup:** the focused group was announced without naming any radio. Its active descendant is now the selected RadioButton.
-- **SpinButton:** the outer allocation and the up and down arrows were extra Tab stops with no name and no ring. The text field shared the allocation's id, so Tab jumped from the field past every later widget. The field is now the only Tab stop, and it carries the SpinButton role; the arrows stay pointer-only, and the keyboard steps with Up and Down.
-- **Open (WI-1843):** SpinButton and RadioGroup have no accessible name, and Slider's name is the generic "Slider".
+**Setup:** Orca (Ubuntu 26.04 packages) with at-spi2-core on Xvfb, in a throwaway container. The release binaries talk to AT-SPI through eframe's AccessKit bridge. Keys were driven with `xdotool`, and the announcements below are Orca's `SPEECH OUTPUT` lines from `orca --debug-file`, grouped per key press. Targets: `cargo run -p gallery` (every page), `cargo run -p gallery --example editor`, and the new `cargo run -p gallery --example a11y_walk`. That example puts every control, surface and data view on one page, because the gallery has no controls page.
 
-Roles already correct and covered by component tests: Button, ToggleButton, Checkbox, Link, Input/Textarea (TextInput), Dropdown/Combobox (ComboBox), Menu items, Dialog (Dialog, focus trap), MessageBar and Toast (Alert or Status), DataGrid (Grid/Row/ColumnHeader/GridCell), TreeView (Tree/TreeItem with level, expanded, position), List (ListBox/ListBoxOption), NavigationView items, ribbon and QAT controls, KeyTips.
+What Orca announces at the PR head:
+
+| component | Orca says (Tab or arrow onto it) | verdict |
+|---|---|---|
+| Button | "Save, button" | ok |
+| ToggleButton | "Bold, toggle button not pressed" | ok |
+| Checkbox | "Agree to the terms, check box not checked" | ok |
+| RadioGroup | "Small, selected radio button" (active descendant) | ok; the group has no name (WI-1843) |
+| Switch | "Wi-Fi, toggle button not pressed" | ok. AccessKit's AT-SPI bridge maps the Switch role to toggle button (upstream) |
+| Input | "Name, entry" (from the placeholder) | ok |
+| Textarea | "entry" | **gap:** no name (WI-1843) |
+| Slider | "Slider, slider, 100, 25 percent" | value and percent ok after the fix; the name is generic (WI-1843) |
+| SpinButton | "spin button, 1.00" | **gap:** no name (WI-1843) |
+| Dropdown / Combobox | "Colour, combo box" / "Font, combo box" | ok |
+| TabList | "Home, page tab" | ok |
+| Link | "Help, link" | ok |
+| Menu (MenuItem) | "New." / "Close." | ok |
+| Dialog | open: "Save, button"; Tab: "Save changes?, dialog"; Escape: "Open dialog, button" (focus restored) | the title and body are not read on open (WI-1850) |
+| Toast | "Saved" spoken on push, with no focus move | ok |
+| MessageBar, ProgressBar | not Tab stops; present as "notification 'Storage. Disk is almost full'" and "progress bar 40%" | ok |
+| TreeView | "Files, tree" then "Documents", "Report" on the arrow keys | ok; level and expanded state not spoken |
+| List | "Folders, list box"; arrows silent | **gap:** rows have no name (WI-1848) |
+| DataGrid | focus enters the grid, arrows silent | **gap:** cells and rows have no name (WI-1848) |
+| Title bar / QAT | "Save, button", "Undo", "Redo", "Customize", "Search, entry", "Minimize", "Maximize", "Close" | ok |
+| Ribbon | "File, button", "Home, page tab", "Paste, button", … "Font, combo box", "Size, combo box", "Bold, toggle button not pressed", "More, button", "Font dialog, button" | ok |
+| F6 regions | Save → Close → Select all → document entry → Zoom out | ok |
+| KeyTips (Alt) | nothing | **gap** (WI-1849) |
+| Backstage | Space on File: "frame", focus lost | **gap** (WI-1850) |
+| Status bar | "100%, button", "Zoom in", "Zoom, slider, 100, 25 percent", "Zoom out" | ok |
+
+**Fixed in this PR because of the walk**, each re-walked afterwards:
+
+- **Window edges and title-bar drag region:** these were 9 silent Tab stops ahead of the QAT in the editor. They are now pointer-only (`Sense::CLICK | Sense::DRAG`).
+- **Combobox chevron:** it was a silent extra Tab stop. It is now pointer-only; Alt+Down opens the list.
+- **TreeView, List, DataGrid:** arrow keys moved focus with no event for screen readers. The focused row or cell is now the active descendant. TreeView rows are announced. DataGrid and List cell content now hangs under its cell or option node (`UiBuilder::accessibility_parent`), which WI-1848 builds on.
+- **Slider:** the AccessKit node now carries min, max and step. Orca read a zoom slider at 100 (on a 10..=400 range) as "0 percent".
+- **Toast:** it now sets a live region (polite, or assertive for warning and error), so it is spoken.
+- **MenuItem:** it set a selected state even when not checkable, so Orca read every item as "toggle button not pressed". It now has the MenuItem role, or MenuItemCheckBox when checkable.
+- **Dialog:** Escape left focus nowhere. egui drops a focus request for a widget that was blocked by the modal on the previous frame, so the request is repeated on the first frame after the close. The old `focus_returns_to_opener` test hid this, because it re-requested the opener's focus every frame. `tests/a11y_keyboard.rs::escape_returns_focus_to_a_keyboard_opener` covers it now.
+- **Gallery:** the Accent swatch was read as "button"; it is now labelled by its label. The pages panel had a focusable resize handle with no name; the panel is no longer resizable.
+- Found before the walk, and confirmed by it: Switch role, TabList and RadioGroup active descendants, SpinButton as a single Tab stop.
+
+### 4.2 Narrator / NVDA (Windows): **blocked**
+
+The walk on the estate Windows box (desktop-tlk1gff) has not been done. Reaching the box needs its SSH key (Infisical `100.109.218.11_SSH`), and this session's permission policy refused that fetch. The session reported the block in Vogt. Narrator and NVDA also need a logged-in interactive desktop on the box. The same three targets and key sequences apply. UIA receives the same AccessKit tree as AT-SPI, so roles and names should match §4.1, apart from Switch, which UIA maps natively.
+
+### 4.3 AccessKit tree (kittest)
+
+`tests/a11y_keyboard.rs` checks roles, names and focus in-process, as described in §5.
 
 ## 5. Keyboard and focus
 
