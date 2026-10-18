@@ -177,7 +177,12 @@ fn tooltip_frame(ui: &Ui, tone: TooltipTone) -> Frame {
             };
             (c(theme.color.neutral_background_1), stroke)
         }
-        TooltipTone::Inverted => (c(theme.color.neutral_background_static), Color32::TRANSPARENT),
+        // `transparent_stroke` is clear except in high contrast, where the inverted fill is the
+        // window colour and needs an edge.
+        TooltipTone::Inverted => (
+            c(theme.color.neutral_background_static),
+            c(theme.color.transparent_stroke),
+        ),
     };
     Frame::new()
         .fill(fill)

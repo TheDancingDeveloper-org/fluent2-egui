@@ -293,12 +293,12 @@ pub(super) fn face_of(appearance: Appearance, enabled: bool, response: &Response
     use Appearance::{Outline, Primary, Secondary, Subtle, Transparent};
     match (appearance, hovered, pressed) {
         (Secondary, _, true) => Face {
-            foreground: color.neutral_foreground_1,
+            foreground: color.neutral_foreground_1_pressed,
             background: color.neutral_background_1_pressed,
             stroke: color.neutral_stroke_1_pressed,
         },
         (Secondary, true, false) => Face {
-            foreground: color.neutral_foreground_1,
+            foreground: color.neutral_foreground_1_hover,
             background: color.neutral_background_1_hover,
             stroke: color.neutral_stroke_1_hover,
         },

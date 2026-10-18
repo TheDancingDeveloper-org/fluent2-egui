@@ -147,7 +147,6 @@ impl Widget for MenuItem<'_> {
         let label = self.text.text().to_owned();
         let font = text::font_id(TypeRamp::Body1);
         let shortcut_font = text::font_id(TypeRamp::Caption1);
-        let fg = foreground(ui, &theme);
         let shortcut_color = c(theme.color.neutral_foreground_3);
 
         let check_w = if self.check_column || self.checked.is_some() {
@@ -191,6 +190,7 @@ impl Widget for MenuItem<'_> {
         }
 
         paint_row_fill(ui, rect, &response);
+        let fg = foreground(ui, &theme, &response);
         let mut x = rect.left() + H_PADDING;
         if check_w > 0.0 {
             if self.checked == Some(true) {
@@ -387,11 +387,17 @@ fn medium_radius() -> CornerRadius {
     CornerRadius::same(border_radius::MEDIUM.round().clamp(0.0, 255.0) as u8)
 }
 
-fn foreground(ui: &Ui, theme: &Theme) -> egui::Color32 {
-    if ui.is_enabled() {
-        c(theme.color.neutral_foreground_1)
-    } else {
+/// The label colour for the row state [`paint_row_fill`] paints. High contrast fills a hovered
+/// row with the highlight colour, so its text must switch to the matching foreground.
+fn foreground(ui: &Ui, theme: &Theme, response: &Response) -> egui::Color32 {
+    if !ui.is_enabled() {
         c(theme.color.neutral_foreground_disabled)
+    } else if response.is_pointer_button_down_on() {
+        c(theme.color.neutral_foreground_1_pressed)
+    } else if response.hovered() || response.has_focus() {
+        c(theme.color.neutral_foreground_1_hover)
+    } else {
+        c(theme.color.neutral_foreground_1)
     }
 }
 
@@ -416,7 +422,7 @@ fn centred_slot(row: Rect, x: f32, size: f32) -> Rect {
 
 fn paint_chevron(ui: &Ui, response: &Response) {
     let theme = Theme::get(ui.ctx());
-    let fg = foreground(ui, &theme);
+    let fg = foreground(ui, &theme, response);
     let slot = centred_slot(
         response.rect,
         response.rect.right() - H_PADDING - CHECK_SLOT,

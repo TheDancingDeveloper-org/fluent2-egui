@@ -17,7 +17,7 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spaci
 use crate::controls::{Appearance, Button, Divider, ensure_type_ramp};
 use crate::foundation::focus::paint_focus_ring;
 use crate::foundation::text::{self, TypeRamp};
-use crate::theme::{Theme, c};
+use crate::theme::{Theme, ThemeKind, c};
 
 /// Width of the navigation column, in points (spec §7, `backstage_nav_width`).
 ///
@@ -287,17 +287,31 @@ fn nav_row(ui: &mut Ui, id: Id, label: &str, selected: bool) -> Response {
     if selected {
         painter.rect_filled(rect, radius, c(theme.color.subtle_background_selected));
         let bar = Rect::from_min_size(rect.left_top(), Vec2::new(SELECTED_BAR_PT, rect.height()));
-        painter.rect_filled(bar, CornerRadius::ZERO, c(theme.color.brand_foreground_1));
+        // High contrast fills the row with the highlight colour, which the brand foreground
+        // matches; the bar takes the highlight's own foreground there.
+        let bar_color = if theme.kind == ThemeKind::HighContrast {
+            theme.color.neutral_foreground_1_selected
+        } else {
+            theme.color.brand_foreground_1
+        };
+        painter.rect_filled(bar, CornerRadius::ZERO, c(bar_color));
     } else if response.hovered() {
         painter.rect_filled(rect, radius, c(theme.color.subtle_background_hover));
     }
+    let text_color = if selected {
+        theme.color.neutral_foreground_1_selected
+    } else if response.hovered() {
+        theme.color.neutral_foreground_1_hover
+    } else {
+        theme.color.neutral_foreground_1
+    };
     let text_pos = rect.left_center() + Vec2::new(spacing_horizontal::L, 0.0);
     painter.text(
         text_pos,
         Align2::LEFT_CENTER,
         label,
         text::font_id(TypeRamp::Body1),
-        c(theme.color.neutral_foreground_1),
+        c(text_color),
     );
     if response.has_focus() {
         paint_focus_ring(ui, rect, radius);

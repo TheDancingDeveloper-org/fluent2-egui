@@ -111,6 +111,9 @@ impl Widget for SpinButton<'_> {
 
         let id = ui.next_auto_id();
         let buffer_id = id.with("buffer");
+        // The text field owns focus. `id` is also the id of the allocation below, so the field
+        // takes a child id; sharing one made Tab skip from the field past every later widget.
+        let edit_id = id.with("edit");
         let mut buffer = ui.data(|data| {
             data.get_temp::<Buffer>(buffer_id).unwrap_or(Buffer {
                 text: format_value(current, decimals),
@@ -118,7 +121,7 @@ impl Widget for SpinButton<'_> {
             })
         });
         if (buffer.committed - current).abs() > f64::EPSILON * 8.0
-            && !ui.memory(|memory| memory.has_focus(id))
+            && !ui.memory(|memory| memory.has_focus(edit_id))
         {
             buffer.text = format_value(current, decimals);
             buffer.committed = current;
@@ -127,15 +130,17 @@ impl Widget for SpinButton<'_> {
         let field_width = ui.available_width().clamp(96.0, 160.0);
         let (rect, mut response) = ui.allocate_exact_size(
             Vec2::new(field_width + CHEVRON_WIDTH, FIELD_HEIGHT),
-            Sense::click(),
+            Sense::hover(),
         );
         let field = egui::Rect::from_min_size(rect.min, Vec2::new(field_width, FIELD_HEIGHT));
         let chevrons = egui::Rect::from_min_max(field.right_top(), rect.right_bottom());
         let up_rect = egui::Rect::from_min_size(chevrons.min, Vec2::new(CHEVRON_WIDTH, FIELD_HEIGHT / 2.0));
         let down_rect = egui::Rect::from_min_max(up_rect.left_bottom(), chevrons.right_bottom());
 
-        let up = ui.interact(up_rect, id.with("up"), Sense::click());
-        let down = ui.interact(down_rect, id.with("down"), Sense::click());
+        // The field is the one Tab stop; the arrows are for the pointer, and the keyboard
+        // steps with Up/Down. Focusable arrows were unnamed Tab stops with no ring (WI-1586).
+        let up = ui.interact(up_rect, id.with("up"), Sense::CLICK);
+        let down = ui.interact(down_rect, id.with("down"), Sense::CLICK);
         let enabled = ui.is_enabled();
 
         let mut changed = false;
@@ -159,7 +164,7 @@ impl Widget for SpinButton<'_> {
                 ui.spacing_mut().text_edit_width = field.width() - 8.0;
                 ui.add(
                     TextEdit::singleline(&mut buffer.text)
-                        .id(id)
+                        .id(edit_id)
                         .desired_width(field.width() - 8.0)
                         .frame(egui::Frame::NONE)
                         .horizontal_align(egui::Align::RIGHT)
@@ -171,7 +176,9 @@ impl Widget for SpinButton<'_> {
         // TextEdit marks changed on every keystroke. The contract is changed() only on
         // commit or step, so drop that flag and set it ourselves below.
         response.flags -= egui::response::Flags::CHANGED;
-        response = response.union(text_response.clone()).union(up).union(down);
+        // The returned response carries the field's id, so `request_focus`, `has_focus` and
+        // the AccessKit SpinButton node all land on the one Tab stop.
+        response = text_response.clone().union(response).union(up).union(down);
         response.flags -= egui::response::Flags::CHANGED;
 
         if enabled && response.has_focus() {

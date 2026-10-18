@@ -336,6 +336,14 @@ pub(super) fn option_row(
     if let Some(color) = fill {
         ui.painter().rect_filled(rect, CornerRadius::ZERO, c(color));
     }
+    // High contrast fills hover and press with the highlight colour; the text follows it.
+    let ink = if response.is_pointer_button_down_on() {
+        theme.color.neutral_foreground_1_pressed
+    } else if response.hovered() || active {
+        theme.color.neutral_foreground_1_hover
+    } else {
+        theme.color.neutral_foreground_1
+    };
     let check = 16.0;
     let pad = spacing_horizontal::S;
     if selected {
@@ -349,7 +357,7 @@ pub(super) fn option_row(
             IconName::Checkmark,
             IconSize::S16,
             IconStyle::Regular,
-            Some(c(theme.color.neutral_foreground_1)),
+            Some(c(ink)),
         );
     }
     let text_rect = Rect::from_min_max(
@@ -369,8 +377,7 @@ pub(super) fn option_row(
             egui::TextStyle::Body,
         );
         let pos = egui::pos2(text_rect.left(), rect.center().y - galley.size().y / 2.0);
-        ui.painter()
-            .galley(pos, galley, c(theme.color.neutral_foreground_1));
+        ui.painter().galley(pos, galley, c(ink));
     }
     response.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, true, selected, label));
     response

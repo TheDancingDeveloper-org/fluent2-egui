@@ -1,6 +1,6 @@
 //! Fluent ProgressBar.
 //!
-//! The rail is `neutral_background_6`, the fill is `brand_background`, and the
+//! The rail is `neutral_background_6`, the fill is `compound_brand_background`, and the
 //! radius is `borderRadiusCircular`. Medium is 2 px (`strokeWidthThick`);
 //! Large is 4 px (`strokeWidthThickest`).
 //!
@@ -75,6 +75,14 @@ impl Widget for ProgressBar {
             let radius = CornerRadius::same(rounded_u8(border_radius::CIRCULAR.min(rect.height())));
             ui.painter()
                 .rect_filled(rect, radius, theme::c(theme.color.neutral_background_6));
+            // Clear in light and dark; in high contrast the rail is the window colour, so this
+            // is the only thing that shows an empty bar.
+            ui.painter().rect_stroke(
+                rect,
+                radius,
+                egui::Stroke::new(stroke_width::THIN, theme::c(theme.color.transparent_stroke)),
+                egui::StrokeKind::Inside,
+            );
             let fill = if let Some(fraction) = fraction {
                 egui::Rect::from_min_size(rect.min, egui::vec2(rect.width() * fraction, rect.height()))
             } else {
@@ -82,10 +90,10 @@ impl Widget for ProgressBar {
             };
             if fill.width() > 0.0 {
                 ui.painter()
-                    .rect_filled(fill, radius, theme::c(theme.color.brand_background));
+                    .rect_filled(fill, radius, theme::c(theme.color.compound_brand_background));
             }
         }
-        if indeterminate && visible {
+        if indeterminate && visible && !motion::reduced_motion(ui.ctx()) {
             ui.ctx().request_repaint();
         }
         let label = match fraction {
@@ -108,6 +116,12 @@ impl Widget for ProgressBar {
 /// two `durationUltraSlow` runs; the bar keeps requesting repaints, so a full
 /// cycle is that pair repeated.
 fn sweep_rect(ui: &Ui, id: Id, rail: egui::Rect) -> egui::Rect {
+    let span = rail.width() * 0.35;
+    if motion::reduced_motion(ui.ctx()) {
+        // A still segment in the middle. Snapping between the ends flashed every frame.
+        let x = rail.center().x - span / 2.0;
+        return egui::Rect::from_min_size(egui::pos2(x, rail.top()), egui::vec2(span, rail.height()));
+    }
     let going = ui
         .ctx()
         .data(|data| data.get_temp::<bool>(id.with("sweep_dir")).unwrap_or(true));
@@ -126,7 +140,6 @@ fn sweep_rect(ui: &Ui, id: Id, rail: egui::Rect) -> egui::Rect {
         ui.ctx()
             .data_mut(|data| data.insert_temp(id.with("sweep_dir"), !going));
     }
-    let span = rail.width() * 0.35;
     let x = rail.left() + (rail.width() - span) * phase;
     egui::Rect::from_min_size(egui::pos2(x, rail.top()), egui::vec2(span, rail.height()))
 }

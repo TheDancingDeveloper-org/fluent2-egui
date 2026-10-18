@@ -4,9 +4,11 @@
 //! Fluent surface, the focus trap, Escape and default-button policy, focus restoration and the
 //! AccessKit role. The behaviour is specified in `docs/specs/dialog.md`.
 
-use egui::{Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, Sense, Ui, Vec2, WidgetText};
+use egui::{
+    Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, Sense, Stroke, Ui, Vec2, WidgetText,
+};
 
-use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical};
+use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
 use crate::controls::{Appearance, Button};
 use crate::foundation::text::{self, TypeRamp};
@@ -191,6 +193,9 @@ impl<'a> Dialog<'a> {
         let radius = CornerRadius::same(rounded_u8(border_radius::X_LARGE));
         let frame = Frame::new()
             .fill(c(theme.color.neutral_background_1))
+            // Fluent's surface border: invisible in light and dark, the window-text edge in
+            // high contrast, where the fill alone does not separate the dialog from the page.
+            .stroke(Stroke::new(stroke_width::THIN, c(theme.color.transparent_stroke)))
             .corner_radius(radius)
             .inner_margin(Vec2::new(spacing_horizontal::XXL, spacing_vertical::XXL))
             .shadow(shadow64(&theme));

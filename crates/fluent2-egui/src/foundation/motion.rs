@@ -107,6 +107,13 @@ pub fn set_reduced_motion(ctx: &Context, enabled: bool) {
     ctx.data_mut(|data| data.insert_temp(reduced_motion_id(), enabled));
 }
 
+/// Whether [`set_reduced_motion`] asked motion to snap. Callers that drive their own clock
+/// (not [`animate`]) check this.
+#[must_use]
+pub fn reduced_motion(ctx: &Context) -> bool {
+    ctx.data(|data| data.get_temp::<bool>(reduced_motion_id()).unwrap_or(false))
+}
+
 /// Animate `target` over `duration` with `curve`.
 ///
 /// [`Context::animate_value_with_time`] moves linearly. This samples `curve` on that progress.
@@ -117,7 +124,7 @@ pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Cu
     if !target.is_finite() {
         return 0.0;
     }
-    if ctx.data(|data| data.get_temp::<bool>(reduced_motion_id()).unwrap_or(false)) {
+    if reduced_motion(ctx) {
         return target;
     }
     let from_id = id.with("fluent2_motion_from");

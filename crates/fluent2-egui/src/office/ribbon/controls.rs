@@ -294,7 +294,7 @@ fn paint_large(ui: &mut Ui, icon_name: IconName, label: &str) -> Response {
     if let Some(fill) = subtle_fill(&theme, enabled, &response) {
         ui.painter().rect_filled(rect, corner, c(fill));
     }
-    let ink = ink(&theme, enabled);
+    let ink = ink(&theme, enabled, &response);
     // The 32 pt slot holds the 24 pt icon, centred.
     let slot = Rect::from_min_size(
         Pos2::new(rect.center().x - icon / 2.0, rect.top() + pad),
@@ -330,7 +330,7 @@ fn paint_small(ui: &mut Ui, icon_name: IconName, label: &str, with_label: bool) 
     if let Some(fill) = subtle_fill(&theme, enabled, &response) {
         ui.painter().rect_filled(rect, corner, c(fill));
     }
-    let ink = ink(&theme, enabled);
+    let ink = ink(&theme, enabled, &response);
     let slot = Rect::from_min_size(rect.min + Vec2::new(pad, gap), Vec2::splat(icon));
     paint_icon(
         ui,
@@ -349,11 +349,18 @@ fn paint_small(ui: &mut Ui, icon_name: IconName, label: &str, with_label: bool) 
     response
 }
 
-fn ink(theme: &Theme, enabled: bool) -> Rgba {
-    if enabled {
-        theme.color.neutral_foreground_1
+/// The ink over [`subtle_fill`]. High contrast fills hover and press with the highlight
+/// colour, so the ink switches with it.
+fn ink(theme: &Theme, enabled: bool, response: &Response) -> Rgba {
+    let color = &theme.color;
+    if !enabled {
+        color.neutral_foreground_disabled
+    } else if response.is_pointer_button_down_on() {
+        color.neutral_foreground_1_pressed
+    } else if response.hovered() {
+        color.neutral_foreground_1_hover
     } else {
-        theme.color.neutral_foreground_disabled
+        color.neutral_foreground_1
     }
 }
 

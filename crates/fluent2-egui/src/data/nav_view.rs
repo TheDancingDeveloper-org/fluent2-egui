@@ -586,10 +586,15 @@ impl NavigationView {
                         let hovered = ui.rect_contains_pointer(rect);
                         let pressed = hovered && pane.is_pointer_button_down_on();
                         let is_selected = selected_key == Some(item.key);
+                        // Fluent's nav item fills the selected row too. High contrast fills every
+                        // one of these with the highlight colour, so the text takes the matching
+                        // foreground.
                         let fill = if pressed {
                             Some(c(theme.color.neutral_background_4_pressed))
                         } else if hovered {
                             Some(c(theme.color.neutral_background_4_hover))
+                        } else if is_selected {
+                            Some(c(theme.color.neutral_background_4_selected))
                         } else {
                             None
                         };
@@ -602,6 +607,10 @@ impl NavigationView {
                         }
                         let text_color = if is_selected {
                             c(theme.color.neutral_foreground_2_brand_selected)
+                        } else if pressed {
+                            c(theme.color.neutral_foreground_2_pressed)
+                        } else if hovered {
+                            c(theme.color.neutral_foreground_2_hover)
                         } else {
                             c(theme.color.neutral_foreground_2)
                         };

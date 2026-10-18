@@ -288,6 +288,8 @@ impl<'a> DataGrid<'a> {
             .then(|| Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_2)));
         let hover = c(theme.color.subtle_background_hover);
         let selected_fill = c(theme.color.subtle_background_selected);
+        let hover_ink = c(theme.color.neutral_foreground_1_hover);
+        let selected_ink = c(theme.color.neutral_foreground_1_selected);
         let ring_radius = CornerRadius::same(border_radius::MEDIUM as u8);
         let grid_key = self.id.with("grid");
         let inside_key = grid_key.with("inside");
@@ -432,11 +434,17 @@ impl<'a> DataGrid<'a> {
                     }
 
                     let selected = state.selection.selected.contains(&id);
-                    if selected {
+                    // High contrast fills these rows with the highlight colour, so cell text
+                    // takes the matching foreground.
+                    let row_ink = if selected {
                         ui.painter().rect_filled(row_rect, 0.0, selected_fill);
+                        Some(selected_ink)
                     } else if ui.rect_contains_pointer(row_rect) {
                         ui.painter().rect_filled(row_rect, 0.0, hover);
-                    }
+                        Some(hover_ink)
+                    } else {
+                        None
+                    };
                     if let Some(stroke) = separator {
                         ui.painter().hline(row_rect.x_range(), row_rect.bottom(), stroke);
                     }
@@ -495,6 +503,9 @@ impl<'a> DataGrid<'a> {
                         child.set_clip_rect(cell_rect);
                         // A selectable label would take the click meant for the row (§3).
                         child.style_mut().interaction.selectable_labels = false;
+                        if let Some(ink) = row_ink {
+                            child.visuals_mut().override_text_color = Some(ink);
+                        }
                         if let Some(target) = cell(ctx, &mut child).focus_target() {
                             targets.insert((id, index), target);
                         }

@@ -389,7 +389,15 @@ fn caption_button(
         } else {
             t.subtle_background_hover
         };
-        (Some(fill), base_fg)
+        // High contrast hovers with the highlight colour; the glyph takes its foreground.
+        let fg = if inactive {
+            base_fg
+        } else if pressed {
+            t.neutral_foreground_1_pressed
+        } else {
+            t.neutral_foreground_1_hover
+        };
+        (Some(fill), fg)
     } else {
         (None, base_fg)
     };

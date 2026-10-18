@@ -130,12 +130,16 @@ impl Widget for Switch<'_> {
             }
         }
 
-        // TODO: use AccessKit role Switch when egui's WidgetType exposes it. Until then the
-        // switch is a checkbox, which is the closest role WidgetType has.
+        // WidgetType has no switch, so the widget info says checkbox and the AccessKit node
+        // is then given the Switch role (ARCHITECTURE "Component API" rule 8). Narrator and
+        // Orca announce "switch, on/off" instead of "check box, checked".
         response.widget_info(|| {
             let mut info = WidgetInfo::labeled(WidgetType::Checkbox, enabled, label_text.clone());
             info.selected = Some(on);
             info
+        });
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            node.set_role(egui::accesskit::Role::Switch);
         });
         response
     }
@@ -163,11 +167,11 @@ fn paint_track(ui: &Ui, track: Rect, paint: TrackPaint, theme: &Theme) {
         (egui::Color32::TRANSPARENT, c(color.neutral_stroke_disabled))
     } else if on {
         let fill = if pressed {
-            color.brand_background_pressed
+            color.compound_brand_background_pressed
         } else if hovered {
-            color.brand_background_hover
+            color.compound_brand_background_hover
         } else {
-            color.brand_background
+            color.compound_brand_background
         };
         (c(fill), c(fill))
     } else {
@@ -224,8 +228,10 @@ fn space_pressed(ui: &Ui) -> bool {
     ui.input(|input| input.key_pressed(egui::Key::Space))
 }
 
+/// The shared sticky rule: a ring from the last key press until the next pointer press, not
+/// only on the frame of the key event.
 fn focus_visible(ui: &Ui, response: &Response) -> bool {
-    response.has_focus() && ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Key { .. })))
+    crate::foundation::focus::focus_visible(ui, response)
 }
 
 fn paint_focus_ring(ui: &Ui, rect: Rect, radius: CornerRadius, theme: &Theme) {

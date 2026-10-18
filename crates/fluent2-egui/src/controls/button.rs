@@ -326,7 +326,7 @@ pub(crate) fn checked_colors(
     };
     match appearance {
         Secondary | Outline => Face {
-            foreground: color.neutral_foreground_1,
+            foreground: color.neutral_foreground_1_selected,
             background: color.neutral_background_1_selected,
             stroke: color.neutral_stroke_1,
         },
@@ -464,9 +464,11 @@ pub(crate) fn colors_of(
                 Primary | Secondary => color.neutral_background_disabled,
                 Outline | Subtle | Transparent => clear,
             },
+            // Primary keeps a stroke so a disabled primary button still has an edge in high
+            // contrast, where the disabled fill is the window colour (as SplitButton does).
             stroke: match appearance {
-                Secondary | Outline => color.neutral_stroke_disabled,
-                Primary | Subtle | Transparent => clear,
+                Primary | Secondary | Outline => color.neutral_stroke_disabled,
+                Subtle | Transparent => clear,
             },
         },
         (Secondary, VisualState::Rest) => Face {
@@ -475,12 +477,12 @@ pub(crate) fn colors_of(
             stroke: color.neutral_stroke_1,
         },
         (Secondary, VisualState::Hover) => Face {
-            foreground: color.neutral_foreground_1,
+            foreground: color.neutral_foreground_1_hover,
             background: color.neutral_background_1_hover,
             stroke: color.neutral_stroke_1_hover,
         },
         (Secondary, VisualState::Pressed) => Face {
-            foreground: color.neutral_foreground_1,
+            foreground: color.neutral_foreground_1_pressed,
             background: color.neutral_background_1_pressed,
             stroke: color.neutral_stroke_1_pressed,
         },
