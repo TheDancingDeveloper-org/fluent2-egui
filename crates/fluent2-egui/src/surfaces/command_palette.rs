@@ -1,5 +1,5 @@
 // Adapted from thedancingdeveloper/fluent-gpui crates/fluent-layout/src/command_palette.rs @ f601e54.
-// Copyright (c) 2026 sprooty. Licensed Apache-2.0.
+// Copyright (c) 2026 sprooty. Licensed MIT OR Apache-2.0.
 
 //! Fluent command palette: a centred surface with a search box and a ranked list of commands.
 //!
