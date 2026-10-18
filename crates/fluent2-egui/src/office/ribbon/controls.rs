@@ -13,8 +13,12 @@ use egui::{
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal};
 
-use super::group::ScalingStep;
+use fluent2_tokens::Rgba;
+
+use super::layout::ScalingStep;
 use super::{RibbonEvent, RibbonEventKind, RibbonResponse, radius};
+use crate::controls::button::Metrics as ButtonMetrics;
+use crate::controls::split_button::{Metrics as SplitMetrics, natural_width};
 use crate::controls::{ButtonSize, Checkbox, Combobox, Dropdown, MenuButton, SplitButton, ToggleButton};
 use crate::foundation::focus::{self, paint_focus_ring};
 use crate::foundation::icon::{IconName, IconSize, IconStyle, paint_icon};
@@ -172,60 +176,24 @@ impl<'a> RibbonLarge<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
-        let theme = Theme::get(ui.ctx());
-        let enabled = ui.is_enabled();
-        let chrome = &theme.chrome;
-        let pad = spacing_horizontal::XS;
-        let icon = chrome.icon_large;
-        let text = caption(ui, &self.label, true, chrome.large_label_max);
-        let width = text.size().x.max(icon) + 2.0 * pad;
-        let height = icon + 3.0 * pad + 2.0 * TypeRamp::Caption1.line_height();
-
-        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-        let color = &theme.color;
-        let fill = if !enabled {
-            None
-        } else if response.is_pointer_button_down_on() {
-            Some(color.subtle_background_pressed)
-        } else if response.hovered() {
-            Some(color.subtle_background_hover)
-        } else {
-            None
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
+        let tip = tooltip(&self.label, self.shortcut.as_deref());
+        let response = match step {
+            ScalingStep::Large | ScalingStep::Collapsed => paint_large(ui, self.icon, &self.label),
+            ScalingStep::Medium => paint_small(ui, self.icon, &self.label, true),
+            ScalingStep::Small => paint_small(ui, self.icon, &self.label, false),
         };
-        let corner = radius(border_radius::MEDIUM);
-        if let Some(fill) = fill {
-            ui.painter().rect_filled(rect, corner, c(fill));
-        }
-
-        let ink = if enabled {
-            color.neutral_foreground_1
-        } else {
-            color.neutral_foreground_disabled
-        };
-        // The 32 pt slot holds the 24 pt icon, centred.
-        let slot = Rect::from_min_size(
-            Pos2::new(rect.center().x - icon / 2.0, rect.top() + pad),
-            Vec2::splat(icon),
-        );
-        paint_icon(
-            ui,
-            slot,
-            self.icon,
-            IconSize::S24,
-            IconStyle::Regular,
-            Some(c(ink)),
-        );
-        let origin = Pos2::new(rect.center().x - text.size().x / 2.0, slot.bottom() + pad);
-        ui.painter().galley(origin, Arc::clone(&text), c(ink));
-
-        if focus::focus_visible(ui, &response) {
-            paint_focus_ring(ui, rect, corner);
-        }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, self.label.as_str()));
-        let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
+        let response = response.fluent_tooltip(tip);
         register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
         report_click(out, self.key, response.clicked() || invoked(ui, self.key));
+    }
+
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        match step {
+            ScalingStep::Large | ScalingStep::Collapsed => large_width(ui, &self.label),
+            ScalingStep::Medium => small_width(ui, &self.label, true),
+            ScalingStep::Small => small_width(ui, &self.label, false),
+        }
     }
 }
 
@@ -265,58 +233,136 @@ impl<'a> RibbonSmall<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
-        let theme = Theme::get(ui.ctx());
-        let enabled = ui.is_enabled();
-        let chrome = &theme.chrome;
-        let pad = spacing_horizontal::S;
-        let gap = spacing_horizontal::XS;
-        let icon = chrome.icon_small;
-        let text = caption(ui, &self.label, false, f32::INFINITY);
-        let width = pad + icon + gap + text.size().x + pad;
-        let height = icon + 2.0 * gap;
-
-        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-        let color = &theme.color;
-        let fill = if !enabled {
-            None
-        } else if response.is_pointer_button_down_on() {
-            Some(color.subtle_background_pressed)
-        } else if response.hovered() {
-            Some(color.subtle_background_hover)
-        } else {
-            None
-        };
-        let corner = radius(border_radius::MEDIUM);
-        if let Some(fill) = fill {
-            ui.painter().rect_filled(rect, corner, c(fill));
-        }
-
-        let ink = if enabled {
-            color.neutral_foreground_1
-        } else {
-            color.neutral_foreground_disabled
-        };
-        let slot = Rect::from_min_size(rect.min + Vec2::new(pad, gap), Vec2::splat(icon));
-        paint_icon(
-            ui,
-            slot,
-            self.icon,
-            IconSize::S16,
-            IconStyle::Regular,
-            Some(c(ink)),
-        );
-        let origin = Pos2::new(slot.right() + gap, rect.center().y - text.size().y / 2.0);
-        ui.painter().galley(origin, Arc::clone(&text), c(ink));
-
-        if focus::focus_visible(ui, &response) {
-            paint_focus_ring(ui, rect, corner);
-        }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, self.label.as_str()));
-        let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
+        let tip = tooltip(&self.label, self.shortcut.as_deref());
+        let response = paint_small(ui, self.icon, &self.label, step != ScalingStep::Small);
+        let response = response.fluent_tooltip(tip);
         register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
         report_click(out, self.key, response.clicked() || invoked(ui, self.key));
     }
+
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        small_width(ui, &self.label, step != ScalingStep::Small)
+    }
+}
+
+/// Width of a large button: the wrapped label or the 32 pt icon slot, plus padding (§5.4).
+fn large_width(ui: &Ui, label: &str) -> f32 {
+    let chrome = &Theme::get(ui.ctx()).chrome;
+    let text = caption(ui, label, true, chrome.large_label_max);
+    text.size().x.max(chrome.icon_large) + 2.0 * spacing_horizontal::XS
+}
+
+/// Width of a small button, with or without its label (§5.4).
+fn small_width(ui: &Ui, label: &str, with_label: bool) -> f32 {
+    let icon = Theme::get(ui.ctx()).chrome.icon_small;
+    let text = if with_label {
+        spacing_horizontal::XS + caption(ui, label, false, f32::INFINITY).size().x
+    } else {
+        0.0
+    };
+    2.0 * spacing_horizontal::S + icon + text
+}
+
+/// The fill of a subtle ribbon button in its current state.
+fn subtle_fill(theme: &Theme, enabled: bool, response: &Response) -> Option<Rgba> {
+    let color = &theme.color;
+    if !enabled {
+        None
+    } else if response.is_pointer_button_down_on() {
+        Some(color.subtle_background_pressed)
+    } else if response.hovered() {
+        Some(color.subtle_background_hover)
+    } else {
+        None
+    }
+}
+
+/// Paint a large button: a 32 pt icon slot above a label of up to two lines (§5.1).
+fn paint_large(ui: &mut Ui, icon_name: IconName, label: &str) -> Response {
+    let theme = Theme::get(ui.ctx());
+    let enabled = ui.is_enabled();
+    let chrome = &theme.chrome;
+    let pad = spacing_horizontal::XS;
+    let icon = chrome.icon_large;
+    let text = caption(ui, label, true, chrome.large_label_max);
+    let width = large_width(ui, label);
+    let height = icon + 3.0 * pad + 2.0 * TypeRamp::Caption1.line_height();
+
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let corner = radius(border_radius::MEDIUM);
+    if let Some(fill) = subtle_fill(&theme, enabled, &response) {
+        ui.painter().rect_filled(rect, corner, c(fill));
+    }
+    let ink = ink(&theme, enabled);
+    // The 32 pt slot holds the 24 pt icon, centred.
+    let slot = Rect::from_min_size(
+        Pos2::new(rect.center().x - icon / 2.0, rect.top() + pad),
+        Vec2::splat(icon),
+    );
+    paint_icon(
+        ui,
+        slot,
+        icon_name,
+        IconSize::S24,
+        IconStyle::Regular,
+        Some(c(ink)),
+    );
+    let origin = Pos2::new(rect.center().x - text.size().x / 2.0, slot.bottom() + pad);
+    ui.painter().galley(origin, Arc::clone(&text), c(ink));
+    finish_button(ui, &response, rect, label, enabled);
+    response
+}
+
+/// Paint a small button, 24 pt high: a 16 pt icon and, when `with_label`, the label beside it.
+/// Without the label it stays in the accessible name and the tooltip (§5.1 `Small`).
+fn paint_small(ui: &mut Ui, icon_name: IconName, label: &str, with_label: bool) -> Response {
+    let theme = Theme::get(ui.ctx());
+    let enabled = ui.is_enabled();
+    let pad = spacing_horizontal::S;
+    let gap = spacing_horizontal::XS;
+    let icon = theme.chrome.icon_small;
+    let width = small_width(ui, label, with_label);
+    let height = icon + 2.0 * gap;
+
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let corner = radius(border_radius::MEDIUM);
+    if let Some(fill) = subtle_fill(&theme, enabled, &response) {
+        ui.painter().rect_filled(rect, corner, c(fill));
+    }
+    let ink = ink(&theme, enabled);
+    let slot = Rect::from_min_size(rect.min + Vec2::new(pad, gap), Vec2::splat(icon));
+    paint_icon(
+        ui,
+        slot,
+        icon_name,
+        IconSize::S16,
+        IconStyle::Regular,
+        Some(c(ink)),
+    );
+    if with_label {
+        let text = caption(ui, label, false, f32::INFINITY);
+        let origin = Pos2::new(slot.right() + gap, rect.center().y - text.size().y / 2.0);
+        ui.painter().galley(origin, text, c(ink));
+    }
+    finish_button(ui, &response, rect, label, enabled);
+    response
+}
+
+fn ink(theme: &Theme, enabled: bool) -> Rgba {
+    if enabled {
+        theme.color.neutral_foreground_1
+    } else {
+        theme.color.neutral_foreground_disabled
+    }
+}
+
+/// Focus ring and accessible name of a painted button.
+fn finish_button(ui: &Ui, response: &Response, rect: Rect, label: &str, enabled: bool) {
+    if focus::focus_visible(ui, response) {
+        paint_focus_ring(ui, rect, radius(border_radius::MEDIUM));
+    }
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
 }
 
 /// Toggle button bound to `value`. Small. Event: `Changed` (`value` is already updated).
@@ -356,19 +402,20 @@ impl<'a> RibbonToggle<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
         let before = *self.value;
+        let tip = tooltip(&self.label, self.shortcut.as_deref());
         // A KeyTip presses the toggle, as a click does.
         if invoked(ui, self.key) {
             *self.value = !*self.value;
         }
         let response = ui.push_id(self.key, |ui| {
-            ui.add(
-                ToggleButton::new(&mut *self.value, self.label.as_str())
-                    .icon(self.icon)
-                    .size(ButtonSize::Small),
-            )
-            .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()))
+            let toggle = if step == ScalingStep::Small {
+                ToggleButton::icon_only(&mut *self.value, self.icon, self.label.as_str())
+            } else {
+                ToggleButton::new(&mut *self.value, self.label.as_str()).icon(self.icon)
+            };
+            ui.add(toggle.size(ButtonSize::Small)).fluent_tooltip(tip)
         });
         register(
             ui,
@@ -380,6 +427,16 @@ impl<'a> RibbonToggle<'a> {
             None,
         );
         report_change(out, self.key, *self.value != before);
+    }
+
+    /// The `ToggleButton` small width: padding, icon, gap and label, at least `min_width`.
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        let metrics = ButtonMetrics::of(ButtonSize::Small);
+        if step == ScalingStep::Small {
+            return (metrics.icon + 2.0 * metrics.h_padding).max(metrics.min_height);
+        }
+        let text = caption(ui, &self.label, false, f32::INFINITY).size().x;
+        (text + metrics.icon + metrics.icon_gap + 2.0 * metrics.h_padding).max(metrics.min_width)
     }
 }
 
@@ -431,13 +488,24 @@ impl<'a> RibbonSplit<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
         let arrow_label = format!("{} menu", self.label);
-        let split = SplitButton::new(self.label.as_str())
+        let text = if step == ScalingStep::Small {
+            ""
+        } else {
+            self.label.as_str()
+        };
+        let split = SplitButton::new(text)
             .icon(self.icon)
-            .size(sizes(self.small))
+            .size(sizes(self.small, step))
             .id_salt(self.key);
         let response = split.show(ui, self.menu);
+        if step == ScalingStep::Small {
+            // The label moved into the tooltip; the main action keeps it as its name (§5.1).
+            ui.ctx().accesskit_node_builder(response.main.id, |node| {
+                node.set_label(self.label.clone());
+            });
+        }
         // The WI-1544 arrow is labelled "<label> options" and has no popup role. Spec §9.1 says
         // "<label> menu" with `has_popup`, so the ribbon sets both on the arrow's node.
         ui.ctx().accesskit_node_builder(response.menu.id, |node| {
@@ -456,6 +524,18 @@ impl<'a> RibbonSplit<'a> {
             .main
             .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
         report_click(out, self.key, main.clicked());
+    }
+}
+
+impl RibbonSplit<'_> {
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        let size = sizes(self.small, step);
+        let label = if step == ScalingStep::Small {
+            ""
+        } else {
+            self.label.as_str()
+        };
+        natural_width(ui, &WidgetText::from(label), true, SplitMetrics::of(size)) + chevron_box(size)
     }
 }
 
@@ -506,15 +586,25 @@ impl<'a> RibbonMenu<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
-        let (response, _) = MenuButton::new(self.label.as_str())
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
+        let text = if step == ScalingStep::Small {
+            ""
+        } else {
+            self.label.as_str()
+        };
+        let (response, _) = MenuButton::new(text)
             .icon(self.icon)
-            .size(sizes(self.small))
+            .size(sizes(self.small, step))
             .id_salt(self.key)
             .show(ui, self.menu);
-        // Spec §9.1: a menu button is a button with `has_popup`.
+        // Spec §9.1: a menu button is a button with `has_popup`. At `Small` the label moves
+        // into the tooltip and stays the accessible name.
+        let small = step == ScalingStep::Small;
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_has_popup(accesskit::HasPopup::Menu);
+            if small {
+                node.set_label(self.label.clone());
+            }
         });
         // The KeyTip opens the menu and reports `Clicked`, as pressing the button does.
         let popup = Popup::default_response_id(&response);
@@ -537,12 +627,34 @@ impl<'a> RibbonMenu<'a> {
     }
 }
 
-/// The button size of a split or menu button.
-fn sizes(small: bool) -> ButtonSize {
-    if small {
+impl RibbonMenu<'_> {
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        let size = sizes(self.small, step);
+        let label = if step == ScalingStep::Small {
+            ""
+        } else {
+            self.label.as_str()
+        };
+        let metrics = SplitMetrics::of(size);
+        natural_width(ui, &WidgetText::from(label), true, metrics) + metrics.icon + metrics.icon_gap
+    }
+}
+
+/// The button size of a split or menu button: large only at the `Large` step (§5.1).
+fn sizes(small: bool, step: ScalingStep) -> ButtonSize {
+    if small || !matches!(step, ScalingStep::Large | ScalingStep::Collapsed) {
         ButtonSize::Small
     } else {
         ButtonSize::Large
+    }
+}
+
+/// The chevron region of a split button: the icon box of its size (`SplitButton` metrics).
+fn chevron_box(size: ButtonSize) -> f32 {
+    match size {
+        ButtonSize::Small => 24.0,
+        ButtonSize::Medium => 32.0,
+        ButtonSize::Large => 40.0,
     }
 }
 
@@ -571,13 +683,24 @@ impl<'a> RibbonCheckbox<'a> {
         }
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
         let before = *self.value;
         if invoked(ui, self.key) {
             *self.value = !*self.value;
         }
+        let label = self.label.clone();
         let response = ui.push_id(self.key, |ui| {
-            ui.add(Checkbox::bool(&mut *self.value, self.label.as_str()))
+            if step == ScalingStep::Small {
+                // Checkbox only; the label moves into the tooltip and the accessible name.
+                let response = ui
+                    .add(Checkbox::bool(&mut *self.value, ""))
+                    .fluent_tooltip(label.as_str());
+                ui.ctx()
+                    .accesskit_node_builder(response.id, |node| node.set_label(label));
+                response
+            } else {
+                ui.add(Checkbox::bool(&mut *self.value, label.as_str()))
+            }
         });
         register(
             ui,
@@ -589,6 +712,24 @@ impl<'a> RibbonCheckbox<'a> {
             None,
         );
         report_change(out, self.key, *self.value != before);
+    }
+
+    /// Box, gap and `Body1` label, as `Checkbox` lays them out.
+    fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        let label = if step == ScalingStep::Small {
+            0.0
+        } else {
+            WidgetText::from(self.label.as_str())
+                .into_galley(
+                    ui,
+                    Some(TextWrapMode::Extend),
+                    f32::INFINITY,
+                    TextStyle::Name(TypeRamp::Body1.name().into()),
+                )
+                .size()
+                .x
+        };
+        16.0 + spacing_horizontal::S + label
     }
 }
 
@@ -620,10 +761,10 @@ impl<'a> RibbonDropdown<'a> {
         }
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
         let before = *self.selected;
         let mut current = Some(before);
-        let width = field_width(ui, &self.label, self.options);
+        let width = field_width(step);
         let response = ui.push_id(self.key, |ui| {
             ui.add(
                 Dropdown::new(self.key, &mut current, self.options)
@@ -679,9 +820,9 @@ impl<'a> RibbonCombobox<'a> {
         }
     }
 
-    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
         let before = self.text.clone();
-        let width = field_width(ui, &self.label, self.options);
+        let width = field_width(step);
         let response = ui.push_id(self.key, |ui| {
             ui.add(
                 Combobox::new(self.key, &mut *self.text, self.options)
@@ -707,16 +848,13 @@ impl<'a> RibbonCombobox<'a> {
     }
 }
 
-/// Width of a dropdown or combobox at the Large step: its widest text (placeholder or option),
-/// plus padding and the chevron. Without it a field takes all the width its parent offers.
-fn field_width(ui: &Ui, label: &str, options: &[&str]) -> f32 {
-    let chrome = &Theme::get(ui.ctx()).chrome;
-    let pad = spacing_horizontal::S;
-    let widest = std::iter::once(label)
-        .chain(options.iter().copied())
-        .map(|text| caption(ui, text, false, f32::INFINITY).size().x)
-        .fold(0.0_f32, f32::max);
-    widest + 2.0 * pad + chrome.icon_small + spacing_horizontal::XS
+/// Width of a dropdown or combobox: 120, 96 or 64 pt by step (spec §5.1).
+fn field_width(step: ScalingStep) -> f32 {
+    match step {
+        ScalingStep::Large | ScalingStep::Collapsed => 120.0,
+        ScalingStep::Medium => 96.0,
+        ScalingStep::Small => 64.0,
+    }
 }
 
 /// Dialog launcher at a group's bottom-right corner. Event: `Clicked`. It is set with
@@ -755,6 +893,18 @@ pub struct RibbonCustom<'a> {
     widths: [f32; 3],
 }
 
+impl RibbonCustom<'_> {
+    /// The declared width at `step`, never measured. Non-finite or negative is 0.
+    fn width(&self, step: ScalingStep) -> f32 {
+        let width = match step {
+            ScalingStep::Large | ScalingStep::Collapsed => self.widths[0],
+            ScalingStep::Medium => self.widths[1],
+            ScalingStep::Small => self.widths[2],
+        };
+        if width.is_finite() { width.max(0.0) } else { 0.0 }
+    }
+}
+
 impl<'a> RibbonCustom<'a> {
     /// A custom widget. `key` names its response in `RibbonResponse::custom`.
     pub fn new(key: &'static str, add: impl FnMut(&mut Ui, ScalingStep) -> Response + 'a) -> Self {
@@ -773,10 +923,13 @@ impl<'a> RibbonCustom<'a> {
         self
     }
 
-    fn show(mut self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
-        let width = self.widths[0].max(0.0);
+    fn show(mut self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse, step: ScalingStep) {
+        let width = self.width(step);
         let response = ui
-            .allocate_ui(Vec2::new(width, 0.0), |ui| (self.add)(ui, ScalingStep::Large))
+            .allocate_ui(Vec2::new(width, 0.0), |ui| {
+                ui.set_min_width(width);
+                (self.add)(ui, step)
+            })
             .inner;
         // A KeyTip focuses the caller's widget; the caller handles its keys.
         if invoked(ui, self.key) {
@@ -841,8 +994,12 @@ impl RibbonControl<'_> {
         }
     }
 
-    /// Whether the control is small: it stacks in a column with its neighbours (spec §4.2).
-    pub(super) fn is_small(&self) -> bool {
+    /// Whether the control stacks in a column with its neighbours at `step` (spec §4.2, §5.1).
+    /// Below `Large` every control but a custom one renders small.
+    pub(super) fn is_small(&self, step: ScalingStep) -> bool {
+        if matches!(step, ScalingStep::Medium | ScalingStep::Small) {
+            return !matches!(self.0, Kind::Custom(_));
+        }
         match &self.0 {
             Kind::Small(_) | Kind::Toggle(_) | Kind::Checkbox(_) | Kind::Dropdown(_) | Kind::Combobox(_) => {
                 true
@@ -853,18 +1010,73 @@ impl RibbonControl<'_> {
         }
     }
 
-    /// Paint the control and report its events.
-    pub(super) fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
+    /// The control's icon, if it has one: the default icon of a collapsed group (spec §5.1).
+    pub(super) fn icon(&self) -> Option<IconName> {
+        match &self.0 {
+            Kind::Large(control) => Some(control.icon),
+            Kind::Small(control) => Some(control.icon),
+            Kind::Toggle(control) => Some(control.icon),
+            Kind::Split(control) => Some(control.icon),
+            Kind::Menu(control) => Some(control.icon),
+            Kind::Checkbox(_) | Kind::Dropdown(_) | Kind::Combobox(_) | Kind::Custom(_) => None,
+        }
+    }
+
+    /// Width in points at `step` (spec §5.1, §5.4). `Collapsed` measures as `Large`.
+    pub(super) fn width(&self, ui: &Ui, step: ScalingStep) -> f32 {
+        match &self.0 {
+            Kind::Large(control) => control.width(ui, step),
+            Kind::Small(control) => control.width(ui, step),
+            Kind::Toggle(control) => control.width(ui, step),
+            Kind::Split(control) => control.width(ui, step),
+            Kind::Menu(control) => control.width(ui, step),
+            Kind::Checkbox(control) => control.width(ui, step),
+            Kind::Dropdown(_) | Kind::Combobox(_) => field_width(step),
+            Kind::Custom(control) => control.width(step),
+        }
+    }
+
+    /// Feed what the control's widths depend on into `state`, for the width memo (§5.4).
+    pub(super) fn hash_content(&self, state: &mut impl std::hash::Hasher) {
+        use std::hash::Hash;
+        self.key().hash(state);
+        self.is_small(ScalingStep::Large).hash(state);
+        match &self.0 {
+            Kind::Large(control) => (0u8, &control.label).hash(state),
+            Kind::Small(control) => (1u8, &control.label).hash(state),
+            Kind::Toggle(control) => (2u8, &control.label).hash(state),
+            Kind::Split(control) => (3u8, &control.label).hash(state),
+            Kind::Menu(control) => (4u8, &control.label).hash(state),
+            Kind::Checkbox(control) => (5u8, &control.label).hash(state),
+            Kind::Dropdown(_) => 6u8.hash(state),
+            Kind::Combobox(_) => 7u8.hash(state),
+            Kind::Custom(control) => {
+                8u8.hash(state);
+                for width in control.widths {
+                    width.to_bits().hash(state);
+                }
+            }
+        }
+    }
+
+    /// Paint the control at `step` and report its events.
+    pub(super) fn show(
+        self,
+        ui: &mut Ui,
+        tab: Option<&'static str>,
+        out: &mut RibbonResponse,
+        step: ScalingStep,
+    ) {
         match self.0 {
-            Kind::Large(control) => control.show(ui, tab, out),
-            Kind::Small(control) => control.show(ui, tab, out),
-            Kind::Toggle(control) => control.show(ui, tab, out),
-            Kind::Split(control) => control.show(ui, tab, out),
-            Kind::Menu(control) => control.show(ui, tab, out),
-            Kind::Checkbox(control) => control.show(ui, tab, out),
-            Kind::Dropdown(control) => control.show(ui, tab, out),
-            Kind::Combobox(control) => control.show(ui, tab, out),
-            Kind::Custom(control) => control.show(ui, tab, out),
+            Kind::Large(control) => control.show(ui, tab, out, step),
+            Kind::Small(control) => control.show(ui, tab, out, step),
+            Kind::Toggle(control) => control.show(ui, tab, out, step),
+            Kind::Split(control) => control.show(ui, tab, out, step),
+            Kind::Menu(control) => control.show(ui, tab, out, step),
+            Kind::Checkbox(control) => control.show(ui, tab, out, step),
+            Kind::Dropdown(control) => control.show(ui, tab, out, step),
+            Kind::Combobox(control) => control.show(ui, tab, out, step),
+            Kind::Custom(control) => control.show(ui, tab, out, step),
         }
     }
 }
