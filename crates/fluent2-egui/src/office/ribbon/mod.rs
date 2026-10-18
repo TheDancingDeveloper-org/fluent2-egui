@@ -31,8 +31,8 @@ pub use controls::{
     RibbonCheckbox, RibbonCombobox, RibbonControl, RibbonCustom, RibbonDialogLauncher, RibbonDropdown,
     RibbonLarge, RibbonMenu, RibbonSmall, RibbonSplit, RibbonToggle,
 };
-pub use group::{GroupBuilder, ScalingStep};
 pub use gallery::{Gallery, GalleryItemState, GalleryResponse, GalleryTileSize};
+pub use group::{GroupBuilder, ScalingStep};
 pub use tab::{ContextualAccent, RibbonTab, TabBuilder};
 
 use group::{Group, paint_body};
