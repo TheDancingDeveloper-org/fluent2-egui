@@ -79,6 +79,12 @@ fn ribbon(ui: &mut egui::Ui, state: &mut RibbonState) {
 |---|---|
 | 0.1.x | 0.36 |
 
+## CI
+
+Pull requests run only the checks their diff touches. `main`, and the merge queue once it is
+enabled, run the full suite on Linux and Windows. The single required check is `ci`. See
+[`docs/ci.md`](docs/ci.md).
+
 ## Upstream sources
 
 This project generates from, adapts and follows several fast-moving upstreams (egui, Fluent UI

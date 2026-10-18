@@ -15,6 +15,10 @@ module layout, the component API, theming, testing and gates.
    item**. Do not guess.
 4. Run the gates in `docs/ARCHITECTURE.md` until they pass.
 5. Open a PR against `main` (or the stacked branch) that names the work item. **Do not merge.**
+6. CI on a PR runs only the jobs your diff touches (Linux only); the merge queue and `main`
+   run everything, Windows included. The required context is `ci`. Land through the queue
+   (`land-pr`, or `gh pr merge --auto`), never by rebasing a queued PR. See
+   [`docs/ci.md`](docs/ci.md).
 
 ## Rules that are never broken
 
