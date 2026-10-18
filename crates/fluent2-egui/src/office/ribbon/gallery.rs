@@ -9,8 +9,8 @@ use std::hash::Hash;
 use std::ops::Range;
 
 use egui::{
-    CornerRadius, Id, Key, Modifiers, Popup, PopupCloseBehavior, Rect, Response, ScrollArea, Sense, Stroke,
-    StrokeKind, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText, WidgetType,
+    CornerRadius, EventFilter, Id, Key, Modifiers, Popup, PopupCloseBehavior, Rect, Response, ScrollArea,
+    Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText, WidgetType,
 };
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -90,6 +90,9 @@ struct Memory {
     cursor: usize,
     /// The popup should scroll the cursor into view next frame.
     reveal: bool,
+    /// The grid should take keyboard focus once it is laid out visibly. The popup's first
+    /// frame is an invisible sizing pass, and focus given then would be dropped.
+    focus_grid: bool,
 }
 
 struct Category {
@@ -329,18 +332,21 @@ impl<'a> Gallery<'a> {
 
         // The popup grid.
         let popup_id = self.id.with("popup");
-        let open_key = expand.has_focus()
+        let grid_id = self.id.with("grid");
+        let was_open = Popup::is_id_open(ui.ctx(), popup_id);
+        let open_key = !was_open
+            && expand.has_focus()
             && ui.input_mut(|input| {
                 input.consume_key(Modifiers::NONE, Key::Enter)
                     || input.consume_key(Modifiers::NONE, Key::Space)
                     || input.consume_key(Modifiers::ALT, Key::ArrowDown)
             });
-        let was_open = Popup::is_id_open(ui.ctx(), popup_id);
         if (expand.clicked() || open_key) && enabled {
             Popup::toggle_id(ui.ctx(), popup_id);
             if !was_open {
                 memory.cursor = self.selected.unwrap_or(0).min(count.saturating_sub(1));
                 memory.reveal = true;
+                memory.focus_grid = true;
             }
         }
         let mut open = Popup::is_id_open(ui.ctx(), popup_id) && enabled && count > 0;
@@ -356,31 +362,42 @@ impl<'a> Gallery<'a> {
                 ((inner + GAP) / (side + GAP)).floor().max(1.0) as usize
             };
 
-            // Keyboard: arrows move the cursor, Enter selects, Escape closes.
+            let lines = popup_lines(count, popup_columns, &self.categories);
+
+            // Keyboard: while the grid has focus, arrows move the cursor and Enter selects.
+            // Otherwise focus is on a footer item, which handles its own keys. Escape closes
+            // from anywhere in the popup.
+            let grid_focused = ui.memory(|memory| memory.has_focus(grid_id));
             let (moved, choose, escape) = ui.input_mut(|input| {
-                let mut cursor = memory.cursor as isize;
-                let step = popup_columns as isize;
-                let last = count as isize - 1;
-                for (key, delta) in [
-                    (Key::ArrowLeft, -1),
-                    (Key::ArrowRight, 1),
-                    (Key::ArrowUp, -step),
-                    (Key::ArrowDown, step),
-                ] {
-                    if input.consume_key(Modifiers::NONE, key) {
-                        cursor = (cursor + delta).clamp(0, last);
+                let mut moved = false;
+                let mut choose = false;
+                if grid_focused {
+                    let last = count - 1;
+                    let before = memory.cursor;
+                    let mut cursor = before;
+                    if input.consume_key(Modifiers::NONE, Key::ArrowLeft) {
+                        cursor = cursor.saturating_sub(1);
                     }
+                    if input.consume_key(Modifiers::NONE, Key::ArrowRight) {
+                        cursor = (cursor + 1).min(last);
+                    }
+                    if input.consume_key(Modifiers::NONE, Key::ArrowUp) {
+                        cursor = step_row(&lines, cursor, false);
+                    }
+                    if input.consume_key(Modifiers::NONE, Key::ArrowDown) {
+                        cursor = step_row(&lines, cursor, true);
+                    }
+                    if input.consume_key(Modifiers::NONE, Key::Home) {
+                        cursor = 0;
+                    }
+                    if input.consume_key(Modifiers::NONE, Key::End) {
+                        cursor = last;
+                    }
+                    moved = cursor != before;
+                    memory.cursor = cursor;
+                    choose = input.consume_key(Modifiers::NONE, Key::Enter)
+                        || input.consume_key(Modifiers::NONE, Key::Space);
                 }
-                if input.consume_key(Modifiers::NONE, Key::Home) {
-                    cursor = 0;
-                }
-                if input.consume_key(Modifiers::NONE, Key::End) {
-                    cursor = last;
-                }
-                let moved = cursor as usize != memory.cursor;
-                memory.cursor = cursor.max(0) as usize;
-                let choose = input.consume_key(Modifiers::NONE, Key::Enter)
-                    || input.consume_key(Modifiers::NONE, Key::Space);
                 let escape = input.consume_key(Modifiers::NONE, Key::Escape);
                 (moved, choose, escape)
             });
@@ -396,7 +413,6 @@ impl<'a> Gallery<'a> {
                 close = true;
             }
 
-            let lines = popup_lines(count, popup_columns, &self.categories);
             let line_heights: Vec<f32> = lines
                 .iter()
                 .map(|line| match line {
@@ -417,8 +433,10 @@ impl<'a> Gallery<'a> {
             let mut footer_clicked = false;
             let label_of = |index: usize| self.label_of(index);
             let cursor = memory.cursor;
+            let mut focus_grid = memory.focus_grid;
             let id = self.id;
             let categories = &self.categories;
+            let grid_label = self.label.clone();
             let _ = Popup::menu(&expand)
                 .id(popup_id)
                 .open_memory(None)
@@ -446,8 +464,33 @@ impl<'a> Gallery<'a> {
                         area = area.vertical_scroll_offset(offset.max(0.0));
                     }
                     let total: f32 = line_heights.iter().sum();
+                    // Not `show_rows`: it needs every row the same height, and category
+                    // header lines are shorter than tile rows. This still lays out only the
+                    // lines inside the viewport.
                     let output = area.show_viewport(ui, |ui, viewport| {
                         ui.set_height(total);
+                        // The grid as one focus stop; the cursor tile shows where it is.
+                        let grid = ui.interact(
+                            viewport.translate(ui.min_rect().min.to_vec2()),
+                            grid_id,
+                            Sense::focusable_noninteractive(),
+                        );
+                        if focus_grid && ui.is_visible() {
+                            grid.request_focus();
+                            focus_grid = false;
+                        }
+                        grid.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, &grid_label));
+                        ui.memory_mut(|memory| {
+                            memory.set_focus_lock_filter(
+                                grid_id,
+                                EventFilter {
+                                    horizontal_arrows: true,
+                                    vertical_arrows: true,
+                                    tab: false,
+                                    escape: true,
+                                },
+                            );
+                        });
                         let origin = ui.min_rect().min;
                         let mut y = 0.0;
                         for (line, height) in lines.iter().zip(&line_heights) {
@@ -489,11 +532,13 @@ impl<'a> Gallery<'a> {
                                         let min = origin + Vec2::new(slot as f32 * (side + GAP), top);
                                         let tile = Rect::from_min_size(min, Vec2::splat(side));
                                         let tile_response =
-                                            ui.interact(tile, id.with(("popup", index)), Sense::click());
+                                            // Clickable but not a focus stop: the grid holds focus and the
+                                        // keyboard cursor picks the tile, so Tab goes on to the footer.
+                                        ui.interact(tile, id.with(("popup", index)), Sense::CLICK);
                                         let state = item_state(
                                             &tile_response,
                                             selected_now == Some(index),
-                                            index == cursor,
+                                            index == cursor && grid_focused,
                                             true,
                                         );
                                         paint_tile(ui, &theme, tile, state);
@@ -519,16 +564,23 @@ impl<'a> Gallery<'a> {
                     if let Some(footer) = footer.take() {
                         divider(ui);
                         let footer_rect = ui.scope(footer).response.rect;
+                        let footer_focused = ui
+                            .memory(|memory| memory.focused())
+                            .is_some_and(|focused| focused != grid_id && focused != expand.id);
                         footer_clicked = ui.input(|input| {
-                            input.pointer.any_click()
+                            let pointer = input.pointer.any_click()
                                 && input
                                     .pointer
                                     .interact_pos()
-                                    .is_some_and(|pos| footer_rect.contains(pos))
+                                    .is_some_and(|pos| footer_rect.contains(pos));
+                            let key = footer_focused
+                                && (input.key_pressed(Key::Enter) || input.key_pressed(Key::Space));
+                            pointer || key
                         });
                     }
                 });
 
+            memory.focus_grid = focus_grid;
             if let Some(index) = clicked {
                 memory.cursor = index;
                 if *self.selected != Some(index) {
@@ -591,6 +643,31 @@ fn popup_lines(count: usize, columns: usize, categories: &[Category]) -> Vec<Lin
         }
     }
     lines
+}
+
+/// The item one tile row above or below `cursor`, following the popup's real rows, which stop
+/// short at each category. Keeps the column where the target row is long enough, otherwise
+/// lands on its last item. Stays put at the first or last row.
+fn step_row(lines: &[Line], cursor: usize, down: bool) -> usize {
+    let rows: Vec<&Range<usize>> = lines
+        .iter()
+        .filter_map(|line| match line {
+            Line::Row(range) => Some(range),
+            Line::Header(_) => None,
+        })
+        .collect();
+    let Some(at) = rows.iter().position(|range| range.contains(&cursor)) else {
+        return cursor;
+    };
+    let target = if down {
+        rows.get(at + 1)
+    } else {
+        at.checked_sub(1).and_then(|at| rows.get(at))
+    };
+    match target {
+        Some(range) => (range.start + (cursor - rows[at].start)).min(range.end - 1),
+        None => cursor,
+    }
 }
 
 /// Top and bottom of the row holding `cursor`, in popup content coordinates.
@@ -702,6 +779,20 @@ mod tests {
                 Line::Row(4..7),
             ]
         );
+    }
+
+    #[test]
+    fn up_and_down_follow_rows_that_stop_at_categories() {
+        // 4 columns, categories at 0 and 6: rows 0..4, 4..6, 6..10, 10..12.
+        let lines = popup_lines(12, 4, &[category(0), category(6)]);
+        assert_eq!(step_row(&lines, 4, true), 6);
+        assert_eq!(step_row(&lines, 1, true), 5);
+        assert_eq!(step_row(&lines, 3, true), 5);
+        assert_eq!(step_row(&lines, 9, false), 5);
+        assert_eq!(step_row(&lines, 6, false), 4);
+        assert_eq!(step_row(&lines, 5, false), 1);
+        assert_eq!(step_row(&lines, 2, false), 2);
+        assert_eq!(step_row(&lines, 11, true), 11);
     }
 
     #[test]
