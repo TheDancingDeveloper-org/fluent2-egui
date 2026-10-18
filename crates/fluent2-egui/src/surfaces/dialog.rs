@@ -420,7 +420,7 @@ fn rounded_u8(value: f32) -> u8 {
 }
 
 /// `shadow64`, the same single-layer conversion `theme::install` uses for windows.
-fn shadow64(theme: &Theme) -> egui::Shadow {
+pub(crate) fn shadow64(theme: &Theme) -> egui::Shadow {
     let layers = theme.shadow.shadow_64;
     let Some(layer) = layers.iter().max_by(|left, right| {
         left.blur

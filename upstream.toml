@@ -171,9 +171,9 @@ branch = "main"
 rev = "f601e54b4e58e416bc7495a75468b82af9a10545"
 reviewed = "2026-10-14"
 licence = "Apache-2.0"
-role = "reference"
+role = "adapted"
 watch = ["crates/fluent-core/src", "crates/fluent-primitives/src", "crates/fluent-layout/src", "crates/fluent-ribbon/src", "crates/fluent-app/src"]
-notes = "Our own gpui library (parked 2026-10-14). Component inventory and API shapes are the spec reference. Its LICENSE file is not the verbatim Apache-2.0 text; relicensing code into this repo needs the owner's confirmation."
+notes = "Our own gpui library (parked 2026-10-14). Component inventory and API shapes are the spec reference. Command palette scoring adapted into surfaces/command_palette.rs (WI-1792). Its LICENSE file is not the verbatim Apache-2.0 text; relicensing code into this repo needs the owner's confirmation."
 
 # [[adaptation]]
 # ours     = "crates/fluent2-egui/src/office/keytips.rs"
@@ -202,3 +202,10 @@ source   = "rdpapp"
 path     = "migration-tool/src/ssh/terminal.rs"
 rev      = "4dff7e20208108f55c1f6173af00c58b1d69df1b"
 notes    = "TermGrid/TermProcessor merged into TerminalGrid; colours kept as palette indices for theme mapping; stable line numbers, deferred autowrap, italic/underline/inverse, colon SGR, links, selection text; every index bounds-checked (no panics)."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/src/surfaces/command_palette.rs"
+source   = "fluent-gpui"
+path     = "crates/fluent-layout/src/command_palette.rs"
+rev      = "f601e54b4e58e416bc7495a75468b82af9a10545"
+notes    = "Score tiers and fields (label, subtitle, group, keywords), whitespace and case normalisation, disabled-row skipping. Added: label match positions for highlighting, recents order. No entry actions: the palette returns the chosen id. Rendering rewritten for egui."

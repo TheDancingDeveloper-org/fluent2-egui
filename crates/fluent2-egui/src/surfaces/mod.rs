@@ -1,6 +1,7 @@
 //! Fluent surfaces. One file per surface; see `docs/ARCHITECTURE.md`.
 
 mod card;
+mod command_palette;
 mod dialog;
 mod menu;
 mod message_bar;
@@ -10,6 +11,7 @@ mod toast;
 mod tooltip;
 
 pub use card::{Card, CardAppearance, CardHeader};
+pub use command_palette::{CommandPalette, PaletteCommand, PaletteMatch, rank};
 pub use dialog::{CloseReason, Dialog, DialogActions, DialogKind, DialogResult};
 pub use menu::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use message_bar::{Intent, MessageBar, MessageBarResponse};
