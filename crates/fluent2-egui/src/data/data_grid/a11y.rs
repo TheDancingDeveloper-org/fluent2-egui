@@ -15,9 +15,13 @@ pub(super) fn grid(
     row_count: usize,
     column_count: usize,
     multiselectable: bool,
+    active: Option<Id>,
 ) {
     ctx.accesskit_node_builder(id, |node| {
         node.set_role(Role::Grid);
+        if let Some(active) = active {
+            node.set_active_descendant(active.accesskit_id());
+        }
         if let Some(label) = label {
             node.set_label(label);
         }

@@ -306,6 +306,9 @@ impl<'a> DataGrid<'a> {
                 let clip = ui.clip_rect();
                 let body = Rect::from_min_max(Pos2::new(clip.min.x, clip.min.y + header_height), clip.max);
                 let grid_response = ui.interact(clip, grid_key, Sense::click());
+                // The focused cell, header cell or row, for the grid's active descendant: arrow
+                // keys move focus inside the grid, and without it screen readers say nothing.
+                let mut active: Option<Id> = None;
 
                 let page_rows = ((viewport.height() - header_height) / row_height)
                     .floor()
@@ -450,6 +453,12 @@ impl<'a> DataGrid<'a> {
                     }
                     let row_selected = (self.selection_mode != SelectionMode::None).then_some(selected);
                     a11y::row(ui.ctx(), row_hit.id, row + 1, row_selected);
+                    if state
+                        .focus
+                        .is_some_and(|focus| !focus.header && focus.row == id && focus.column.is_none())
+                    {
+                        active = Some(row_hit.id);
+                    }
 
                     if multi {
                         let box_rect =
@@ -482,6 +491,11 @@ impl<'a> DataGrid<'a> {
                             Sense::hover(),
                         );
                         a11y::cell(ui.ctx(), cell_hit.id, row + 1, index + lead_columns);
+                        if state.focus.is_some_and(|focus| {
+                            !focus.header && focus.row == id && focus.column == Some(index)
+                        }) {
+                            active = Some(cell_hit.id);
+                        }
                         let focused = state.focus.is_some_and(|focus| {
                             !focus.header
                                 && focus.row == id
@@ -495,10 +509,13 @@ impl<'a> DataGrid<'a> {
                             selected,
                             focused,
                         };
+                        // Hang the cell's content under its GridCell node, so a screen reader
+                        // reads the text when focus lands on the cell (WI-1586 Orca walk).
                         let mut child = ui.new_child(
                             UiBuilder::new()
                                 .max_rect(padded(cell_rect))
-                                .layout(column.cell_layout()),
+                                .layout(column.cell_layout())
+                                .accessibility_parent(cell_hit.id),
                         );
                         child.set_clip_rect(cell_rect);
                         // A selectable label would take the click meant for the row (§3).
@@ -563,6 +580,12 @@ impl<'a> DataGrid<'a> {
                         id
                     };
                     a11y::header_cell(ui.ctx(), id, column.header.text(), index + lead_columns);
+                    if state
+                        .focus
+                        .is_some_and(|focus| focus.header && focus.column == Some(index))
+                    {
+                        active = Some(id);
+                    }
                 }
 
                 // Autofit (§2.3): a double-clicked handle or a header key, and an Auto column on
@@ -622,6 +645,7 @@ impl<'a> DataGrid<'a> {
                     self.row_count,
                     self.columns.len() + lead_columns,
                     multi,
+                    active,
                 );
                 (grid_response, reports)
             });

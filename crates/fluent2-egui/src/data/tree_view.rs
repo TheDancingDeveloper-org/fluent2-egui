@@ -297,6 +297,9 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                 }
 
                 let focus_row = focus_index(state, &rows);
+                // The focused row, for the tree's active descendant: arrow keys move focus
+                // between rows the tree owns, and without this screen readers say nothing.
+                let mut active_row = None;
                 if report.moved
                     && let Some(index) = focus_row
                 {
@@ -345,6 +348,9 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                     };
 
                     let hit = ui.interact(visible_rect, id.with(("row", hashed(key))), Sense::CLICK);
+                    if focus_row == Some(index) {
+                        active_row = Some(hit.id.accesskit_id());
+                    }
                     let text = row.label.text();
                     hit.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, text));
                     let chevron = row.has_children.then(|| {
@@ -465,6 +471,9 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                 });
                 ui.ctx().accesskit_node_builder(tree_response.id, |node| {
                     node.set_role(Role::Tree);
+                    if let Some(row) = active_row {
+                        node.set_active_descendant(row);
+                    }
                     if let Some(label) = &label {
                         node.set_label(label.as_str());
                     }

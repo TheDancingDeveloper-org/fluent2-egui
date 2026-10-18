@@ -257,9 +257,11 @@ fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
     });
 
     // Same roles as the message bar: Alert for Warning and Error, Status otherwise.
-    let role = match toast.intent {
-        Intent::Warning | Intent::Error => egui::accesskit::Role::Alert,
-        Intent::Info | Intent::Success => egui::accesskit::Role::Status,
+    // And the same live settings, so a new toast is spoken without moving focus (the Orca
+    // walk in WI-1586 heard nothing).
+    let (role, live) = match toast.intent {
+        Intent::Warning | Intent::Error => (egui::accesskit::Role::Alert, egui::accesskit::Live::Assertive),
+        Intent::Info | Intent::Success => (egui::accesskit::Role::Status, egui::accesskit::Live::Polite),
     };
     let title = toast.title.clone();
     let bounds = egui::accesskit::Rect {
@@ -270,6 +272,7 @@ fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
     };
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_role(role);
+        node.set_live(live);
         node.set_label(title);
         node.set_bounds(bounds);
     });

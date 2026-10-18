@@ -103,7 +103,9 @@ fn toggling_an_item_in_the_customise_menu_updates_the_state() {
     assert!(probe.state.borrow().customize_open, "the customise menu opens");
 
     // "Print" is not shown yet, so its menu row is the only "Print" in the tree.
-    harness.get_by_role_and_label(Role::Button, "Print").click();
+    harness
+        .get_by_role_and_label(Role::MenuItemCheckBox, "Print")
+        .click();
     harness.run();
     harness.run();
     assert_eq!(probe.state.borrow().items, vec!["open", "save", "print"]);
@@ -212,7 +214,7 @@ fn choosing_a_position_in_the_menu_moves_the_toolbar_to_the_other_location() {
     harness.get_by_role_and_label(Role::Button, "Customize").click();
     harness.run();
     harness
-        .get_by_role_and_label(Role::Button, "Below the ribbon")
+        .get_by_role_and_label(Role::MenuItemCheckBox, "Below the ribbon")
         .click();
     harness.run();
     harness.run();

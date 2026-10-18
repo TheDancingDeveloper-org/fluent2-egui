@@ -181,7 +181,8 @@ impl<'a> TitleBar<'a> {
 
         // The top resize zone belongs to the window edge (§2, D10), so drag starts below it.
         let drag_rect = Rect::from_min_max(pos2(rect.min.x, rect.min.y + metrics.resize_zone), rect.max);
-        let drag_region = ui.interact(drag_rect, self.id.with("drag_region"), Sense::click_and_drag());
+        // Pointer only, like the resize edges: the drag region is not a Tab stop.
+        let drag_region = ui.interact(drag_rect, self.id.with("drag_region"), Sense::CLICK | Sense::DRAG);
 
         // Caption buttons sit at the right, three cells of `caption_button_width` each.
         let caption_w = metrics.caption_button_width;

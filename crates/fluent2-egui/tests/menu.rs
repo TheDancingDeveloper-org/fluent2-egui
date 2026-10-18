@@ -33,8 +33,8 @@ fn renders_in_light_dark_and_high_contrast() {
         harness.run();
         harness.get_by_role_and_label(Role::Button, "File").click();
         harness.run();
-        let _ = harness.get_by_role_and_label(Role::Button, "Save");
-        let _ = harness.get_by_role_and_label(Role::Button, "Close");
+        let _ = harness.get_by_role_and_label(Role::MenuItem, "Save");
+        let _ = harness.get_by_role_and_label(Role::MenuItem, "Close");
     }
 }
 
@@ -52,12 +52,12 @@ fn clicking_an_item_returns_clicked_and_closes() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "File").click();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Save").click();
+    harness.get_by_role_and_label(Role::MenuItem, "Save").click();
     harness.run();
     assert!(clicked.get(), "Save should report clicked");
     harness.run();
     let open = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        harness.get_by_role_and_label(Role::Button, "Save");
+        harness.get_by_role_and_label(Role::MenuItem, "Save");
     }));
     assert!(open.is_err(), "menu should close after the click");
 }
@@ -73,11 +73,11 @@ fn escape_closes_the_menu() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "File").click();
     harness.run();
-    let _ = harness.get_by_role_and_label(Role::Button, "Save");
+    let _ = harness.get_by_role_and_label(Role::MenuItem, "Save");
     harness.key_press(egui::Key::Escape);
     harness.run();
     let open = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        harness.get_by_role_and_label(Role::Button, "Save");
+        harness.get_by_role_and_label(Role::MenuItem, "Save");
     }));
     assert!(open.is_err(), "Escape should close the menu");
 }
@@ -100,7 +100,7 @@ fn down_arrow_moves_focus_between_items() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "File").click();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Alpha").focus();
+    harness.get_by_role_and_label(Role::MenuItem, "Alpha").focus();
     harness.run();
     harness.key_down(egui::Key::ArrowDown);
     harness.run();
@@ -125,10 +125,10 @@ fn clicking_a_submenu_keeps_the_parent_open() {
     harness.run();
     harness.get_by_role_and_label(Role::Button, "File").click();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Share").click();
+    harness.get_by_role_and_label(Role::MenuItem, "Share").click();
     harness.run();
-    let _ = harness.get_by_role_and_label(Role::Button, "Alpha");
-    let _ = harness.get_by_role_and_label(Role::Button, "Email");
+    let _ = harness.get_by_role_and_label(Role::MenuItem, "Alpha");
+    let _ = harness.get_by_role_and_label(Role::MenuItem, "Email");
 }
 
 #[path = "../../../gallery/src/pages/menus.rs"]

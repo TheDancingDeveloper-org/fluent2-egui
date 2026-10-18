@@ -142,6 +142,15 @@ impl Widget for Slider<'_> {
             response.has_focus(),
         );
         response.widget_info(|| WidgetInfo::slider(enabled, current, "Slider"));
+        // The range, so screen readers can say where the value sits: without it Orca read a
+        // 100 on a 10..=400 zoom slider as "0 percent" (WI-1586).
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            node.set_min_numeric_value(min);
+            node.set_max_numeric_value(max);
+            if let Some(step) = step.filter(|step| step.is_finite() && *step > 0.0) {
+                node.set_numeric_value_step(step);
+            }
+        });
         response
     }
 }

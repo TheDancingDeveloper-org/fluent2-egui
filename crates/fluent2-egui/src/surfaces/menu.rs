@@ -230,10 +230,20 @@ impl Widget for MenuItem<'_> {
 
         let selected = self.checked == Some(true);
         let enabled = ui.is_enabled();
+        let checkable = self.checked.is_some();
         response.widget_info(|| {
             let mut info = WidgetInfo::labeled(WidgetType::Button, enabled, &label);
-            info.selected = Some(selected);
+            // Only a checkable item has a state. Always set, it made every item a "toggle
+            // button, not pressed" in Orca (WI-1586).
+            info.selected = checkable.then_some(selected);
             info
+        });
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            if checkable {
+                node.set_role(egui::accesskit::Role::MenuItemCheckBox);
+            } else {
+                node.set_role(egui::accesskit::Role::MenuItem);
+            }
         });
         response
     }
