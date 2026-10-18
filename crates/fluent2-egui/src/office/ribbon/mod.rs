@@ -2,9 +2,12 @@
 //! peek popup.
 //!
 //! The strip is a [`TabList`], so its layout, indicator, arrow keys and Home/End come from
-//! the list. Tab bodies are empty placeholders until groups (WI-1563) and galleries (WI-1564)
-//! arrive. The pin button is WI-1563's (spec §4.5).
+//! the list. A tab body holds groups of controls (WI-1563), painted at full size. Galleries
+//! arrive with WI-1564 and scaling with WI-1565. The pin button in the peek is WI-1563's
+//! (spec §4.5).
 
+mod controls;
+mod group;
 mod tab;
 
 use std::hash::Hash;
@@ -16,12 +19,21 @@ use egui::{
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
+use crate::controls::{Appearance, Button, ButtonSize};
 use crate::foundation::focus::{self, paint_focus_ring};
+use crate::foundation::icon::IconName;
 use crate::foundation::text::TypeRamp;
-use crate::surfaces::{TabList, TabSize, tab_widths};
+use crate::surfaces::{TabList, TabSize, TooltipExt, tab_widths};
 use crate::theme::{Theme, c};
 
+pub use controls::{
+    RibbonCheckbox, RibbonCombobox, RibbonControl, RibbonCustom, RibbonDialogLauncher, RibbonDropdown,
+    RibbonLarge, RibbonMenu, RibbonSmall, RibbonSplit, RibbonToggle,
+};
+pub use group::{GroupBuilder, ScalingStep};
 pub use tab::{ContextualAccent, RibbonTab, TabBuilder};
+
+use group::{Group, paint_body};
 
 /// What the ribbon shows (spec §4.5).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -214,11 +226,25 @@ impl<'a> Ribbon<'a> {
             None => 0.0,
         };
 
-        // Bodies are built once per frame, before painting. Groups arrive with WI-1563.
+        // Every body is built each frame (D5), so a key used twice anywhere in the ribbon is
+        // reported. The File tab's key and the strip's keys are taken first (D4).
+        let mut seen: Vec<&'static str> = reserved.into_iter().chain(keys.iter().copied()).collect();
+        let mut bodies: Vec<(&'static str, Vec<Group<'a>>)> = Vec::new();
         for tab in strip {
-            let RibbonTab { build, .. } = tab;
-            build(&mut TabBuilder::new());
+            let RibbonTab { key, build, .. } = tab;
+            let mut builder = TabBuilder::new();
+            build(&mut builder);
+            let mut groups = builder.into_groups();
+            for group in &mut groups {
+                group.claim_keys(&mut seen, &mut out.conflicts);
+            }
+            bodies.push((key, groups));
         }
+        let body = bodies
+            .into_iter()
+            .find(|(key, _)| Some(*key) == active)
+            .map(|(_, groups)| groups)
+            .unwrap_or_default();
 
         let mut list_response = None;
         let mut file_response = None;
@@ -330,21 +356,32 @@ impl<'a> Ribbon<'a> {
             }
         }
 
-        // A pinned peek behaves as expanded (§4.5).
+        // A pinned peek behaves as expanded (§4.5). The body is painted once, inline or in the
+        // peek popup, whichever this frame shows.
         let body_inline = state.display == RibbonDisplay::Expanded
             || (state.display == RibbonDisplay::Peek && state.pinned);
+        let peek_popup = state.display == RibbonDisplay::Peek && !state.pinned;
         if body_inline {
-            body_node(ui.ctx(), id.with("body"), active_label.as_deref());
-        }
-        if state.display == RibbonDisplay::Peek && !state.pinned {
+            paint_body(ui, id.with("body"), active_label.as_deref(), body, &mut out);
+        } else if peek_popup {
             let popup = Area::new(id.with("peek"))
                 .order(Order::Foreground)
                 .fixed_pos(strip_response.rect.left_bottom())
                 .show(ui.ctx(), |ui| {
-                    popup_frame(&theme).show(ui, |ui| {
-                        body_node(ui.ctx(), id.with("body"), active_label.as_deref());
-                    });
+                    popup_frame(&theme)
+                        .show(ui, |ui| {
+                            ui.horizontal_top(|ui| {
+                                paint_body(ui, id.with("body"), active_label.as_deref(), body, &mut out);
+                                pin_button(ui)
+                            })
+                            .inner
+                        })
+                        .inner
                 });
+            if popup.inner {
+                state.pinned = true;
+                state.display = RibbonDisplay::Expanded;
+            }
             ui.ctx()
                 .data_mut(|data| data.insert_temp(popup_key, popup.response.rect));
         } else {
@@ -353,6 +390,17 @@ impl<'a> Ribbon<'a> {
 
         out
     }
+}
+
+/// The pin button in the peek popup (spec §4.5, D13), after the body row. Returns whether it was
+/// pressed. Pressing it pins the ribbon open.
+fn pin_button(ui: &mut Ui) -> bool {
+    let response = ui.add(
+        Button::icon_only(IconName::Pin, "Pin the ribbon")
+            .appearance(Appearance::Subtle)
+            .size(ButtonSize::Small),
+    );
+    response.fluent_tooltip("Pin the ribbon").clicked()
 }
 
 /// The header of one contextual set: its text, accent, and the index of its first tab.
@@ -476,7 +524,7 @@ fn toggle_expanded(state: &mut RibbonState) {
     }
 }
 
-/// The ribbon body. It is an empty placeholder until groups arrive (WI-1563).
+/// The ribbon body node: role and label for assistive tech. Groups are painted by `paint_body`.
 fn body_node(ctx: &egui::Context, id: Id, label: Option<&str>) {
     ctx.accesskit_node_builder(id, |node| {
         node.set_role(accesskit::Role::TabPanel);

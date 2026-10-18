@@ -17,6 +17,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Bundled Inter Regular and SemiBold (OFL-1.1) as the UI font wherever Segoe UI is not available: Linux, macOS, wasm, and Windows without Segoe UI. Segoe UI stays first on Windows. Cargo feature `bundled-font`, on by default (WI-1588).
 - KeyTips state machine as pure logic: `office::keytips::state` with `step`, `resolve_keytips` and two-letter keys. No rendering yet (WI-1566).
 - Ribbon tab strip: `office::ribbon::Ribbon` with the File tab, content and contextual tabs (with headers), double-click and Ctrl+F1 collapse, and the peek popup. Groups are not built yet (WI-1562).
+- Ribbon groups and controls (`TabBuilder::group`, `GroupBuilder`): large and small buttons, toggle, split and menu buttons (`.small()` for the small size), checkbox, dropdown, combobox, a dialog launcher in the group corner and a custom widget slot. Controls report by key through `RibbonResponse`, and the peek popup has a pin button. Full size only: galleries (WI-1564) and scaling (WI-1565) follow (WI-1563).
 - Backstage: full-window File view with a navigation column, page closures, Escape and back-arrow close, and focus return to the opener (`office::backstage`, WI-1568).
 - Gallery Backstage page: a File button opens the backstage with Home, New, Open, Info and Options placeholder pages (WI-1568).
 - `MessageBar` (Info, Success, Warning and Error, with title, actions and dismiss) and the `Toaster` toast host (WI-1553).

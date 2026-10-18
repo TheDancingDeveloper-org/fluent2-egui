@@ -1,12 +1,11 @@
 //! Ribbon tabs: content tabs and contextual tab sets (spec §4.1, §4.3).
 //!
-//! A tab's body is built by a closure that runs once per frame. Groups are added by WI-1563;
-//! until then a body is empty.
-
-use std::marker::PhantomData;
+//! A tab's body is built by a closure that runs once per frame. The closure adds groups, which
+//! `show` paints for the active tab.
 
 use egui::Color32;
 
+use super::group::{Group, GroupBuilder};
 use crate::theme::{Theme, c};
 
 /// Accent of a contextual tab set. Each accent maps to one theme token (spec §4.3, D6).
@@ -38,14 +37,35 @@ impl ContextualAccent {
     }
 }
 
-/// Adds the groups of one tab body. The body is empty until WI-1563 adds groups.
+/// Adds the groups of one tab body (spec §4.1).
+///
+/// ```
+/// # use fluent2_egui::office::ribbon::{RibbonLarge, RibbonTab};
+/// # use fluent2_egui::IconName;
+/// let home = RibbonTab::new("home", "Home", |tab| {
+///     tab.group("clipboard", "Clipboard", |group| {
+///         group.add(RibbonLarge::new("paste", IconName::ClipboardPaste, "Paste"));
+///     });
+/// });
+/// ```
 pub struct TabBuilder<'a> {
-    _bound: PhantomData<&'a ()>,
+    groups: Vec<Group<'a>>,
 }
 
-impl TabBuilder<'_> {
+impl<'a> TabBuilder<'a> {
     pub(crate) fn new() -> Self {
-        Self { _bound: PhantomData }
+        Self { groups: Vec::new() }
+    }
+
+    /// A group. `build` adds its controls. `key` is stable and unique within the ribbon.
+    pub fn group(&mut self, key: &'static str, label: &str, build: impl FnOnce(&mut GroupBuilder<'a>)) {
+        let mut group = GroupBuilder::new(key, label);
+        build(&mut group);
+        self.groups.push(group.finish());
+    }
+
+    pub(super) fn into_groups(self) -> Vec<Group<'a>> {
+        self.groups
     }
 }
 
