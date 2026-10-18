@@ -35,3 +35,7 @@ upstream repository, path, revision and copyright holder.
   `crates/fluent2-egui/src/data/terminal/grid.rs`. Copyright (c) 2026 The rdpapp authors.
 - vte (alacritty/vte, Apache-2.0 OR MIT) is a Cargo dependency of the optional `terminal`
   feature; no vte source is copied.
+- fluent-gpui (thedancingdeveloper/fluent-gpui, Apache-2.0): `crates/fluent-layout/src/command_palette.rs`
+  @ f601e54b4e58e416bc7495a75468b82af9a10545, adapted into
+  `crates/fluent2-egui/src/surfaces/command_palette.rs`. Copyright (c) 2026 sprooty. The licence
+  text is in the upstream repository.
