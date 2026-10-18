@@ -98,6 +98,17 @@ open fallback chosen in a dedicated item. **Never commit or embed a Microsoft fo
 - Generators (`xtask` or `scripts/`) have their own tests that the generated output is
   reproducible: running the generator twice gives byte-identical files.
 
+## Optional features
+
+Components that are not Fluent 2 components ship behind an off-by-default cargo feature, so the
+default build stays a Fluent library with no extra dependencies.
+
+- `terminal`: `data::terminal` (`TerminalGrid`, the `vte`-based VT grid model, and
+  `TerminalView`, which paints it with the 16 ANSI colours taken from Fluent palette tokens).
+  Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
+  (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
+  --workspace` through the gallery's feature unification.
+
 ## Gates (run before every commit; CI runs the same)
 
 ```

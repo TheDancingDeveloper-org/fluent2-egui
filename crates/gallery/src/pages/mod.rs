@@ -7,6 +7,7 @@ mod backstage;
 mod data_grid;
 mod icons;
 mod ribbon;
+mod terminal;
 mod tokens;
 mod typography;
 
@@ -14,6 +15,7 @@ pub use backstage::BackstagePage;
 pub use data_grid::DataGridPage;
 pub use icons::IconsPage;
 pub use ribbon::RibbonPage;
+pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
 pub use typography::TypographyPage;
 
@@ -35,5 +37,6 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DataGridPage::default()),
         Box::new(BackstagePage::default()),
         Box::new(RibbonPage::default()),
+        Box::new(TerminalPage::default()),
     ]
 }
