@@ -144,7 +144,7 @@ impl Widget for Spinner<'_> {
                     .galley(pos, galley, theme::c(theme.color.neutral_foreground_1));
             }
         }
-        if visible {
+        if visible && !motion::reduced_motion(ui.ctx()) {
             ui.ctx().request_repaint();
         }
         let label = self

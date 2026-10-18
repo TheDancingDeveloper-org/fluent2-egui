@@ -241,7 +241,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
         let fill_selected = c(theme.color.subtle_background_selected);
         let text_hover = c(theme.color.neutral_foreground_2_hover);
         let text_idle = c(theme.color.neutral_foreground_2);
-        let text_selected = c(theme.color.neutral_foreground_1);
+        let text_selected = c(theme.color.neutral_foreground_1_selected);
         let icon_color = c(theme.color.neutral_foreground_3);
         let ring_radius = CornerRadius::same(border_radius::MEDIUM as u8);
 
@@ -384,6 +384,15 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         ui.painter().rect_filled(row_rect, ring_radius, fill);
                     }
 
+                    // High contrast fills a selected row with the highlight colour; its text,
+                    // chevron and icon take the matching foreground.
+                    let color = if selected {
+                        text_selected
+                    } else if hit.hovered() {
+                        text_hover
+                    } else {
+                        text_idle
+                    };
                     ui.ctx().accesskit_node_builder(hit.id, |node| {
                         node.set_role(Role::TreeItem);
                         node.set_label(text);
@@ -414,18 +423,11 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                             Duration::Fast,
                             Curve::DecelerateMid,
                         );
-                        paint_chevron(ui, slot, turn, if hit.hovered() { text_hover } else { text_idle });
+                        paint_chevron(ui, slot, turn, color);
                     }
 
                     let text_x = slot.max.x + spacing_horizontal::XS;
                     let mut x = text_x;
-                    let color = if selected {
-                        text_selected
-                    } else if hit.hovered() {
-                        text_hover
-                    } else {
-                        text_idle
-                    };
                     let mut child = ui.new_child(
                         UiBuilder::new()
                             .max_rect(Rect::from_min_max(
@@ -436,7 +438,8 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                     );
                     child.set_clip_rect(visible_rect);
                     if let Some(name) = row.icon {
-                        let icon = child.add(Icon::new(name).tint(Some(icon_color)));
+                        let icon =
+                            child.add(Icon::new(name).tint(Some(if selected { color } else { icon_color })));
                         x = icon.rect.max.x + spacing_horizontal::XS;
                     }
                     ui.painter_at(visible_rect).text(

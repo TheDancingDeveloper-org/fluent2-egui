@@ -247,10 +247,14 @@ fn collapsed_button(ui: &mut Ui, icon: IconName, label: &str, theme: &Theme) -> 
     if let Some(fill) = fill {
         ui.painter().rect_filled(rect, corner, c(fill));
     }
-    let ink = if enabled {
-        color.neutral_foreground_1
-    } else {
+    let ink = if !enabled {
         color.neutral_foreground_disabled
+    } else if response.is_pointer_button_down_on() {
+        color.neutral_foreground_1_pressed
+    } else if response.hovered() {
+        color.neutral_foreground_1_hover
+    } else {
+        color.neutral_foreground_1
     };
     let slot = Rect::from_center_size(
         Pos2::new(rect.center().x, rect.top() + pad + chrome.icon_large / 2.0),

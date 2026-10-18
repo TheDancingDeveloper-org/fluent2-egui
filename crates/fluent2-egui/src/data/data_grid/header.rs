@@ -64,14 +64,17 @@ pub(super) fn show(
 
     for (index, column) in layout.columns.iter().enumerate() {
         let cell = cell_rect(rect, layout.offsets[index], layout.widths[index]);
+        let mut ink = text;
         if column.sortable {
             let response = ui.interact(cell, layout.id.with(("sort", column.id)), Sense::click());
             if response.hovered() {
-                let fill = if response.is_pointer_button_down_on() {
-                    pressed
+                // High contrast hovers with the highlight colour; the label follows it.
+                let (fill, state_ink) = if response.is_pointer_button_down_on() {
+                    (pressed, theme.color.neutral_foreground_1_pressed)
                 } else {
-                    hover
+                    (hover, theme.color.neutral_foreground_1_hover)
                 };
+                ink = c(state_ink);
                 ui.painter().rect_filled(cell, 0.0, fill);
             }
             if response.clicked() {
@@ -86,7 +89,7 @@ pub(super) fn show(
             .as_ref()
             .filter(|spec| spec.column == column.id)
             .map(|spec| spec.direction);
-        paint_label(ui, cell, column, sort, text);
+        paint_label(ui, cell, column, sort, ink);
     }
 
     for (index, column) in layout.columns.iter().enumerate() {

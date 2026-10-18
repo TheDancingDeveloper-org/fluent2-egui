@@ -167,7 +167,7 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
         )
     };
     if fraction > 0.0 {
-        painter.rect_filled(filled, RAIL / 2.0, theme::c(color.brand_background));
+        painter.rect_filled(filled, RAIL / 2.0, theme::c(color.compound_brand_background));
     }
     let thumb_center = if vertical {
         Pos2::new(rect.center().x, rail.bottom() - rail.height() * fraction)
@@ -181,7 +181,11 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
         THUMB / 2.0 - 0.5,
         Stroke::new(1.0, theme::c(color.neutral_stroke_1)),
     );
-    painter.circle_filled(thumb.center(), DOT / 2.0, theme::c(color.brand_background));
+    painter.circle_filled(
+        thumb.center(),
+        DOT / 2.0,
+        theme::c(color.compound_brand_background),
+    );
     if focused {
         paint_focus_ring(ui, thumb, egui::CornerRadius::same((THUMB / 2.0) as u8));
     }

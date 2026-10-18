@@ -217,6 +217,7 @@ impl<'a> TabList<'a> {
                     hovered,
                     pressed: hovered && response.is_pointer_button_down_on(),
                     selected: index == selected && !tab.disabled,
+                    subtle: self.appearance == TabAppearance::Subtle,
                 };
                 paint_tab_face(ui, tab_rect, self.appearance, &theme, state);
                 paint_tab_content(ui, tab_rect, tab, &galleys[index], metrics, &theme, state);
@@ -250,8 +251,15 @@ impl<'a> TabList<'a> {
                 )
             })
             .collect();
-        ui.ctx().accesskit_node_builder(id, |node| {
+        // The focusable strip is `response`, so it carries the TabList role; on `id`, which no
+        // widget owns, the role sat on an empty node and Tab landed on an unnamed "button"
+        // (WI-1586). The active descendant points screen readers at the selected tab.
+        let active = id.with(("tab", selected)).accesskit_id();
+        ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(accesskit::Role::TabList);
+            if count > 0 {
+                node.set_active_descendant(active);
+            }
         });
         for (index, (text, is_selected, disabled)) in tab_labels.into_iter().enumerate() {
             let tab_id = id.with(("tab", index));
@@ -433,6 +441,8 @@ struct TabState {
     hovered: bool,
     pressed: bool,
     selected: bool,
+    /// Subtle appearance: selected and pressed tabs get a fill.
+    subtle: bool,
 }
 
 fn paint_tab_face(ui: &Ui, rect: Rect, appearance: TabAppearance, theme: &Theme, state: TabState) {
@@ -466,6 +476,9 @@ fn paint_tab_content(
     let color = &theme.color;
     let foreground = if !state.enabled {
         c(color.neutral_foreground_disabled)
+    } else if state.subtle && (state.selected || state.pressed) {
+        // `paint_tab_face` fills these with the highlight colour in high contrast.
+        c(color.neutral_foreground_1_selected)
     } else if state.selected {
         c(color.neutral_foreground_1)
     } else if state.hovered {

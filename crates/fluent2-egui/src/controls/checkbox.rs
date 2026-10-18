@@ -307,11 +307,11 @@ fn paint_box(
             }
             CheckState::Checked | CheckState::Mixed => {
                 let fill = if pressed {
-                    color.brand_background_pressed
+                    color.compound_brand_background_pressed
                 } else if hovered {
-                    color.brand_background_hover
+                    color.compound_brand_background_hover
                 } else {
-                    color.brand_background
+                    color.compound_brand_background
                 };
                 (c(fill), c(fill))
             }
@@ -385,14 +385,10 @@ fn space_pressed(ui: &Ui) -> bool {
     ui.input(|input| input.key_pressed(egui::Key::Space))
 }
 
+/// The shared sticky rule: a ring from the last key press until the next pointer press, not
+/// only on the frame of the key event.
 fn focus_visible(ui: &Ui, response: &Response) -> bool {
-    response.has_focus()
-        && ui.input(|input| {
-            input
-                .events
-                .iter()
-                .any(|event| matches!(event, egui::Event::Key { .. }))
-        })
+    crate::foundation::focus::focus_visible(ui, response)
 }
 
 fn paint_focus_ring(ui: &Ui, rect: Rect, radius: CornerRadius, theme: &Theme) {

@@ -135,7 +135,12 @@ impl Toaster {
     /// Draw the stack. Call once per frame.
     pub fn show(ctx: &egui::Context, position: ToastPosition) {
         let now = ctx.input(|input| input.time);
-        let motion = MotionDuration::Normal.seconds() as f64;
+        // Reduced motion: no enter or exit run, so no slide and no fade.
+        let motion = if crate::foundation::motion::reduced_motion(ctx) {
+            0.0
+        } else {
+            MotionDuration::Normal.seconds() as f64
+        };
         let mut visible: Vec<ToastId> = Vec::new();
         let mut next_wake: Option<f64> = None;
         ctx.data_mut(|data| {
@@ -208,7 +213,11 @@ fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
         return;
     };
     let elapsed = if exiting { now - exit_at } else { now - born };
-    let progress = (elapsed / motion).clamp(0.0, 1.0) as f32;
+    let progress = if motion > 0.0 {
+        (elapsed / motion).clamp(0.0, 1.0) as f32
+    } else {
+        1.0
+    };
     let eased = if exiting {
         1.0 - Curve::AccelerateMid.ease(progress)
     } else {

@@ -735,10 +735,14 @@ fn edge_button(ui: &mut Ui, theme: &Theme, rect: Rect, id: Id, icon: Icon, label
         };
         let radius = CornerRadius::from(border_radius::SMALL);
         ui.painter().rect_filled(rect, radius, fill);
-        let tint = if enabled {
-            c(theme.color.neutral_foreground_2)
-        } else {
+        let tint = if !enabled {
             c(theme.color.neutral_foreground_disabled)
+        } else if response.is_pointer_button_down_on() {
+            c(theme.color.neutral_foreground_2_pressed)
+        } else if response.hovered() {
+            c(theme.color.neutral_foreground_2_hover)
+        } else {
+            c(theme.color.neutral_foreground_2)
         };
         let side = rect.width().min(rect.height());
         let icon_rect = Rect::from_center_size(rect.center(), Vec2::splat(side));

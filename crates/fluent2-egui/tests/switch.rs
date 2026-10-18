@@ -17,7 +17,7 @@ fn click_toggles() {
         on.set(value);
     });
     harness.run();
-    harness.get_by_role_and_label(Role::CheckBox, "Wi-Fi").click();
+    harness.get_by_role_and_label(Role::Switch, "Wi-Fi").click();
     harness.run();
     assert!(on.get());
 }

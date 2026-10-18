@@ -89,5 +89,6 @@ fn reduced_motion_holds_the_indeterminate_bar_still() {
     });
     harness.step();
     harness.step();
-    assert!(harness.ctx.has_requested_repaint());
+    // The still segment needs no further frames (WI-1586).
+    assert!(!harness.ctx.has_requested_repaint());
 }

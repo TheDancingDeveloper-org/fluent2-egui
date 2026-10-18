@@ -142,6 +142,9 @@ impl<'a> List<'a> {
         let fill_hover = c(theme.color.subtle_background_hover);
         let fill_pressed = c(theme.color.subtle_background_pressed);
         let fill_selected = c(theme.color.subtle_background_selected);
+        let ink_hover = c(theme.color.neutral_foreground_1_hover);
+        let ink_pressed = c(theme.color.neutral_foreground_1_pressed);
+        let ink_selected = c(theme.color.neutral_foreground_1_selected);
         let ring_radius = CornerRadius::same(border_radius::MEDIUM as u8);
 
         let List {
@@ -235,16 +238,18 @@ impl<'a> List<'a> {
                     }
 
                     let selected = state.selection.selected.contains(&row_id);
+                    // High contrast fills these rows with the highlight colour, so row text takes
+                    // the matching foreground.
                     let fill = if selected {
-                        Some(fill_selected)
+                        Some((fill_selected, ink_selected))
                     } else if hit.is_pointer_button_down_on() {
-                        Some(fill_pressed)
+                        Some((fill_pressed, ink_pressed))
                     } else if hit.hovered() {
-                        Some(fill_hover)
+                        Some((fill_hover, ink_hover))
                     } else {
                         None
                     };
-                    if let Some(fill) = fill {
+                    if let Some((fill, _)) = fill {
                         ui.painter().rect_filled(row_rect, ring_radius, fill);
                     }
                     hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
@@ -267,6 +272,9 @@ impl<'a> List<'a> {
                     child.set_clip_rect(row_rect.intersect(clip));
                     // A selectable label would take the click meant for the row (§3).
                     child.style_mut().interaction.selectable_labels = false;
+                    if let Some((_, ink)) = fill {
+                        child.visuals_mut().override_text_color = Some(ink);
+                    }
                     row(
                         CellCtx {
                             row: index,

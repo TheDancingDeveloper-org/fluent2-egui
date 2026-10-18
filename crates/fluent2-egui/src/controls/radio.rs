@@ -199,8 +199,18 @@ impl RadioGroup<'_> {
         // The allocated widget is the group: one Tab stop, with the radios as children.
         // The child ids hang off this response, so two groups in one Ui do not collide.
         let group_id = response.id;
+        // The group holds focus; the active descendant tells screen readers which radio that
+        // is, so they announce "Large, radio button, checked" rather than an unnamed group.
+        let active = (count > 0).then(|| {
+            group_id
+                .with(("radio", (*selected).min(count - 1)))
+                .accesskit_id()
+        });
         ui.ctx().accesskit_node_builder(group_id, |node| {
             node.set_role(egui::accesskit::Role::RadioGroup);
+            if let Some(active) = active {
+                node.set_active_descendant(active);
+            }
         });
         RadioGroupResponse { response }
     }
@@ -308,8 +318,10 @@ fn arrow_delta(ui: &Ui, horizontal: bool) -> i32 {
     })
 }
 
+/// The shared sticky rule: a ring from the last key press until the next pointer press, not
+/// only on the frame of the key event.
 fn focus_visible(ui: &Ui, response: &Response) -> bool {
-    response.has_focus() && ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Key { .. })))
+    crate::foundation::focus::focus_visible(ui, response)
 }
 
 fn paint_focus_ring(ui: &Ui, rect: Rect, radius: CornerRadius, theme: &Theme) {
