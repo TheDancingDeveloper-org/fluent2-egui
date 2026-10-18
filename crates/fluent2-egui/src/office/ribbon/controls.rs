@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use egui::{
     Galley, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType,
+    WidgetType, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal};
 
@@ -338,11 +338,18 @@ impl<'a> RibbonSplit<'a> {
     }
 
     fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+        let arrow_label = format!("{} menu", self.label);
         let split = SplitButton::new(self.label.as_str())
             .icon(self.icon)
             .size(sizes(self.small))
             .id_salt(self.key);
         let response = split.show(ui, self.menu);
+        // The WI-1544 arrow is labelled "<label> options" and has no popup role. Spec §9.1 says
+        // "<label> menu" with `has_popup`, so the ribbon sets both on the arrow's node.
+        ui.ctx().accesskit_node_builder(response.menu.id, |node| {
+            node.set_label(arrow_label);
+            node.set_has_popup(accesskit::HasPopup::Menu);
+        });
         let main = response
             .main
             .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
@@ -401,6 +408,10 @@ impl<'a> RibbonMenu<'a> {
             .size(sizes(self.small))
             .id_salt(self.key)
             .show(ui, self.menu);
+        // Spec §9.1: a menu button is a button with `has_popup`.
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            node.set_has_popup(accesskit::HasPopup::Menu);
+        });
         let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
         report_click(out, self.key, &response);
     }

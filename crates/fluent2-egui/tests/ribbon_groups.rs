@@ -2,10 +2,10 @@
 
 use std::cell::{Cell, RefCell};
 
-use egui::accesskit::Role;
+use egui::accesskit::{self, Role};
 use egui::{Event, Modifiers, PointerButton, Pos2, Vec2};
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use fluent2_egui::office::ribbon::{
     FileTab, GroupBuilder, Ribbon, RibbonCheckbox, RibbonCombobox, RibbonCustom, RibbonDialogLauncher,
     RibbonDisplay, RibbonDropdown, RibbonEvent, RibbonEventKind, RibbonLarge, RibbonMenu, RibbonSmall,
@@ -169,7 +169,54 @@ fn toggle_reports_changed_and_updates_its_value() {
     let mut harness = ribbon_harness(shared);
     click_label(&mut harness, Role::Button, "Bold");
     assert!(shared.values.borrow().bold, "the toggle writes its value");
+    assert_eq!(
+        harness
+            .get_by_role_and_label(Role::Button, "Bold")
+            .accesskit_node()
+            .toggled(),
+        Some(accesskit::Toggled::True),
+        "the toggle exposes its toggled state"
+    );
     assert!(take_events(shared).contains(&event("bold", RibbonEventKind::Changed)));
+}
+
+/// Click the label of an option in an open popup. Options are not buttons, so they are found by label.
+fn click_option(harness: &mut Harness<'static>, label: &str) {
+    let rect = harness.get_by_label(label).rect();
+    click_at(harness, rect.center());
+}
+
+#[test]
+fn dropdown_pick_reports_changed_on_its_key_and_writes_the_index() {
+    let shared = shared();
+    let mut harness = ribbon_harness(shared);
+    click_label(&mut harness, Role::ComboBox, "Font");
+    harness.run();
+    click_option(&mut harness, "Serif");
+    harness.run();
+    assert_eq!(shared.values.borrow().font, 1, "the picked index is written");
+    assert!(take_events(shared).contains(&event("font_name", RibbonEventKind::Changed)));
+}
+
+#[test]
+fn combobox_pick_reports_changed_on_its_key_and_copies_the_option() {
+    let shared = shared();
+    let mut harness = ribbon_harness(shared);
+    // Focus the field and type a filter. Typing opens the option list (WI-1549).
+    click_label(&mut harness, Role::ComboBox, "Size");
+    harness.run();
+    harness
+        .get_by_role_and_label(Role::ComboBox, "Size")
+        .type_text("1");
+    harness.run();
+    click_option(&mut harness, "10");
+    harness.run();
+    assert_eq!(
+        shared.values.borrow().size,
+        "10",
+        "the picked option is copied into the text"
+    );
+    assert!(take_events(shared).contains(&event("size", RibbonEventKind::Changed)));
 }
 
 #[test]
@@ -189,7 +236,7 @@ fn split_main_action_reports_and_arrow_opens_menu_without_reporting() {
     click_label(&mut harness, Role::Button, "Format");
     assert!(take_events(shared).contains(&event("format", RibbonEventKind::Clicked)));
 
-    click_label(&mut harness, Role::Button, "Format options");
+    click_label(&mut harness, Role::Button, "Format menu");
     harness.run();
     assert!(
         harness.query_by_label("Format item").is_some(),
@@ -243,6 +290,30 @@ fn group_and_control_roles_follow_spec_9_1() {
     harness.get_by_role_and_label(Role::Button, "Paste");
     harness.get_by_role_and_label(Role::Button, "Clipboard dialog");
     harness.get_by_role_and_label(Role::TabList, "Ribbon tabs");
+    assert_eq!(
+        harness
+            .get_by_role_and_label(Role::Button, "Bold")
+            .accesskit_node()
+            .toggled(),
+        Some(accesskit::Toggled::False),
+        "an unpressed toggle is exposed as not toggled"
+    );
+    assert_eq!(
+        harness
+            .get_by_role_and_label(Role::Button, "More")
+            .accesskit_node()
+            .has_popup(),
+        Some(accesskit::HasPopup::Menu),
+        "a menu button has a popup"
+    );
+    assert_eq!(
+        harness
+            .get_by_role_and_label(Role::Button, "Format menu")
+            .accesskit_node()
+            .has_popup(),
+        Some(accesskit::HasPopup::Menu),
+        "the split arrow has a popup"
+    );
 }
 
 #[test]
