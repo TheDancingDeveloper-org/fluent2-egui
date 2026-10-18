@@ -211,7 +211,7 @@ fn paint_label(ui: &mut Ui, cell: Rect, column: &Column, sort: Option<SortDirect
 
 /// Before a column is dragged wider, pin the fraction columns to its right at their current
 /// widths. Otherwise they would shrink, and §2.2 says the grid scrolls instead.
-fn freeze_fractions_right_of(index: usize, layout: &HeaderLayout, state: &mut DataGridState) {
+pub(super) fn freeze_fractions_right_of(index: usize, layout: &HeaderLayout, state: &mut DataGridState) {
     for (later, column) in layout.columns.iter().enumerate().skip(index + 1) {
         let is_fraction = matches!(column.width, ColumnWidth::Fraction(_));
         if is_fraction && !state.widths.contains_key(column.id) {
@@ -230,7 +230,7 @@ fn cell_rect(rect: Rect, offset: f32, width: f32) -> Rect {
 
 /// Clamp to `[min, max]`. `min` wins when `min > max`, and a non-finite width becomes `min`
 /// (ARCHITECTURE rule 9).
-fn clamp(width: f32, min: f32, max: f32) -> f32 {
+pub(super) fn clamp(width: f32, min: f32, max: f32) -> f32 {
     let min = if min.is_finite() { min.max(0.0) } else { 0.0 };
     let max = if max.is_nan() { f32::INFINITY } else { max.max(min) };
     if width.is_finite() {

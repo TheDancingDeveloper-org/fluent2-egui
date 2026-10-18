@@ -17,7 +17,7 @@ it starts.
 | D1 | The grid is virtualised with one `egui::ScrollArea::both().show_viewport`, not `egui_extras::TableBuilder` and not `ScrollArea::show_rows`. Visible rows are computed from the viewport and a uniform row height (§1.4). | `TableBuilder` keeps column widths in its own egui memory, so `DataGridState` could not own them (item §1); it has no sort, selection, roving focus or AccessKit hooks; and its resize handles cannot autofit from visible rows. `show_rows` scrolls only the rows: a sticky header that also scrolls horizontally needs the viewport rect, which `show_viewport` gives. gridcraft's sheet (`crates/ui-egui/src/grid.rs`) uses the same shape: one allocated rect, its own geometry, only visible cells painted. |
 | D2 | Rows have one uniform height per grid, chosen by `DataGridSize` (§10). Variable row heights are not supported in 0.1. | Row index ↔ y is then O(1) both ways, which virtualisation, PageUp/PageDown and scroll-to-focus need. |
 | D3 | The app identifies rows with a `RowId(u64)` it supplies (`row_id` closure, default: the row index). Selection and focus are stored as `RowId`s, never as indices. | The app sorts (item §2). After a sort the same index is a different row; ids keep the selection. |
-| D4 | One cell closure per grid, `FnMut(CellCtx, &mut Ui)`, passed to `show`. Columns hold no closures. | Rows are never copied (item §1) and the app's data is borrowed by one closure, not by one closure per column competing for `&mut`. craft-libs' docking `DockContent` adapter takes the same approach. |
+| D4 | One cell closure per grid, `FnMut(CellCtx, &mut Ui) -> R` with `R: CellResponse`, passed to `show`. `R` is `()` for a cell with no interactive child, or the child's `Response` (or `Option` of it). Enter on a cell with a focusable child moves focus into it, and Escape returns (§3.3). Columns hold no closures. | Rows are never copied (item §1) and the app's data is borrowed by one closure, not by one closure per column competing for `&mut`. craft-libs' docking `DockContent` adapter takes the same approach. |
 | D5 | State structs (`DataGridState`, `TreeState`, `ListState`, `NavState`, `SplitState`) are plain data with public fields and derive `serde::{Serialize, Deserialize}` behind a new optional `serde` cargo feature of `fluent2-egui`. WI-1581 adds the feature. | The item asks for serde-able state. An optional feature keeps the default dependency set unchanged (office-chrome D3). |
 | D6 | Sizes that are not Fluent tokens (row heights, selection column width, nav pane widths) are fields of a `DataMetrics` struct held by `Theme` (`Theme::data`), the same way `Theme::chrome` holds `ChromeMetrics`. WI-1581 adds it. | Rule 7. The precedent is office-chrome D2. |
 | D7 | DataGrid, TreeView and List share one crate-private module, `data/rows.rs`: viewport-to-row maths, focus movement, selection maths (anchor, ranges, toggles) and row background painting. It is the "single code path" of item §6. | One keyboard and selection behaviour across the three views. |
@@ -128,11 +128,11 @@ impl<'a> DataGrid<'a> {
     pub fn focus_mode(self, mode: FocusMode) -> Self;
     /// Accessible name of the grid.
     pub fn label(self, label: impl Into<String>) -> Self;
-    pub fn show(
+    pub fn show<R: CellResponse>(
         self,
         ui: &mut egui::Ui,
         state: &mut DataGridState,
-        cell: impl FnMut(CellCtx, &mut egui::Ui),
+        cell: impl FnMut(CellCtx, &mut egui::Ui) -> R, // see D4
     ) -> DataGridResponse;
 }
 

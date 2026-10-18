@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- DataGrid selection and keyboard focus: `SelectionMode` (None, Single, Multi) with a checkbox column and select-all, click, Ctrl and Shift selection, the spec §3 key map with scroll-into-view, Enter, F2 and Shift+F10 reported in `DataGridResponse`, Enter moves focus into a cell's focusable child and Escape returns it (the cell closure may return that child's `Response`), and AccessKit Grid, Row, ColumnHeader and GridCell nodes with absolute indices and counts for visible rows (WI-1583).
 - Vogt GUI port gap analysis (`docs/vogt-port-gap-analysis.md`): Vogt web screens and patterns mapped to fluent2-egui, with gaps sized and assigned to fluent2 or the app.
 - Quick Access Toolbar (`office::qat`): icon-only commands with tooltips, a customise menu to show, hide and reorder items and pick the position, and `QatState` owned by the app with `QatState::apply` (WI-1561).
 - DataGrid sorting, column resize and autofit: a header click cycles none, ascending, descending; dragging a column's right edge resizes it within min and max; double-clicking the edge, or the first show of an `Auto` column, autofits it to the widest visible cell. `DataGridResponse` reports `sort_changed` and `column_resized`. Adds the `ArrowSortUp` and `ArrowSortDown` icons (WI-1582).

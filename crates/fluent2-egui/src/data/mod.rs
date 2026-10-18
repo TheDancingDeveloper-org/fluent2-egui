@@ -5,5 +5,6 @@ pub mod data_grid;
 pub(crate) mod rows;
 
 pub use data_grid::{
-    CellCtx, DataGrid, DataGridResponse, DataGridSize, DataGridState, FocusMode, RowId, SelectionMode,
+    CellCtx, CellResponse, DataGrid, DataGridResponse, DataGridSize, DataGridState, FocusMode, RowId,
+    SelectionMode,
 };

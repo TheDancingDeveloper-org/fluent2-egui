@@ -56,6 +56,7 @@ pub struct Checkbox<'a> {
     label: WidgetText,
     label_before: bool,
     size: CheckboxSize,
+    focusable: bool,
 }
 
 impl<'a> Checkbox<'a> {
@@ -66,6 +67,7 @@ impl<'a> Checkbox<'a> {
             label: label.into(),
             label_before: false,
             size: CheckboxSize::Medium,
+            focusable: true,
         }
     }
 
@@ -76,6 +78,7 @@ impl<'a> Checkbox<'a> {
             label: label.into(),
             label_before: false,
             size: CheckboxSize::Medium,
+            focusable: true,
         }
     }
 
@@ -92,6 +95,14 @@ impl<'a> Checkbox<'a> {
         self.size = size;
         self
     }
+
+    /// Keep the box out of Tab order. For checkboxes inside a container that is one Tab stop,
+    /// such as the DataGrid. The box still takes clicks.
+    #[must_use]
+    pub(crate) fn not_a_tab_stop(mut self) -> Self {
+        self.focusable = false;
+        self
+    }
 }
 
 /// A checkbox bound to a `bool`. Built by [`Checkbox::bool`].
@@ -100,6 +111,7 @@ pub struct BoolCheckbox<'a> {
     label: WidgetText,
     label_before: bool,
     size: CheckboxSize,
+    focusable: bool,
 }
 
 impl<'a> BoolCheckbox<'a> {
@@ -116,6 +128,13 @@ impl<'a> BoolCheckbox<'a> {
         self.size = size;
         self
     }
+
+    /// Keep the box out of Tab order (see [`Checkbox::not_a_tab_stop`]).
+    #[must_use]
+    pub(crate) fn not_a_tab_stop(mut self) -> Self {
+        self.focusable = false;
+        self
+    }
 }
 
 impl Widget for Checkbox<'_> {
@@ -125,8 +144,9 @@ impl Widget for Checkbox<'_> {
             label,
             label_before,
             size,
+            focusable,
         } = self;
-        show(ui, label, label_before, size, |activated| {
+        show(ui, label, label_before, size, focusable, |activated| {
             if activated {
                 *state = match *state {
                     CheckState::Unchecked | CheckState::Mixed => CheckState::Checked,
@@ -145,8 +165,9 @@ impl Widget for BoolCheckbox<'_> {
             label,
             label_before,
             size,
+            focusable,
         } = self;
-        show(ui, label, label_before, size, |activated| {
+        show(ui, label, label_before, size, focusable, |activated| {
             if activated {
                 *value = !*value;
             }
@@ -160,6 +181,7 @@ fn show(
     label: WidgetText,
     label_before: bool,
     size: CheckboxSize,
+    focusable: bool,
     update: impl FnOnce(bool) -> CheckState,
 ) -> Response {
     let theme = Theme::get(ui.ctx());
@@ -179,7 +201,8 @@ fn show(
     let label_text = galley.text().to_string();
     let height = box_px.max(galley.size().y);
     let width = box_px + gap + galley.size().x;
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), Sense::click());
+    let sense = if focusable { Sense::click() } else { Sense::CLICK };
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), sense);
     let activated = response.clicked() || (response.has_focus() && space_pressed(ui));
     let state = update(enabled && activated);
 
