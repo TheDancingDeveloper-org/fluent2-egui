@@ -43,16 +43,46 @@ def watched(filename: str, watch: list[str]) -> bool:
     return any(filename == w or filename.startswith(w.rstrip("/") + "/") for w in watch)
 
 
+def changed_via_commits(src: dict, head: str) -> list[str]:
+    """Watched files changed between `rev` and `head`, found per watched path.
+
+    Used when the compare file list is truncated. For each watched path, page through the
+    commits that touched it (newest first) until `rev` is reached, then read each commit's files.
+    """
+    out: set[str] = set()
+    for w in src.get("watch", []):
+        page, done = 1, False
+        while not done:
+            commits = gh(f"/repos/{src['repo']}/commits?sha={head}&path={w}&per_page=100&page={page}")
+            for c in commits:
+                if c["sha"] == src["rev"] or gh(
+                        f"/repos/{src['repo']}/compare/{src['rev']}...{c['sha']}")["status"] in ("behind", "identical"):
+                    done = True
+                    break
+                for f in gh(f"/repos/{src['repo']}/commits/{c['sha']}").get("files", []):
+                    if watched(f["filename"], [w]):
+                        out.add(f["filename"])
+            if len(commits) < 100:
+                done = True
+            page += 1
+    return sorted(out)
+
+
 def check(src: dict) -> dict:
     cmp = gh(f"/repos/{src['repo']}/compare/{src['rev']}...{src['branch']}")
     files = [f["filename"] for f in cmp.get("files", [])]
-    # The compare API lists at most 300 files; past that, report the watched-path result as partial.
-    return {
-        "ahead": cmp.get("ahead_by", 0),
-        "head": cmp["commits"][-1]["sha"] if cmp.get("commits") else src["rev"],
-        "changed": sorted(f for f in files if watched(f, src.get("watch", []))),
-        "partial": len(files) >= 300,
-    }
+    ahead = cmp.get("ahead_by", 0)
+    commits = cmp.get("commits", [])
+    # The compare API lists at most 300 files and 250 commits. Past either limit, take the branch
+    # head directly and find the watched changes with per-path commit queries instead.
+    truncated = len(files) >= 300 or len(commits) < ahead
+    if truncated:
+        head = gh(f"/repos/{src['repo']}/commits/{src['branch']}")["sha"]
+        changed = changed_via_commits(src, head)
+    else:
+        head = commits[-1]["sha"] if commits else src["rev"]
+        changed = sorted(f for f in files if watched(f, src.get("watch", [])))
+    return {"ahead": ahead, "head": head, "changed": changed, "truncated": truncated}
 
 
 def main(argv: list[str]) -> int:
@@ -76,7 +106,7 @@ def main(argv: list[str]) -> int:
             print(f"| {s['name']} | {s['role']} | `{s['rev'][:12]}` | {s['reviewed']} | error | {e} |")
             continue
         results[s["name"]] = r
-        changed = f"{len(r['changed'])}{' (partial: >300 files)' if r['partial'] else ''}"
+        changed = f"{len(r['changed'])}{' (per-path query: compare truncated)' if r['truncated'] else ''}"
         print(f"| {s['name']} | {s['role']} | `{s['rev'][:12]}` | {s['reviewed']} | {r['ahead']} | {changed} |")
 
     for s in sources:
