@@ -173,7 +173,7 @@ reviewed = "2026-10-14"
 licence = "Apache-2.0"
 role = "adapted"
 watch = ["crates/fluent-core/src", "crates/fluent-primitives/src", "crates/fluent-layout/src", "crates/fluent-ribbon/src", "crates/fluent-app/src"]
-notes = "Our own gpui library (parked 2026-10-14). Component inventory and API shapes are the spec reference. Command palette scoring adapted into surfaces/command_palette.rs (WI-1792). Its LICENSE file is not the verbatim Apache-2.0 text; relicensing code into this repo needs the owner's confirmation."
+notes = "Our own gpui library (parked 2026-10-14). Component inventory and API shapes are the spec reference. Command palette scoring adapted into surfaces/command_palette.rs (WI-1792). Its LICENSE file is not the verbatim Apache-2.0 text; relicensing code into this repo needs the owner's confirmation; given for the command palette (WI-1792, 2026-10-18)."
 
 # [[adaptation]]
 # ours     = "crates/fluent2-egui/src/office/keytips.rs"
