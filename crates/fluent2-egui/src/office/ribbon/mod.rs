@@ -2,13 +2,14 @@
 //! peek popup.
 //!
 //! The strip is a [`TabList`], so its layout, indicator, arrow keys and Home/End come from
-//! the list. A tab body holds groups of controls (WI-1563), painted at full size. Galleries
-//! arrive with WI-1564 and scaling with WI-1565. The pin button in the peek is WI-1563's
+//! the list. A tab body holds groups of controls (WI-1563), scaled to the available width
+//! (spec §5). Galleries are WI-1564's. The pin button in the peek is WI-1563's
 //! (spec §4.5).
 
 mod controls;
 mod gallery;
 mod group;
+mod layout;
 mod tab;
 
 use std::hash::Hash;
@@ -33,7 +34,8 @@ pub use controls::{
     RibbonLarge, RibbonMenu, RibbonSmall, RibbonSplit, RibbonToggle,
 };
 pub use gallery::{Gallery, GalleryItemState, GalleryResponse, GalleryTileSize};
-pub use group::{GroupBuilder, ScalingStep};
+pub use group::GroupBuilder;
+pub use layout::{GroupMeasure, LayoutMetrics, Plan, ScalingStep, ScalingSteps, plan};
 pub use tab::{ContextualAccent, RibbonTab, TabBuilder};
 
 use group::{Group, paint_body};
@@ -438,15 +440,19 @@ impl<'a> Ribbon<'a> {
             region = region.union(*file);
         }
         if body_inline {
+            let available = ui.available_width();
             region = region.union(paint_body(
                 ui,
                 id.with("body"),
                 active_label.as_deref(),
                 active,
                 body,
+                available,
                 &mut out,
             ));
         } else if peek_popup {
+            // The peek covers the same width as the inline body, less the pin button.
+            let available = ui.available_width() - 2.0 * theme.chrome.collapsed_button;
             let popup = Area::new(id.with("peek"))
                 .order(Order::Foreground)
                 .fixed_pos(strip_response.rect.left_bottom())
@@ -460,6 +466,7 @@ impl<'a> Ribbon<'a> {
                                     active_label.as_deref(),
                                     active,
                                     body,
+                                    available,
                                     &mut out,
                                 );
                                 pin_button(ui)
