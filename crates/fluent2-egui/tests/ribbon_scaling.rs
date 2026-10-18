@@ -137,20 +137,69 @@ fn wide_window_shows_every_group_large() {
     assert_eq!(steps(&harness(1400.0)), vec![Some(L); 4]);
 }
 
-#[test]
-fn width_900_reduces_the_rightmost_group() {
-    assert_eq!(steps(&harness(900.0)), vec![Some(L), Some(L), Some(L), Some(S)]);
+/// Text measurement differs between platforms, so the exact step at a given width is not
+/// pinned. These are the §5.2 invariants every platform must hold.
+const WIDTHS: [f32; 4] = [1400.0, 900.0, 600.0, 300.0];
+
+/// How far a group is reduced: Large 0 … Collapsed 3, overflowed 4.
+fn depth(step: Option<ScalingStep>) -> u8 {
+    match step {
+        Some(L) => 0,
+        Some(ScalingStep::Medium) => 1,
+        Some(S) => 2,
+        Some(C) => 3,
+        None => 4,
+    }
 }
 
 #[test]
-fn width_600_collapses_the_two_rightmost_groups() {
-    assert_eq!(steps(&harness(600.0)), vec![Some(L), Some(L), Some(C), Some(C)]);
+fn groups_reduce_from_the_right() {
+    // The rightmost group steps down first, so no group is reduced further than one to
+    // its right (every group here allows every step).
+    for width in WIDTHS {
+        let found = steps(&harness(width));
+        let depths: Vec<u8> = found.iter().copied().map(depth).collect();
+        assert!(
+            depths.windows(2).all(|pair| pair[0] <= pair[1]),
+            "at {width}: {found:?}"
+        );
+    }
 }
 
 #[test]
-fn width_300_collapses_all_but_the_first_group() {
-    let harness = harness(300.0);
-    assert_eq!(steps(&harness), vec![Some(S), Some(C), Some(C), Some(C)]);
+fn narrower_windows_never_widen_a_group() {
+    let plans: Vec<Vec<u8>> = WIDTHS
+        .iter()
+        .map(|width| steps(&harness(*width)).into_iter().map(depth).collect())
+        .collect();
+    for (pair, widths) in plans.windows(2).zip(WIDTHS.windows(2)) {
+        let wider = &pair[0];
+        let narrower = &pair[1];
+        assert!(
+            wider.iter().zip(narrower).all(|(a, b)| a <= b),
+            "{} pt {wider:?} vs {} pt {narrower:?}",
+            widths[0],
+            widths[1]
+        );
+    }
+}
+
+#[test]
+fn medium_widths_reduce_without_collapsing_everything() {
+    // 900 and 600 pt are below the all-Large width of these four groups and far above the
+    // all-collapsed width, on any platform's fonts.
+    for width in [900.0, 600.0] {
+        let found = steps(&harness(width));
+        assert_ne!(found, vec![Some(L); 4], "at {width}");
+        assert_eq!(found[0], Some(L), "at {width}: {found:?}");
+    }
+}
+
+#[test]
+fn width_300_collapses_the_rightmost_groups() {
+    let found = steps(&harness(300.0));
+    assert_eq!(found[3], Some(C), "{found:?}");
+    assert!(!found.contains(&None), "{found:?}");
 }
 
 #[test]
