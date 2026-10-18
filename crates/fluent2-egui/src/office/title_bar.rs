@@ -10,6 +10,7 @@ use egui::{
     WidgetInfo, WidgetText, WidgetType, accesskit, pos2, vec2,
 };
 
+use super::keytips::{self, Region};
 use crate::controls::button;
 use crate::foundation::focus::paint_focus_ring;
 use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle, paint_icon};
@@ -300,6 +301,9 @@ impl<'a> TitleBar<'a> {
             self.maximized,
             inactive,
         );
+
+        // F6 region (§9.3). A QAT in the title bar marks first, so it keeps the first stop.
+        keytips::mark_region(ui.ctx(), Region::TitleBar, rect, Some(minimize.id));
 
         let double_clicked = drag_region.double_clicked();
         let caption_action = if minimize.clicked() {

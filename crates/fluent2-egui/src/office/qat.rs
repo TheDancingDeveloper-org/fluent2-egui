@@ -9,6 +9,7 @@
 use egui::{Id, Layout, Popup, Sense, Ui, WidgetInfo, WidgetType, accesskit};
 use fluent2_icons::Icon;
 
+use super::keytips::{self, KeyTipCandidate, KeyTipLevel, Region, TargetKind};
 use crate::controls::{Appearance, Button, ButtonSize, ensure_type_ramp};
 use crate::foundation::text::{TypeRamp, style};
 use crate::surfaces::{MenuItem, TooltipExt, divider, menu_frame};
@@ -166,8 +167,10 @@ impl<'a> Qat<'a> {
             state.items = kept;
         }
 
+        keytips::install(ui.ctx());
         let mut clicked = None;
         let mut customize = None;
+        let mut first = None;
         let row = ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = spacing_horizontal::XS;
             for key in &state.items {
@@ -178,7 +181,23 @@ impl<'a> Qat<'a> {
                     .appearance(Appearance::Transparent)
                     .size(ButtonSize::Small)
                     .id_salt((id, item.key));
-                if ui.add(button).fluent_tooltip(item.tooltip).clicked() {
+                let response = ui.add(button).fluent_tooltip(item.tooltip);
+                first = first.or(Some(response.id));
+                if ui.is_enabled() {
+                    keytips::register(
+                        ui.ctx(),
+                        KeyTipCandidate {
+                            target: item.key,
+                            level: KeyTipLevel::Root,
+                            kind: TargetKind::QatItem,
+                            requested: item.keytip,
+                            label: item.label.to_owned(),
+                        },
+                        response.rect,
+                    );
+                }
+                // A KeyTip runs the item, as a click does (§6.3).
+                if response.clicked() || (ui.is_enabled() && keytips::invoked(ui.ctx(), item.key)) {
                     clicked = Some(item.key);
                 }
             }
@@ -201,6 +220,7 @@ impl<'a> Qat<'a> {
             });
             state.customize_open = open;
             customize = popup.and_then(|inner| inner.inner);
+            trigger.id
         });
 
         // The toolbar has no widget of its own, so an interact over its rect gives the AccessKit
@@ -210,6 +230,14 @@ impl<'a> Qat<'a> {
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(accesskit::Role::Toolbar);
         });
+
+        // F6: a QAT in the title bar is part of that region; above or below the ribbon it is
+        // its own (§9.3). The customise button is its last stop when no item is shown.
+        let region = match state.position {
+            QatPosition::TitleBar => Region::TitleBar,
+            QatPosition::AboveRibbon | QatPosition::BelowRibbon => Region::Qat,
+        };
+        keytips::mark_region(ui.ctx(), region, row.response.rect, first.or(Some(row.inner)));
 
         QatResponse {
             clicked,

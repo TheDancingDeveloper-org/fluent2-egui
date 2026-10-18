@@ -6,10 +6,11 @@ use std::sync::Arc;
 use egui::{Galley, Id, Pos2, Rect, Sense, Ui, Vec2, accesskit};
 use fluent2_tokens::generated::global::spacing_horizontal;
 
-use super::controls::{RibbonControl, RibbonDialogLauncher, caption};
+use super::controls::{RibbonControl, RibbonDialogLauncher, caption, register};
 use super::{RibbonEvent, RibbonEventKind, RibbonResponse, body_node};
 use crate::controls::{Appearance, Button, ButtonSize};
 use crate::foundation::icon::IconName;
+use crate::office::keytips;
 use crate::theme::{Theme, c};
 
 /// Controls stacked in one column of a group, at most (spec §5.1 small rendering).
@@ -97,7 +98,7 @@ impl Group<'_> {
     }
 
     /// Paint the group: its columns of controls, then its label row with the launcher.
-    pub(super) fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    pub(super) fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let Self {
             key,
             label,
@@ -115,7 +116,7 @@ impl Group<'_> {
                         ui.vertical(|ui| {
                             ui.spacing_mut().item_spacing.y = pad;
                             for control in column {
-                                control.show(ui, out);
+                                control.show(ui, tab, out);
                             }
                         });
                     }
@@ -132,7 +133,7 @@ impl Group<'_> {
             );
             paint_label(ui, row, &text, &theme);
             if let Some(launcher) = launcher {
-                launcher.show(ui, &label, row, launch, out);
+                launcher.show(ui, &label, row, launch, tab, out);
             }
 
             ui.ctx().accesskit_node_builder(ui.id().with("group"), |node| {
@@ -144,13 +145,17 @@ impl Group<'_> {
 }
 
 /// Paint the active tab's body: the groups in a row, at the body's height (spec §4, §10).
+///
+/// `tab` is the active tab's key: its controls register their KeyTips at that tab's level.
+/// Returns the body's rectangle.
 pub(super) fn paint_body(
     ui: &mut Ui,
     id: Id,
     label: Option<&str>,
+    tab: Option<&'static str>,
     groups: Vec<Group<'_>>,
     out: &mut RibbonResponse,
-) {
+) -> Rect {
     body_node(ui.ctx(), id, label);
     let height = Theme::get(ui.ctx()).chrome.ribbon_body_height;
     ui.vertical(|ui| {
@@ -158,10 +163,12 @@ pub(super) fn paint_body(
         ui.horizontal_top(|ui| {
             ui.spacing_mut().item_spacing.x = spacing_horizontal::S;
             for group in groups {
-                group.show(ui, out);
+                group.show(ui, tab, out);
             }
         });
-    });
+    })
+    .response
+    .rect
 }
 
 /// Keep `key` if it is new, otherwise report it and return false.
@@ -205,7 +212,15 @@ fn paint_label(ui: &Ui, row: Rect, text: &Arc<Galley>, theme: &Theme) {
 
 impl RibbonDialogLauncher {
     /// The launcher in the group's corner. `row` is the label row, `size` the square it takes.
-    pub(super) fn show(self, ui: &mut Ui, group_label: &str, row: Rect, size: f32, out: &mut RibbonResponse) {
+    pub(super) fn show(
+        self,
+        ui: &mut Ui,
+        group_label: &str,
+        row: Rect,
+        size: f32,
+        tab: Option<&'static str>,
+        out: &mut RibbonResponse,
+    ) {
         let corner = Rect::from_min_size(
             Pos2::new(row.right() - size, row.bottom() - size),
             Vec2::splat(size),
@@ -217,7 +232,9 @@ impl RibbonDialogLauncher {
                 .size(ButtonSize::Small)
                 .id_salt(self.key),
         );
-        if response.clicked() {
+        let label = format!("{group_label} dialog");
+        register(ui, tab, self.key, self.keytip, &label, response.rect, None);
+        if response.clicked() || (ui.is_enabled() && keytips::invoked(ui.ctx(), self.key)) {
             out.events.push(RibbonEvent {
                 key: self.key,
                 kind: RibbonEventKind::Clicked,

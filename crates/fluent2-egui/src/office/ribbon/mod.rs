@@ -19,6 +19,7 @@ use egui::{
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
+use super::keytips::{self, KeyTipCandidate, KeyTipLevel, Region, TargetKind};
 use crate::controls::{Appearance, Button, ButtonSize};
 use crate::foundation::focus::{self, paint_focus_ring};
 use crate::foundation::icon::IconName;
@@ -106,6 +107,7 @@ pub struct RibbonResponse {
 pub struct FileTab {
     key: &'static str,
     label: String,
+    keytip: Option<&'static str>,
 }
 
 impl FileTab {
@@ -114,7 +116,15 @@ impl FileTab {
         Self {
             key,
             label: label.to_owned(),
+            keytip: None,
         }
+    }
+
+    /// The File tab's KeyTip (spec §6.2), usually `"F"`.
+    #[must_use]
+    pub fn keytip(mut self, key: &'static str) -> Self {
+        self.keytip = Some(key);
+        self
     }
 }
 
@@ -167,6 +177,7 @@ impl<'a> Ribbon<'a> {
         let id = self.id;
         let file_tab = self.file_tab;
         let mut out = RibbonResponse::default();
+        keytips::install(ui.ctx());
         let reserved = file_tab.as_ref().map(|file| file.key);
         let strip = visible_tabs(self.tabs, reserved, &mut out.conflicts);
 
@@ -176,6 +187,18 @@ impl<'a> Ribbon<'a> {
             .iter()
             .find(|tab| tab.contextual.is_none())
             .map(|tab| tab.key);
+
+        // A tab KeyTip selects its tab as a click on it would (§6.3), opening the peek when
+        // the ribbon is collapsed.
+        let keytip_tab = keytips::selected_tab(ui.ctx())
+            .filter(|key| ui.is_enabled() && strip.iter().any(|tab| tab.key == *key));
+        let keytip_previous = state.active.or(first_content);
+        if let Some(key) = keytip_tab {
+            state.active = Some(key);
+            if state.display == RibbonDisplay::Collapsed {
+                state.display = RibbonDisplay::Peek;
+            }
+        }
         let before = state.active.or(first_content);
         let active = state
             .active
@@ -187,8 +210,14 @@ impl<'a> Ribbon<'a> {
         if before != active {
             out.tab_changed = active;
         }
+        if let Some(key) = keytip_tab
+            && keytip_previous != Some(key)
+        {
+            out.tab_changed = Some(key);
+        }
 
         let keys: Vec<&'static str> = strip.iter().map(|tab| tab.key).collect();
+        let tab_keytips: Vec<Option<&'static str>> = strip.iter().map(|tab| tab.keytip).collect();
         let labels: Vec<String> = strip.iter().map(|tab| tab.label.clone()).collect();
         let label_refs: Vec<&str> = labels.iter().map(String::as_str).collect();
         let active_label = active
@@ -292,6 +321,47 @@ impl<'a> Ribbon<'a> {
                 });
         }
 
+        // Root-level KeyTips: the File tab invokes like a click, the tabs select (§6.2, §6.3).
+        // A tab's badge sits under its label, so each tab registers its slot in the strip.
+        let mut left = strip_response.rect.left();
+        let enabled = ui.is_enabled();
+        for ((key, label), (keytip, width)) in keys.iter().zip(&labels).zip(tab_keytips.iter().zip(&widths)) {
+            let rect = Rect::from_min_size(
+                Pos2::new(left, strip_response.rect.top()),
+                Vec2::new(*width, strip_response.rect.height()),
+            );
+            left += width;
+            if !enabled {
+                continue;
+            }
+            keytips::register(
+                ui.ctx(),
+                KeyTipCandidate {
+                    target: key,
+                    level: KeyTipLevel::Root,
+                    kind: TargetKind::Tab,
+                    requested: *keytip,
+                    label: label.clone(),
+                },
+                rect,
+            );
+        }
+        if let (true, Some(file), Some(file_tab)) = (enabled, &file_response, &file_tab) {
+            keytips::register(
+                ui.ctx(),
+                KeyTipCandidate {
+                    target: file_tab.key,
+                    level: KeyTipLevel::Root,
+                    kind: TargetKind::Control,
+                    requested: file_tab.keytip,
+                    label: file_tab.label.clone(),
+                },
+                file.rect,
+            );
+        }
+
+        let file_rect = file_response.as_ref().map(|file| file.rect);
+        let file_id = file_response.as_ref().map(|file| file.id);
         if let Some(file) = file_response {
             let key_pressed = file.has_focus()
                 && ui.input_mut(|input| {
@@ -302,7 +372,7 @@ impl<'a> Ribbon<'a> {
                 file.request_focus();
             }
             if let Some(file_tab) = &file_tab
-                && (file.clicked() || key_pressed)
+                && (file.clicked() || key_pressed || (enabled && keytips::invoked(ui.ctx(), file_tab.key)))
             {
                 out.events.push(RibbonEvent {
                     key: file_tab.key,
@@ -361,8 +431,19 @@ impl<'a> Ribbon<'a> {
         let body_inline = state.display == RibbonDisplay::Expanded
             || (state.display == RibbonDisplay::Peek && state.pinned);
         let peek_popup = state.display == RibbonDisplay::Peek && !state.pinned;
+        let mut region = strip_response.rect;
+        if let Some(file) = &file_rect {
+            region = region.union(*file);
+        }
         if body_inline {
-            paint_body(ui, id.with("body"), active_label.as_deref(), body, &mut out);
+            region = region.union(paint_body(
+                ui,
+                id.with("body"),
+                active_label.as_deref(),
+                active,
+                body,
+                &mut out,
+            ));
         } else if peek_popup {
             let popup = Area::new(id.with("peek"))
                 .order(Order::Foreground)
@@ -371,7 +452,14 @@ impl<'a> Ribbon<'a> {
                     popup_frame(&theme)
                         .show(ui, |ui| {
                             ui.horizontal_top(|ui| {
-                                paint_body(ui, id.with("body"), active_label.as_deref(), body, &mut out);
+                                paint_body(
+                                    ui,
+                                    id.with("body"),
+                                    active_label.as_deref(),
+                                    active,
+                                    body,
+                                    &mut out,
+                                );
                                 pin_button(ui)
                             })
                             .inner
@@ -387,6 +475,10 @@ impl<'a> Ribbon<'a> {
         } else {
             ui.ctx().data_mut(|data| data.remove::<Rect>(popup_key));
         }
+
+        // F6 lands on the File tab, or the strip when there is none (§9.3).
+        let first = file_id.unwrap_or(strip_response.id);
+        keytips::mark_region(ui.ctx(), Region::Ribbon, region, Some(first));
 
         out
     }

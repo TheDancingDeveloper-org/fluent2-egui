@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use egui::{
-    Galley, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    Galley, Id, Popup, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, WidgetInfo,
+    WidgetText, WidgetType, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal};
 
@@ -19,6 +19,7 @@ use crate::controls::{ButtonSize, Checkbox, Combobox, Dropdown, MenuButton, Spli
 use crate::foundation::focus::{self, paint_focus_ring};
 use crate::foundation::icon::{IconName, IconSize, IconStyle, paint_icon};
 use crate::foundation::text::TypeRamp;
+use crate::office::keytips::{self, KeyTipCandidate, KeyTipLevel, TargetKind};
 use crate::surfaces::TooltipExt;
 use crate::theme::{Theme, c};
 
@@ -45,8 +46,8 @@ fn tooltip(label: &str, shortcut: Option<&str>) -> String {
     }
 }
 
-fn report_click(out: &mut RibbonResponse, key: &'static str, response: &Response) {
-    if response.clicked() {
+fn report_click(out: &mut RibbonResponse, key: &'static str, clicked: bool) {
+    if clicked {
         out.events.push(RibbonEvent {
             key,
             kind: RibbonEventKind::Clicked,
@@ -65,6 +66,76 @@ fn report_change(out: &mut RibbonResponse, key: &'static str, changed: bool) {
     }
 }
 
+/// Register a control's KeyTip at the level of tab `tab` (spec §6.2). A control that opens a
+/// popup passes its popup id and registers as a popup control. A disabled control, or one
+/// painted outside a tab, registers nothing.
+pub(super) fn register(
+    ui: &Ui,
+    tab: Option<&'static str>,
+    key: &'static str,
+    keytip: Option<&'static str>,
+    label: &str,
+    rect: Rect,
+    popup: Option<Id>,
+) {
+    let Some(tab) = tab else {
+        return;
+    };
+    if !ui.is_enabled() {
+        return;
+    }
+    let kind = if popup.is_some() {
+        TargetKind::PopupControl
+    } else {
+        TargetKind::Control
+    };
+    keytips::register_with_popup(
+        ui.ctx(),
+        KeyTipCandidate {
+            target: key,
+            level: KeyTipLevel::Tab(tab),
+            kind,
+            requested: keytip,
+            label: label.to_owned(),
+        },
+        rect,
+        popup,
+    );
+}
+
+/// Whether KeyTips invoked `key` this frame. A disabled control is never invoked.
+fn invoked(ui: &Ui, key: &str) -> bool {
+    ui.is_enabled() && keytips::invoked(ui.ctx(), key)
+}
+
+/// Adds `.keytip(key)` to each control builder (spec §6.2).
+macro_rules! keytip_method {
+    ($($ty:ty),* $(,)?) => {$(
+        impl $ty {
+            /// The control's KeyTip (spec §6.2): one or two ASCII letters, or one digit. Without
+            /// one, a key is assigned from the label.
+            #[must_use]
+            pub fn keytip(mut self, key: &'static str) -> Self {
+                self.keytip = Some(key);
+                self
+            }
+        }
+    )*};
+}
+
+keytip_method!(
+    RibbonLarge<'_>,
+    RibbonSmall<'_>,
+    RibbonToggle<'_>,
+    RibbonSplit<'_>,
+    RibbonMenu<'_>,
+    RibbonCheckbox<'_>,
+    RibbonDropdown<'_>,
+    RibbonCombobox<'_>,
+    RibbonCustom<'_>,
+    RibbonDialogLauncher,
+);
+
 /// Large button: icon above a two-line label. Event: `Clicked`.
 ///
 /// ```
@@ -74,6 +145,7 @@ fn report_change(out: &mut RibbonResponse, key: &'static str, changed: bool) {
 /// ```
 pub struct RibbonLarge<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     icon: IconName,
     label: String,
     shortcut: Option<String>,
@@ -85,6 +157,7 @@ impl<'a> RibbonLarge<'a> {
     pub fn new(key: &'static str, icon: IconName, label: &str) -> Self {
         Self {
             key,
+            keytip: None,
             icon,
             label: label.to_owned(),
             shortcut: None,
@@ -99,7 +172,7 @@ impl<'a> RibbonLarge<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let theme = Theme::get(ui.ctx());
         let enabled = ui.is_enabled();
         let chrome = &theme.chrome;
@@ -151,7 +224,8 @@ impl<'a> RibbonLarge<'a> {
         }
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, self.label.as_str()));
         let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
-        report_click(out, self.key, &response);
+        register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
+        report_click(out, self.key, response.clicked() || invoked(ui, self.key));
     }
 }
 
@@ -164,6 +238,7 @@ impl<'a> RibbonLarge<'a> {
 /// ```
 pub struct RibbonSmall<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     icon: IconName,
     label: String,
     shortcut: Option<String>,
@@ -175,6 +250,7 @@ impl<'a> RibbonSmall<'a> {
     pub fn new(key: &'static str, icon: IconName, label: &str) -> Self {
         Self {
             key,
+            keytip: None,
             icon,
             label: label.to_owned(),
             shortcut: None,
@@ -189,7 +265,7 @@ impl<'a> RibbonSmall<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let theme = Theme::get(ui.ctx());
         let enabled = ui.is_enabled();
         let chrome = &theme.chrome;
@@ -238,7 +314,8 @@ impl<'a> RibbonSmall<'a> {
         }
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, self.label.as_str()));
         let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
-        report_click(out, self.key, &response);
+        register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
+        report_click(out, self.key, response.clicked() || invoked(ui, self.key));
     }
 }
 
@@ -252,6 +329,7 @@ impl<'a> RibbonSmall<'a> {
 /// ```
 pub struct RibbonToggle<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     icon: IconName,
     label: String,
     shortcut: Option<String>,
@@ -263,6 +341,7 @@ impl<'a> RibbonToggle<'a> {
     pub fn new(key: &'static str, icon: IconName, label: &str, value: &'a mut bool) -> Self {
         Self {
             key,
+            keytip: None,
             icon,
             label: label.to_owned(),
             shortcut: None,
@@ -277,9 +356,13 @@ impl<'a> RibbonToggle<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let before = *self.value;
-        ui.push_id(self.key, |ui| {
+        // A KeyTip presses the toggle, as a click does.
+        if invoked(ui, self.key) {
+            *self.value = !*self.value;
+        }
+        let response = ui.push_id(self.key, |ui| {
             ui.add(
                 ToggleButton::new(&mut *self.value, self.label.as_str())
                     .icon(self.icon)
@@ -287,6 +370,15 @@ impl<'a> RibbonToggle<'a> {
             )
             .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()))
         });
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            response.inner.rect,
+            None,
+        );
         report_change(out, self.key, *self.value != before);
     }
 }
@@ -303,6 +395,7 @@ impl<'a> RibbonToggle<'a> {
 /// ```
 pub struct RibbonSplit<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     icon: IconName,
     label: String,
     shortcut: Option<String>,
@@ -315,6 +408,7 @@ impl<'a> RibbonSplit<'a> {
     pub fn new(key: &'static str, icon: IconName, label: &str, menu: impl FnOnce(&mut Ui) + 'a) -> Self {
         Self {
             key,
+            keytip: None,
             icon,
             label: label.to_owned(),
             shortcut: None,
@@ -337,7 +431,7 @@ impl<'a> RibbonSplit<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let arrow_label = format!("{} menu", self.label);
         let split = SplitButton::new(self.label.as_str())
             .icon(self.icon)
@@ -350,10 +444,18 @@ impl<'a> RibbonSplit<'a> {
             node.set_label(arrow_label);
             node.set_has_popup(accesskit::HasPopup::Menu);
         });
+        // The KeyTip opens the menu, as the chevron does (§6.3 `OpenPopup`).
+        let popup = Popup::default_response_id(&response.menu);
+        if ui.is_enabled() && keytips::popup_opened(ui.ctx(), self.key) {
+            Popup::open_id(ui.ctx(), popup);
+            ui.ctx().request_repaint();
+        }
+        let rect = response.main.rect.union(response.menu.rect);
+        register(ui, tab, self.key, self.keytip, &self.label, rect, Some(popup));
         let main = response
             .main
             .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
-        report_click(out, self.key, &main);
+        report_click(out, self.key, main.clicked());
     }
 }
 
@@ -368,6 +470,7 @@ impl<'a> RibbonSplit<'a> {
 /// ```
 pub struct RibbonMenu<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     icon: IconName,
     label: String,
     shortcut: Option<String>,
@@ -380,6 +483,7 @@ impl<'a> RibbonMenu<'a> {
     pub fn new(key: &'static str, icon: IconName, label: &str, menu: impl FnOnce(&mut Ui) + 'a) -> Self {
         Self {
             key,
+            keytip: None,
             icon,
             label: label.to_owned(),
             shortcut: None,
@@ -402,7 +506,7 @@ impl<'a> RibbonMenu<'a> {
         self
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let (response, _) = MenuButton::new(self.label.as_str())
             .icon(self.icon)
             .size(sizes(self.small))
@@ -412,8 +516,24 @@ impl<'a> RibbonMenu<'a> {
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_has_popup(accesskit::HasPopup::Menu);
         });
+        // The KeyTip opens the menu and reports `Clicked`, as pressing the button does.
+        let popup = Popup::default_response_id(&response);
+        let keyed = ui.is_enabled() && keytips::popup_opened(ui.ctx(), self.key);
+        if keyed {
+            Popup::open_id(ui.ctx(), popup);
+            ui.ctx().request_repaint();
+        }
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            response.rect,
+            Some(popup),
+        );
         let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
-        report_click(out, self.key, &response);
+        report_click(out, self.key, response.clicked() || keyed);
     }
 }
 
@@ -435,6 +555,7 @@ fn sizes(small: bool) -> ButtonSize {
 /// ```
 pub struct RibbonCheckbox<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     label: String,
     value: &'a mut bool,
 }
@@ -444,16 +565,29 @@ impl<'a> RibbonCheckbox<'a> {
     pub fn new(key: &'static str, label: &str, value: &'a mut bool) -> Self {
         Self {
             key,
+            keytip: None,
             label: label.to_owned(),
             value,
         }
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let before = *self.value;
-        ui.push_id(self.key, |ui| {
+        if invoked(ui, self.key) {
+            *self.value = !*self.value;
+        }
+        let response = ui.push_id(self.key, |ui| {
             ui.add(Checkbox::bool(&mut *self.value, self.label.as_str()))
         });
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            response.inner.rect,
+            None,
+        );
         report_change(out, self.key, *self.value != before);
     }
 }
@@ -468,6 +602,7 @@ impl<'a> RibbonCheckbox<'a> {
 /// ```
 pub struct RibbonDropdown<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     label: String,
     options: &'a [&'a str],
     selected: &'a mut usize,
@@ -478,17 +613,18 @@ impl<'a> RibbonDropdown<'a> {
     pub fn new(key: &'static str, label: &str, options: &'a [&'a str], selected: &'a mut usize) -> Self {
         Self {
             key,
+            keytip: None,
             label: label.to_owned(),
             options,
             selected,
         }
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let before = *self.selected;
         let mut current = Some(before);
         let width = field_width(ui, &self.label, self.options);
-        ui.push_id(self.key, |ui| {
+        let response = ui.push_id(self.key, |ui| {
             ui.add(
                 Dropdown::new(self.key, &mut current, self.options)
                     .placeholder(self.label.as_str())
@@ -496,6 +632,19 @@ impl<'a> RibbonDropdown<'a> {
                     .width(width),
             )
         });
+        // A KeyTip moves focus to the field, where typing or the arrow keys pick a value.
+        if invoked(ui, self.key) {
+            response.inner.request_focus();
+        }
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            response.inner.rect,
+            None,
+        );
         if let Some(index) = current {
             *self.selected = index;
         }
@@ -512,6 +661,7 @@ impl<'a> RibbonDropdown<'a> {
 /// ```
 pub struct RibbonCombobox<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     label: String,
     options: &'a [&'a str],
     text: &'a mut String,
@@ -522,16 +672,17 @@ impl<'a> RibbonCombobox<'a> {
     pub fn new(key: &'static str, label: &str, options: &'a [&'a str], text: &'a mut String) -> Self {
         Self {
             key,
+            keytip: None,
             label: label.to_owned(),
             options,
             text,
         }
     }
 
-    fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let before = self.text.clone();
         let width = field_width(ui, &self.label, self.options);
-        ui.push_id(self.key, |ui| {
+        let response = ui.push_id(self.key, |ui| {
             ui.add(
                 Combobox::new(self.key, &mut *self.text, self.options)
                     .placeholder(self.label.as_str())
@@ -539,6 +690,19 @@ impl<'a> RibbonCombobox<'a> {
                     .width(width),
             )
         });
+        // A KeyTip moves focus to the field, where typing or the arrow keys pick a value.
+        if invoked(ui, self.key) {
+            response.inner.request_focus();
+        }
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            response.inner.rect,
+            None,
+        );
         report_change(out, self.key, *self.text != before);
     }
 }
@@ -564,12 +728,13 @@ fn field_width(ui: &Ui, label: &str, options: &[&str]) -> f32 {
 /// ```
 pub struct RibbonDialogLauncher {
     pub(super) key: &'static str,
+    pub(super) keytip: Option<&'static str>,
 }
 
 impl RibbonDialogLauncher {
     /// A launcher named `key`, unique within the ribbon.
     pub fn new(key: &'static str) -> Self {
-        Self { key }
+        Self { key, keytip: None }
     }
 }
 
@@ -585,6 +750,7 @@ type CustomAdd<'a> = Box<dyn FnMut(&mut Ui, ScalingStep) -> Response + 'a>;
 /// ```
 pub struct RibbonCustom<'a> {
     key: &'static str,
+    keytip: Option<&'static str>,
     add: CustomAdd<'a>,
     widths: [f32; 3],
 }
@@ -594,6 +760,7 @@ impl<'a> RibbonCustom<'a> {
     pub fn new(key: &'static str, add: impl FnMut(&mut Ui, ScalingStep) -> Response + 'a) -> Self {
         Self {
             key,
+            keytip: None,
             add: Box::new(add),
             widths: [0.0; 3],
         }
@@ -606,11 +773,16 @@ impl<'a> RibbonCustom<'a> {
         self
     }
 
-    fn show(mut self, ui: &mut Ui, out: &mut RibbonResponse) {
+    fn show(mut self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         let width = self.widths[0].max(0.0);
         let response = ui
             .allocate_ui(Vec2::new(width, 0.0), |ui| (self.add)(ui, ScalingStep::Large))
             .inner;
+        // A KeyTip focuses the caller's widget; the caller handles its keys.
+        if invoked(ui, self.key) {
+            response.request_focus();
+        }
+        register(ui, tab, self.key, self.keytip, self.key, response.rect, None);
         out.custom.push((self.key, response));
     }
 }
@@ -682,17 +854,17 @@ impl RibbonControl<'_> {
     }
 
     /// Paint the control and report its events.
-    pub(super) fn show(self, ui: &mut Ui, out: &mut RibbonResponse) {
+    pub(super) fn show(self, ui: &mut Ui, tab: Option<&'static str>, out: &mut RibbonResponse) {
         match self.0 {
-            Kind::Large(control) => control.show(ui, out),
-            Kind::Small(control) => control.show(ui, out),
-            Kind::Toggle(control) => control.show(ui, out),
-            Kind::Split(control) => control.show(ui, out),
-            Kind::Menu(control) => control.show(ui, out),
-            Kind::Checkbox(control) => control.show(ui, out),
-            Kind::Dropdown(control) => control.show(ui, out),
-            Kind::Combobox(control) => control.show(ui, out),
-            Kind::Custom(control) => control.show(ui, out),
+            Kind::Large(control) => control.show(ui, tab, out),
+            Kind::Small(control) => control.show(ui, tab, out),
+            Kind::Toggle(control) => control.show(ui, tab, out),
+            Kind::Split(control) => control.show(ui, tab, out),
+            Kind::Menu(control) => control.show(ui, tab, out),
+            Kind::Checkbox(control) => control.show(ui, tab, out),
+            Kind::Dropdown(control) => control.show(ui, tab, out),
+            Kind::Combobox(control) => control.show(ui, tab, out),
+            Kind::Custom(control) => control.show(ui, tab, out),
         }
     }
 }
