@@ -94,36 +94,56 @@ Size: S is less than a week, M is one to three weeks, L is more than three weeks
 research spike. Home: **fluent2** means a generic component in this library. **app** means it
 lives in the Vogt Rust GUI crate. **ext** means an outside crate wrapped by the app.
 
-| # | Gap | Rationale | Size | Home |
-|---|---|---|---|---|
-| G1 | Closable, reorderable, overflowing tabs | Terminal and editor tabs are the main workspace. Fluent TabList has no close button, drag reorder or overflow menu. | M | fluent2 |
-| G2 | Docking and pane splits | The workspace splits panes and lets tabs be dragged between them. The data-views spec defers docking; the POC can use SplitView alone. | L | fluent2 (optional `docking` feature, per §9) |
-| G3 | Router and deep links | Maps `#/w/:ref` and similar routes onto egui state, plus the browser and Android back button. | S | app |
-| G4 | Phone layout pass | Touch targets, a bottom sheet in place of the "more" menu, safe-area insets. fluent2 has no compact density or touch sizing. | M | fluent2 (density, BottomSheet); app (layout) |
-| G5 | Drawer / bottom sheet surface | Phone more-sheet and side panels. Fluent has Drawer; it is not in the backlog. | S | fluent2 |
-| G6 | Wizard / stepper | Setup flow. Can be built from Dialog, Buttons and a step header. | S | app |
-| G7 | Filter bar and saved views | Used by Backlog, Inbox and Audit. Fluent has no such component; it is composed from existing controls. | S | app |
-| G8 | Freshness indicator | Badge plus a timer. | S | app |
-| G9 | Feedback centre | A list of past toasts once Toast lands. | S | app |
-| G10 | Pager | Audit is paged on purpose. A small generic control. | S | fluent2 |
-| G11 | Variable-height virtual rows | Inbox, history and chat rows differ in height. `rows.rs` assumes a fixed row height. | M | fluent2 (List extension; needs a spec note) |
-| G12 | Kanban board | Columns of cards with drag between them, a pending-move state and writes switched off when read-only. Fluent has no board. A generic drag/drop list helper would also serve tab reorder (G1). | M | app (board); fluent2 (drag-reorder helper, S) |
-| G13 | Terminal emulator widget | The core Vogt surface. Needs a VT parser, grid, scrollback, selection, search, links, OSC52, themes and wasm. Use `alacritty_terminal` or `vt100` with an egui renderer rather than write one. | L | ext + app (keep it out of fluent2: not a Fluent component) |
-| G14 | Markdown renderer | Chat, work items and inbox. `egui_commonmark` exists; it needs restyling with Fluent tokens and Vogt's safe-link and file-link rules. | M | ext + app |
-| G15 | Code editor with highlighting | Monaco has no egui equivalent. For the POC, use a read-only highlighted view (`egui_extras` syntect) and leave editing out. | L | ext + app |
-| G16 | Diff viewer | The Git surface. Built on `similar` plus G15's highlighter, side by side and inline. | M | app |
-| G17 | Highlighted snippet | A LayoutJob helper that highlights the matched text in a theme colour. Generic and small. | S | fluent2 (foundation/text) |
-| G18 | Charts | Only sparklines and small bars. `egui_plot` would be enough but does not use our theme; a token-styled Sparkline is smaller. | S | fluent2 (Sparkline) or app |
-| G19 | History replay timeline | Scrubber plus a replayed terminal. Depends on G13. | M | app |
-| G20 | GUI stream viewer | Decode the stream into a texture. | M | app |
-| G21 | Command palette | Generic pattern: a centred popover with search, a ranked list, recents and keyboard control. Built from SearchBox, List and Popover. | M | fluent2 |
-| G22 | Shortcut registry and help overlay | Bindings, conflict checks and a `?` overlay. Can sit next to KeyTips but is a separate thing. | S | app (fluent2 could later supply a `ShortcutHint` label) |
-| G23 | Live data plumbing | SSE, WebSocket, reconnect, SWR cache and repaint-on-event. Must work native and wasm (`ewebsock`, `reqwest`/`gloo`). | M | app |
-| G24 | Login screen | A form using existing controls. | S | app |
-| G25 | Push and PWA features | An egui wasm canvas still needs a JS shell for the service worker and push. Native needs OS notifications. For the POC: keep the PWA shell, drop push. | M | app (outside the egui canvas) |
-| G26 | Mobile terminal input | Modifier key row, touch scroll, soft keyboard. egui's wasm soft-keyboard support is weak; this is the riskiest part of the mobile port. | L | app (+ egui upstream) |
-| G27 | Voice | Web Speech and audio worklets are browser APIs. Out of scope for a visual POC. | L | app (defer) |
-| G28 | File picker and upload | `rfd` on native, a file input on wasm. | S | app |
+| # | Gap | Rationale | Size | Home | gpui equivalent and portability |
+|---|---|---|---|---|---|
+| G1 | Closable, reorderable, overflowing tabs | Terminal and editor tabs are the main workspace. Fluent TabList has no close button, drag reorder or overflow menu. | M | fluent2 | **rdpapp-proven**: `fluent-gpui/crates/fluent-layout/src/tab_strip.rs` (rdpapp `migration-tool/src/main.rs` TabStrip). Port the design. |
+| G2 | Docking and pane splits | The workspace splits panes and lets tabs be dragged between them. The data-views spec defers docking; the POC can use SplitView alone. | L | fluent2 (optional `docking` feature, per §9) | `fluent-layout/src/{dock,pane_group,pane,workspace}.rs`; **Dock rdpapp-proven** (PaneGroup not used). Port the design; the split tree is small to rewrite. |
+| G3 | Router and deep links | Maps `#/w/:ref` and similar routes onto egui state, plus the browser and Android back button. | S | app | No gpui router. rdpapp `migration-tool/src/url_scheme.rs` is plain Rust; its logic could be ported. |
+| G4 | Phone layout pass | Touch targets, a bottom sheet in place of the "more" menu, safe-area insets. fluent2 has no compact density or touch sizing. | M | fluent2 (density, BottomSheet); app (layout) | None. |
+| G5 | Drawer / bottom sheet surface | Phone more-sheet and side panels. Fluent has Drawer; it is not in the backlog. | S | fluent2 | `fluent-layout/src/flyout.rs`, `modal.rs` (Modal rdpapp-proven, Flyout not). Design only. |
+| G6 | Wizard / stepper | Setup flow. Can be built from Dialog, Buttons and a step header. | S | app | None. |
+| G7 | Filter bar and saved views | Used by Backlog, Inbox and Audit. Fluent has no such component; it is composed from existing controls. | S | app | `fluent-primitives/src/{searchbox,token_input,chip}.rs`; Searchbox rdpapp-proven; no saved views. Design only. |
+| G8 | Freshness indicator | Badge plus a timer. | S | app | Zed `crates/time_format` (GPL). Reimplement the logic; don't copy. |
+| G9 | Feedback centre | A list of past toasts once Toast lands. | S | app | `fluent-layout/src/{toast,message_bar}.rs`; MessageBar rdpapp-proven. Design only. |
+| G10 | Pager | Audit is paged on purpose. A small generic control. | S | fluent2 | None. |
+| G11 | Variable-height virtual rows | Inbox, history and chat rows differ in height. `rows.rs` assumes a fixed row height. | M | fluent2 (List extension; needs a spec note) | gpui `elements/list.rs` (variable height, Apache). Design only (Zed `sum_tree` is GPL). |
+| G12 | Kanban board | Columns of cards with drag between them, a pending-move state and writes switched off when read-only. Fluent has no board. A generic drag/drop list helper would also serve tab reorder (G1). | M | app (board); fluent2 (drag-reorder helper, S) | gpui `on_drag`/`drag_over` (`elements/div.rs`); **drag rdpapp-proven**. Design only. |
+| G13 | Terminal emulator widget | The core Vogt surface. Needs a VT parser, grid, scrollback, selection, search, links, OSC52, themes and wasm. Use `alacritty_terminal` or `vt100` with an egui renderer rather than write one. | L | ext + app (keep it out of fluent2: not a Fluent component) | **rdpapp-proven**: `migration-tool/src/ssh/terminal.rs` (a `vte` parser and grid with no gpui code) and `local_term.rs`. The logic ports directly. Zed `crates/terminal` (alacritty_terminal) is GPL: design only. |
+| G14 | Markdown renderer | Chat, work items and inbox. `egui_commonmark` exists; it needs restyling with Fluent tokens and Vogt's safe-link and file-link rules. | M | ext + app | Zed `crates/markdown` (GPL, on pulldown-cmark). Logic: use `pulldown-cmark` (MIT) directly. |
+| G15 | Code editor with highlighting | Monaco has no egui equivalent. For the POC, use a read-only highlighted view (`egui_extras` syntect) and leave editing out. | L | ext + app | Zed `crates/editor`, `language` (GPL). Logic: use tree-sitter/ropey or syntect directly. |
+| G16 | Diff viewer | The Git surface. Built on `similar` plus G15's highlighter, side by side and inline. | M | app | Zed `crates/buffer_diff` (GPL, on imara-diff). Logic: use `imara-diff`/`similar` directly. |
+| G17 | Highlighted snippet | A LayoutJob helper that highlights the matched text in a theme colour. Generic and small. | S | fluent2 (foundation/text) | Zed `crates/fuzzy` (GPL) plus gpui StyledText. Logic: use `nucleo` match indices. |
+| G18 | Charts | Only sparklines and small bars. `egui_plot` would be enough but does not use our theme; a token-styled Sparkline is smaller. | S | fluent2 (Sparkline) or app | None (use `egui_plot` or a small Sparkline). |
+| G19 | History replay timeline | Scrubber plus a replayed terminal. Depends on G13. | M | app | None. |
+| G20 | GUI stream viewer | Decode the stream into a texture. | M | app | rdpapp `src/rdp`, `src/vnc` decode frames without UI code; the logic could be ported. gpui `elements/surface.rs`, `img.rs` (Apache). |
+| G21 | Command palette | Generic pattern: a centred popover with search, a ranked list, recents and keyboard control. Built from SearchBox, List and Popover. | M | fluent2 | **rdpapp-proven**: `fluent-layout/src/command_palette.rs`, `command.rs` (scoring, Apache). The logic ports directly. |
+| G22 | Shortcut registry and help overlay | Bindings, conflict checks and a `?` overlay. Can sit next to KeyTips but is a separate thing. | S | app (fluent2 could later supply a `ShortcutHint` label) | gpui `keymap.rs`, `action.rs`; KeyBinding rdpapp-proven. Design only (it is tied to gpui's action dispatch). |
+| G23 | Live data plumbing | SSE, WebSocket, reconnect, SWR cache and repaint-on-event. Must work native and wasm (`ewebsock`, `reqwest`/`gloo`). | M | app | `fluent-core/src/async_resource.rs`, `fluent-primitives/src/connection_badge.rs`; rdpapp has reconnect logic (`main.rs`, `royalts.rs`). The `async_resource` state machine ports directly. |
+| G24 | Login screen | A form using existing controls. | S | app | Field/TextInput only. Design only. |
+| G25 | Push and PWA features | An egui wasm canvas still needs a JS shell for the service worker and push. Native needs OS notifications. For the POC: keep the PWA shell, drop push. | M | app (outside the egui canvas) | None (use `notify-rust`). |
+| G26 | Mobile terminal input | Modifier key row, touch scroll, soft keyboard. egui's wasm soft-keyboard support is weak; this is the riskiest part of the mobile port. | L | app (+ egui upstream) | None. |
+| G27 | Voice | Web Speech and audio worklets are browser APIs. Out of scope for a visual POC. | L | app (defer) | Zed `crates/audio` (GPL, on rodio). Logic: use `rodio` directly. |
+| G28 | File picker and upload | `rfd` on native, a file input on wasm. | S | app | rdpapp uses `rfd` (rdpapp-proven). The logic ports directly. |
+
+### gpui sources (read-only survey)
+
+Sources: `~/Working/Active/fluent-gpui` (Apache-2.0, our fork), Zed upstream at
+`26363aab` (read from git; the checkout has no working files), and `~/Working/Active/rdpapp`.
+Only `rdpapp/migration-tool` uses fluent-gpui. It imports TabStrip, Dock, CommandPalette,
+MessageBar, Modal, DataTable, Searchbox, ContextMenu, RibbonBar, KeyBinding and drag
+(`src/main.rs:36`).
+"rdpapp-proven" means a real app uses it. These are the strongest candidates to port.
+Paths without a prefix are under `fluent-gpui/crates/`.
+
+**Licence:** every Zed crate except `gpui` is GPL (terminal, markdown, editor, fuzzy, picker,
+command_palette, workspace, buffer_diff and the rest). Use them for design only and build on
+their permissive dependencies (alacritty_terminal/vte, pulldown-cmark, imara-diff, nucleo,
+tree-sitter). fluent-gpui code is Apache-2.0 and may be adapted under `UPSTREAM.md`.
+
+**Strongest ports, all rdpapp-proven:** G13 terminal (`ssh/terminal.rs`, pure `vte`), G21
+command palette (scoring), G1 tab strip and G2 dock (design), G28 `rfd`. Survey limits: the
+survey counted keywords and did not check that tab_strip's overflow and reorder work end to
+end. It also did not trace which gpui element rdpapp draws RDP frames with.
 
 ## 3. Reading of the result
 
