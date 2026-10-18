@@ -272,3 +272,23 @@ fn pin_button_in_the_peek_pins_the_ribbon_open() {
     assert!(state.pinned);
     assert_eq!(state.display, RibbonDisplay::Expanded);
 }
+
+#[test]
+fn groups_render_in_light_dark_and_high_contrast() {
+    for theme in [
+        Theme::light(fluent2_tokens::FLUENT),
+        Theme::dark(fluent2_tokens::FLUENT),
+        Theme::high_contrast(),
+    ] {
+        let mut values = Values::default();
+        let mut state = RibbonState::default();
+        let mut harness = Harness::builder()
+            .with_size(Vec2::new(1600.0, 400.0))
+            .build_ui(move |ui| {
+                install(ui.ctx(), &theme);
+                let _ = build(&mut values, false).show(ui, &mut state);
+            });
+        harness.run();
+        harness.get_by_role_and_label(Role::Button, "Paste");
+    }
+}
