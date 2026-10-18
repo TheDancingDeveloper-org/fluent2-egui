@@ -1,10 +1,12 @@
-//! Data views: DataGrid now, TreeView, List, NavigationView and SplitView later (see
+//! Data views: DataGrid, TreeView, List, NavigationView and SplitView (see
 //! `docs/specs/data-views.md`).
 
 pub mod data_grid;
+pub mod list;
 pub mod nav_view;
 pub(crate) mod rows;
 pub mod split_view;
+pub mod tree_view;
 
 pub use data_grid::{
     CellCtx, CellResponse, DataGrid, DataGridResponse, DataGridSize, DataGridState, FocusMode, RowId,

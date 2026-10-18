@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- TreeView and List (`fluent2_egui::data::tree_view`, `fluent2_egui::data::list`): a virtualised tree with depth, chevrons that turn with `motion::animate` (none under reduced motion), lazy children asked for once per expanded node, Loading rows, `*` to expand siblings, the spec §5.2 key map, and AccessKit Tree, TreeItem, ListBox and ListBoxOption nodes with level, expanded, position and size. The List uses the DataGrid's selection and roving focus (WI-1584).
 - DataGrid selection and keyboard focus: `SelectionMode` (None, Single, Multi) with a checkbox column and select-all, click, Ctrl and Shift selection, the spec §3 key map with scroll-into-view, Enter, F2 and Shift+F10 reported in `DataGridResponse`, Enter moves focus into a cell's focusable child and Escape returns it (the cell closure may return that child's `Response`), and AccessKit Grid, Row, ColumnHeader and GridCell nodes with absolute indices and counts for visible rows (WI-1583).
 - Vogt GUI port gap analysis (`docs/vogt-port-gap-analysis.md`): Vogt web screens and patterns mapped to fluent2-egui, with gaps sized and assigned to fluent2 or the app.
 - Quick Access Toolbar (`office::qat`): icon-only commands with tooltips, a customise menu to show, hide and reorder items and pick the position, and `QatState` owned by the app with `QatState::apply` (WI-1561).
