@@ -152,7 +152,7 @@ end. It also did not trace which gpui element rdpapp draws RDP frames with.
   the tables with #35/#38. With those, Settings, Projects, Backlog, Oversight, Audit, Login and
   Work-item detail (except its markdown) can be built on what is planned.
 - **The heavy items are not Fluent components:** terminal (G13), editor (G15), diff (G16),
-  markdown (G14). None of them belongs in fluent2. They decide whether the POC is credible,
+  markdown (G14). The operator has since chosen to file them as optional library features (section 4). They decide whether the POC is credible,
   because Vogt's main screen is the terminal. The cheapest first POC is to show the read-only
   screen snapshot (G13 without input), read-only diff and markdown, and leave the editor out.
 - **Candidates for fluent2 itself** (each would need a backlog item and, for G2/G11, a spec
