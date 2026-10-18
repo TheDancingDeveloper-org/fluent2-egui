@@ -2,6 +2,44 @@
 //!
 //! Not affiliated with or endorsed by Microsoft. See `docs/ARCHITECTURE.md` for the API
 //! conventions every component follows.
+//!
+//! # Quick start
+//!
+//! Install the theme once, then use the controls like any egui widget:
+//!
+//! ```
+//! use fluent2_egui::controls::{Appearance, Button};
+//! use fluent2_egui::Theme;
+//!
+//! # fn demo(ctx: &egui::Context, ui: &mut egui::Ui) {
+//! fluent2_egui::install(ctx, &Theme::default());
+//!
+//! if ui.add(Button::new("Save").appearance(Appearance::Primary)).clicked() {
+//!     // save
+//! }
+//! # }
+//! ```
+//!
+//! The Office chrome lives in [`office`]. A ribbon reports clicks by control key:
+//!
+//! ```
+//! use fluent2_egui::office::ribbon::{FileTab, Ribbon, RibbonLarge, RibbonState, RibbonTab};
+//! use fluent2_egui::IconName;
+//!
+//! # fn demo(ui: &mut egui::Ui, state: &mut RibbonState) {
+//! let response = Ribbon::new("main")
+//!     .file_tab(FileTab::new("file", "File"))
+//!     .tab(RibbonTab::new("home", "Home", |tab| {
+//!         tab.group("clipboard", "Clipboard", |group| {
+//!             group.add(RibbonLarge::new("paste", IconName::ClipboardPaste, "Paste"));
+//!         });
+//!     }))
+//!     .show(ui, state);
+//! for event in response.events {
+//!     println!("{} {:?}", event.key, event.kind);
+//! }
+//! # }
+//! ```
 
 #![warn(missing_docs)]
 

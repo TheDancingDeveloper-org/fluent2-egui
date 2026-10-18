@@ -13,8 +13,8 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, strok
 use crate::foundation::text::TypeRamp;
 use crate::theme::{Theme, c};
 
-/// The three states of a checkbox. Click and Space move [`Unchecked`] and [`Mixed`] to
-/// [`Checked`], and [`Checked`] back to [`Unchecked`].
+/// The three states of a checkbox. Click and Space move [`Unchecked`](Self::Unchecked) and [`Mixed`](Self::Mixed) to
+/// [`Checked`](Self::Checked), and [`Checked`](Self::Checked) back to [`Unchecked`](Self::Unchecked).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CheckState {
     /// Empty box.
@@ -22,7 +22,7 @@ pub enum CheckState {
     Unchecked,
     /// Brand fill with a check mark.
     Checked,
-    /// Brand fill with a short bar. The next click becomes [`Checked`].
+    /// Brand fill with a short bar. The next click becomes [`Checked`](CheckState::Checked).
     Mixed,
 }
 
@@ -89,7 +89,7 @@ impl<'a> Checkbox<'a> {
         self
     }
 
-    /// Box size. Defaults to [`CheckboxSize::Medium`] (16 px).
+    /// Box size. Defaults to `CheckboxSize::Medium` (16 px).
     #[must_use]
     pub fn size(mut self, size: CheckboxSize) -> Self {
         self.size = size;

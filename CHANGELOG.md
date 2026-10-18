@@ -4,7 +4,10 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-18
+
 ### Added
+- Release 0.1.0: crate-level quick starts, a README Usage section, a `cargo doc` gate with `RUSTDOCFLAGS=-D warnings`, and `.github/workflows/release.yml` that publishes `fluent2-tokens`, `fluent2-icons` and `fluent2-egui` on a `v*` tag (WI-1587).
 - Accessibility audit (`docs/a11y-report.md`): WCAG contrast of every token pair in light, dark and high contrast (`tests/a11y_contrast.rs`), and a Tab-order, focus-ring and reduced-motion check (`tests/a11y_keyboard.rs`). `foundation::motion::reduced_motion(ctx)` (WI-1586).
 
 ### Fixed

@@ -21,7 +21,7 @@ use super::super::foundation::focus;
 use super::super::foundation::text::TypeRamp;
 use crate::theme::{Theme, c};
 
-/// Visual weight of a button. [`Secondary`] is the Fluent default.
+/// Visual weight of a button. [`Secondary`](Self::Secondary) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Appearance {
     /// Neutral fill and a stroke. The default.
@@ -37,7 +37,7 @@ pub enum Appearance {
     Transparent,
 }
 
-/// Height, padding and type step of a button. [`Medium`] is the Fluent default.
+/// Height, padding and type step of a button. [`Medium`](Self::Medium) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ButtonSize {
     /// 24 px, caption1, 8 px horizontal padding.
@@ -49,7 +49,7 @@ pub enum ButtonSize {
     Large,
 }
 
-/// Corner treatment. [`Rounded`] uses the size's Fluent radius.
+/// Corner treatment. [`Rounded`](Self::Rounded) uses the size's Fluent radius.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Shape {
     /// Size-specific radius (`SMALL` / `MEDIUM` / `LARGE`). The default.

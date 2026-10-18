@@ -184,7 +184,7 @@ impl<'a> Gallery<'a> {
         self
     }
 
-    /// Accessible label of each item. Default: "<gallery label> <n>".
+    /// Accessible label of each item. Default: "\<gallery label\> \<n\>".
     #[must_use]
     pub fn item_label(mut self, label: impl Fn(usize) -> String + 'a) -> Self {
         self.item_label = Some(Box::new(label));
