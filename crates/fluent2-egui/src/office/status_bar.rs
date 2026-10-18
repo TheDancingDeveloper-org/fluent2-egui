@@ -3,6 +3,7 @@
 
 use egui::{Align, Id, Layout, Sense, Ui, UiBuilder, WidgetInfo, WidgetType, accesskit, vec2};
 
+use super::keytips::{self, Region};
 use crate::controls::{Appearance, Button, ButtonSize, Slider};
 use crate::foundation::text::{TypeRamp, font_id};
 use crate::theme::{Theme, c};
@@ -175,6 +176,15 @@ impl<'a> StatusBar<'a> {
         if let Some(add) = right {
             right_ui.horizontal(|ui| add(ui));
         }
+
+        // F6 region (§9.3): focus lands on the zoom slider. Without zoom the bar has no
+        // focusable control of its own; the app can mark one with `keytips::mark_region`.
+        keytips::mark_region(
+            ui.ctx(),
+            Region::StatusBar,
+            rect,
+            out.zoom.as_ref().map(|slider| slider.id),
+        );
 
         out
     }

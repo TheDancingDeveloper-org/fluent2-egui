@@ -90,6 +90,7 @@ pub struct RibbonTab<'a> {
     pub(crate) key: &'static str,
     pub(crate) label: String,
     pub(crate) contextual: Option<Contextual>,
+    pub(crate) keytip: Option<&'static str>,
     pub(crate) build: Box<dyn FnOnce(&mut TabBuilder<'a>) + 'a>,
 }
 
@@ -100,8 +101,17 @@ impl<'a> RibbonTab<'a> {
             key,
             label: label.to_owned(),
             contextual: None,
+            keytip: None,
             build: Box::new(build),
         }
+    }
+
+    /// The tab's KeyTip (spec §6.2): one or two ASCII letters, or one digit. Without one, a key
+    /// is assigned from the label.
+    #[must_use]
+    pub fn keytip(mut self, key: &'static str) -> Self {
+        self.keytip = Some(key);
+        self
     }
 
     /// Makes this tab part of contextual set `set`. Tabs of one set share a header that reads
