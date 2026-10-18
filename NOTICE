@@ -30,3 +30,8 @@ upstream repository, path, revision and copyright holder.
   `resize.rs` @ 457a078809690994b22debdffb703ff36d3129df, adapted into
   `crates/fluent2-egui/src/data/split_view.rs`. Copyright (c) 2026 ArtCraft Team and the
   craft-libs contributors. The licence text is in the upstream repository.
+- rdpapp (TheDancingDeveloper-org/rdpapp, our own code, relicensed MIT OR Apache-2.0):
+  `migration-tool/src/ssh/terminal.rs` @ 4dff7e20208108f55c1f6173af00c58b1d69df1b, adapted into
+  `crates/fluent2-egui/src/data/terminal/grid.rs`. Copyright (c) 2026 The rdpapp authors.
+- vte (alacritty/vte, Apache-2.0 OR MIT) is a Cargo dependency of the optional `terminal`
+  feature; no vte source is copied.

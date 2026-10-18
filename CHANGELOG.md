@@ -4,6 +4,9 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+- TerminalView behind the new optional `terminal` feature (`fluent2_egui::data::terminal`): `TerminalGrid`, a `vte` VT grid adapted from rdpapp (cursor movement, erase, insert and delete, scrolling regions, alternate screen, 16/256/24-bit SGR colours, bold, italic, underline and inverse, wide characters, OSC title, BEL, scrollback with stable line numbers), and a view that paints it with ANSI colours from Fluent palette tokens, with wheel and Shift+PageUp/PageDown scrollback, drag selection and copy, highlighted search with next and previous, and Ctrl+click links. The AccessKit node has the Terminal role. Input and PTY transport stay with the app, which resizes to `TerminalResponse::fit`. Gallery page "Terminal" (WI-1791).
+
 ## [0.1.0] - 2026-10-18
 
 ### Added

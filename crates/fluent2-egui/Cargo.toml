@@ -17,6 +17,8 @@ log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
 serde = { version = "1", optional = true, features = ["derive"] }
+vte = { version = "0.15", optional = true }
+unicode-width = { version = "0.2", optional = true }
 
 [features]
 default = ["bundled-font"]
@@ -26,6 +28,9 @@ default = ["bundled-font"]
 bundled-font = []
 # Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
 serde = ["dep:serde"]
+# TerminalView and its VT grid model (`data::terminal`). Not a Fluent component, so off by
+# default; it adds the `vte` parser. See docs/ARCHITECTURE.md "Optional features".
+terminal = ["dep:vte", "dep:unicode-width"]
 # Pixel snapshots through a wgpu adapter. Off in `cargo test`; see tests/font_snapshots.rs.
 # Also turns on egui's default fonts, so the egui-default option has its Ubuntu-Light face.
 snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot", "egui/default_fonts"]

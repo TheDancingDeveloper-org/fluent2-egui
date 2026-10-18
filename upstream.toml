@@ -18,6 +18,28 @@
 #   watch     upstream paths whose changes matter to us; the checker reports only these.
 #   notes     free text.
 #
+[[source]]
+name = "rdpapp"
+repo = "TheDancingDeveloper-org/rdpapp"
+branch = "main"
+rev = "4dff7e20208108f55c1f6173af00c58b1d69df1b"
+reviewed = "2026-10-18"
+licence = "MIT OR Apache-2.0"
+role = "adapted"
+watch = ["migration-tool/src/ssh/terminal.rs"]
+notes = "Our own code (the owner relicenses it here as MIT OR Apache-2.0). The vte grid model is adapted into data/terminal/grid.rs (WI-1791); the gpui rendering and local_term.rs PTY transport are not ported."
+
+[[source]]
+name = "vte"
+repo = "alacritty/vte"
+branch = "master"
+rev = "3b3da71c34cc1256c7e20981cf03f8eb95e08ffc"
+reviewed = "2026-10-18"
+licence = "Apache-2.0 OR MIT"
+role = "dependency"
+watch = ["src/lib.rs", "CHANGELOG.md"]
+notes = "Cargo dependency of fluent2-egui behind the `terminal` feature (crates.io vte 0.15.0, tag v0.15.0). Zed's crates/terminal and terminal_view are GPL-3.0: design reference only, no code copied."
+
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
 
@@ -173,3 +195,10 @@ source   = "craft-libs"
 path     = "crates/ui/src/layout/resize.rs"
 rev      = "457a078809690994b22debdffb703ff36d3129df"
 notes    = "ResizeHandle is pub(crate) with a String label and a caller Id; theme colours; Shift scales arrow steps by 10. Pointer, focus and AccessKit behaviour kept."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/src/data/terminal/grid.rs"
+source   = "rdpapp"
+path     = "migration-tool/src/ssh/terminal.rs"
+rev      = "4dff7e20208108f55c1f6173af00c58b1d69df1b"
+notes    = "TermGrid/TermProcessor merged into TerminalGrid; colours kept as palette indices for theme mapping; stable line numbers, deferred autowrap, italic/underline/inverse, colon SGR, links, selection text; every index bounds-checked (no panics)."
