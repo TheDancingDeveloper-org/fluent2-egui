@@ -37,7 +37,7 @@ fn input_icon(size: ButtonSize) -> IconSize {
     }
 }
 
-/// Rest treatment of an input. [`Outline`] is the Fluent default.
+/// Rest treatment of an input. [`Outline`](Self::Outline) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum InputAppearance {
     /// `neutral_background_1`, a `neutral_stroke_1` stroke, and the accessible bottom border.

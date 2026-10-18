@@ -49,6 +49,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p fluent2-egui --target wasm32-unknown-unknown
 
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --no-deps --workspace
+        env:
+          RUSTDOCFLAGS: -D warnings
+
   msrv:
     runs-on: ubuntu-latest
     steps:

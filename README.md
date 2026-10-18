@@ -8,7 +8,7 @@ Windows and Linux, and on the web through wasm.
 
 **Live gallery:** https://thedancingdeveloper.github.io/fluent2-egui/
 
-**Status: scaffold (0.0.0).** Nothing is usable yet. Milestones:
+**Status: 0.1.0.** Milestones:
 
 | milestone | contents |
 |---|---|
@@ -17,6 +17,53 @@ Windows and Linux, and on the web through wasm.
 | M2 Core controls | buttons, inputs, selection controls, menus, dialog, message bar, toast, tab list |
 | M3 Data and layout | data grid, tree view, navigation view, split view, docking |
 | M4 0.1 release | docs, crates.io, hosted gallery |
+
+## Usage
+
+```toml
+[dependencies]
+egui = "0.36"
+fluent2-egui = "0.1"
+```
+
+Install the theme once (it is safe to call again, for example when the user switches theme),
+then use the controls like any egui widget:
+
+```rust
+use fluent2_egui::controls::{Appearance, Button};
+use fluent2_egui::Theme;
+
+fn ui(ctx: &egui::Context, ui: &mut egui::Ui) {
+    fluent2_egui::install(ctx, &Theme::default());
+
+    if ui.add(Button::new("Save").appearance(Appearance::Primary)).clicked() {
+        // save
+    }
+}
+```
+
+A ribbon is built each frame from tabs, groups and controls, and reports clicks by key:
+
+```rust
+use fluent2_egui::office::ribbon::{FileTab, Ribbon, RibbonLarge, RibbonState, RibbonTab};
+use fluent2_egui::IconName;
+
+fn ribbon(ui: &mut egui::Ui, state: &mut RibbonState) {
+    let response = Ribbon::new("main")
+        .file_tab(FileTab::new("file", "File"))
+        .tab(RibbonTab::new("home", "Home", |tab| {
+            tab.group("clipboard", "Clipboard", |group| {
+                group.add(RibbonLarge::new("paste", IconName::ClipboardPaste, "Paste"));
+            });
+        }))
+        .show(ui, state);
+    for event in response.events {
+        println!("{} {:?}", event.key, event.kind);
+    }
+}
+```
+
+`cargo run -p gallery --example editor` runs a sample editor with the full Office chrome.
 
 ## Crates
 
@@ -30,7 +77,7 @@ Windows and Linux, and on the web through wasm.
 
 | fluent2-egui | egui |
 |---|---|
-| 0.0.x | 0.36 |
+| 0.1.x | 0.36 |
 
 ## Upstream sources
 

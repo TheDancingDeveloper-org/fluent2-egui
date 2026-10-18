@@ -27,7 +27,7 @@ use crate::foundation::motion::{self, Curve, Duration};
 use crate::foundation::text::TypeRamp;
 use crate::theme::{Theme, c};
 
-/// Height of a tab. [`Medium`] is the Fluent default.
+/// Height of a tab. [`Medium`](Self::Medium) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TabSize {
     /// 24 px, 2 px indicator.

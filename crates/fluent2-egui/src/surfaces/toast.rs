@@ -19,7 +19,7 @@ use crate::foundation::text::{TypeRamp, style};
 use crate::surfaces::message_bar::{Intent, ensure_type_ramp};
 use crate::theme::Theme;
 
-/// Where the stack sits. [`BottomEnd`] is the Fluent default.
+/// Where the stack sits. [`BottomEnd`](Self::BottomEnd) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ToastPosition {
     /// Bottom corner on the trailing edge.

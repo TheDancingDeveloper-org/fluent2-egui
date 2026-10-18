@@ -27,7 +27,7 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, strok
 use crate::foundation::text::TypeRamp;
 use crate::theme::{self, Theme};
 
-/// Fill treatment of a badge. [`Tint`] is the Fluent default.
+/// Fill treatment of a badge. [`Tint`](Self::Tint) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BadgeAppearance {
     /// Solid status fill.
@@ -41,7 +41,7 @@ pub enum BadgeAppearance {
     Tint,
 }
 
-/// Status colour of a badge. [`Brand`] is the Fluent default.
+/// Status colour of a badge. [`Brand`](Self::Brand) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BadgeColor {
     /// Brand ramp.
@@ -63,7 +63,7 @@ pub enum BadgeColor {
     Warning,
 }
 
-/// Height of a badge. [`Medium`] is the Fluent default.
+/// Height of a badge. [`Medium`](Self::Medium) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BadgeSize {
     /// Caption2, tighter padding.

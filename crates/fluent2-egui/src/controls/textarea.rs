@@ -8,7 +8,7 @@ use crate::foundation::icon::IconSize;
 /// How a [`Textarea`] may be resized.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TextareaResize {
-    /// The inner [`TextEdit`] keeps a vertical resize handle. The default.
+    /// The inner [`TextEdit`](egui::TextEdit) keeps a vertical resize handle. The default.
     #[default]
     Vertical,
     /// Fixed to `rows` lines.

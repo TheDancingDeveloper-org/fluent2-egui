@@ -4,6 +4,11 @@
 //! from `@fluentui/tokens` (MIT) at the revision pinned in the repository's `upstream.toml`
 //! (`fluentui`); see `UPSTREAM.md`. Generated modules live in [`generated`] and are never edited
 //! by hand: run `cargo xtask gen-tokens`.
+//!
+//! ```
+//! let colors = fluent2_tokens::light(&fluent2_tokens::FLUENT);
+//! let _ = colors;
+//! ```
 
 #![warn(missing_docs)]
 
