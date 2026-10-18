@@ -161,3 +161,31 @@ end. It also did not trace which gpui element rdpapp draws RDP frames with.
   docking stays deferred unless the operator wants pane splitting in the POC.
 - **Mobile** (G4, G25, G26) is the weakest area for egui. A desktop and wasm-desktop POC
   avoids it.
+
+## 4. Filed work items (2026-10-18)
+
+Library items in the fluent2-egui project, listed in priority order (ported items first):
+
+| order | ref | gap | item | size | priority |
+|---|---|---|---|---|---|
+| 1 | WI-1791 | G13 | Terminal grid widget ported from rdpapp | L | p1 |
+| 2 | WI-1792 | G21 | CommandPalette with fuzzy scoring from fluent-gpui | M | p1 |
+| 3 | WI-1793 | G1 | TabStrip: close, reorder, overflow | M | p1 |
+| 4 | WI-1794 | G2 | Optional docking feature | L | p1 |
+| 5 | WI-1795 | G28 | File picker via rfd | S | p1 |
+| 6 | WI-1796 | G14 | Markdown view on pulldown-cmark | M | p1 |
+| 7 | WI-1797 | G16 | DiffView on imara-diff | M | p1 |
+| 8 | WI-1798 | G15 | Read-only CodeView on tree-sitter | L | p1 |
+| 9 | WI-1799 | G17 | Highlighted text helper | S | p2 |
+| 10 | WI-1800 | G11 | Variable-height List rows | M | p2 |
+| 11 | WI-1801 | G12 | Drag-reorder helper | S | p2 |
+| 12 | WI-1802 | G5 | Drawer and BottomSheet | S | p2 |
+| 13 | WI-1803 | G10 | Pager | S | p3 |
+| 14 | WI-1804 | G18 | Sparkline and mini bars | S | p3 |
+| 15 | WI-1805 | G4 | Compact and touch density | M | p3 |
+
+App-side gaps (G3, G4 layout, G6–G9, G12 board, G19, G20, G22–G27) are collected in the umbrella
+item **WI-1806 "Vogt-on-fluent2 POC"** in the vogt project.
+
+Operator decision: G13–G16 and G28 are filed as library features, each behind an optional
+cargo feature, instead of being left to the app as section 2 first suggested.
