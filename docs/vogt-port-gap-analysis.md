@@ -1,6 +1,8 @@
 # Vogt GUI → fluent2-egui gap analysis
 
-Status: read-only analysis, 2026-10-18. No work items filed yet.
+Status: analysis written 2026-10-18; status columns updated 2026-10-19 (WI-1910). Every
+fluent2 library gap filed in section 4 is closed on `main`; the app-side gaps remain with
+WI-1806.
 
 The Vogt GUI today is a SolidJS single-page app (`vogt/web`, vogt-web 0.7.7, Vite, Capacitor for
 mobile). The axum server renders no HTML: it serves the API and falls back to `index.html`.
@@ -8,7 +10,8 @@ Third-party pieces: xterm.js 6 (fit, search, serialize, web-links), Monaco 0.57 
 and Capacitor (push, speech). Everything else is hand-written: markdown, virtual list, drag and
 drop, forms, command palette, and the inline SVG charts.
 
-fluent2-egui state is taken from `origin/main` at `95017ea` plus open PRs. "Merged" means on
+fluent2-egui state was first taken from `origin/main` at `95017ea` plus open PRs, and updated
+to `main` at `b5f6956` (PR #66). Closed gaps name the PR that closed them. "Merged" means on
 main. "Open PR" means a PR exists. "Planned" means a backlog row with no PR. "Specced" means it
 is in `docs/specs/*` but has no item.
 
@@ -19,12 +22,12 @@ is in `docs/specs/*` but has no item.
 | Vogt pattern | Where | fluent2-egui | Status |
 |---|---|---|---|
 | App shell, surface header per route | `App.tsx`, `SurfaceHeader.tsx` | TitleBar (1559), CommandBar (1569), StatusBar (1569) | Merged |
-| Left navigation between surfaces | `routes.ts`, `App.tsx` | NavigationView (1585) | Open PR #39 |
-| Resizable split panes | `resizablePane.ts`, `editorSplit.ts` | SplitView (1585) | Open PR #39 |
-| Terminal and editor tabs, closable, reorderable | `tabs.ts`, `tabLifecycle.ts`, `terminalDnd.ts` | TabList (1554) has no close, reorder or overflow | Gap: G1 |
-| Pane splitting, drag a tab into a pane, saved workspace layouts | `TerminalWorkspace.tsx`, `workspaceLayouts.ts` | Docking deferred past 0.1 (data-views §9) | Gap: G2 |
+| Left navigation between surfaces | `routes.ts`, `App.tsx` | NavigationView (1585) | Merged #39 |
+| Resizable split panes | `resizablePane.ts`, `editorSplit.ts` | SplitView (1585) | Merged #39 |
+| Terminal and editor tabs, closable, reorderable | `tabs.ts`, `tabLifecycle.ts`, `terminalDnd.ts` | TabStrip (1793) | Closed: G1, #54 |
+| Pane splitting, drag a tab into a pane, saved workspace layouts | `TerminalWorkspace.tsx`, `workspaceLayouts.ts` | `docking` feature: DockTree, DockArea, SideDock (1794) | Closed: G2, #57 (saved layouts via `serde`) |
 | Routing, deep links, back button | `routeModel.ts`, HashRouter, `nativeBack.ts` | none (app concern) | Gap: G3 |
-| Phone layout, "more" sheet, safe-area insets | `narrow.ts`, `phoneMoreSheet.ts`, `viewportInsets.ts` | NavigationView breakpoints (spec §7.2) only | Gap: G4, G5 |
+| Phone layout, "more" sheet, safe-area insets | `narrow.ts`, `phoneMoreSheet.ts`, `viewportInsets.ts` | Density Touch (1805), Drawer and BottomSheet (1802); layout is the app's | Closed in fluent2: G4 #66, G5 #58; app layout open |
 
 ### Controls, surfaces, feedback
 
@@ -35,7 +38,7 @@ is in `docs/specs/*` but has no item.
 | Modal dialog | `Dialog.tsx`, `FileWorkflowDialog.tsx` | Dialog (1552) | Merged |
 | Tooltip, popover | throughout | 1551 | Merged |
 | Badges, session state chips, progress, spinner, link, divider | `sessionRowModel.ts`, `viewAge.tsx` | 1550 | Merged |
-| Toasts, inline error bars | Inbox, Board, Terminal and others | MessageBar, Toast (1553) | Open PR #24 |
+| Toasts, inline error bars | Inbox, Board, Terminal and others | MessageBar, Toast (1553) | Merged #24 |
 | Cards | Board cards, Sessions | Card (1554) | Merged |
 | Form validation messages | hand-rolled forms | Field (1550) shows the message; validation is the app's job | Merged |
 | Multi-step setup wizard | `SetupWizard.tsx`, `SetupSteps.tsx` | none | Gap: G6 |
@@ -49,26 +52,26 @@ is in `docs/specs/*` but has no item.
 | Vogt pattern | Where | fluent2-egui | Status |
 |---|---|---|---|
 | Virtualised backlog table | `Backlog.tsx`, `measuredWindow.ts` | DataGrid core (1581) | Merged |
-| Sort, column resize | Backlog, Oversight | 1582 | Open PR #35 |
-| Row selection, keyboard | Backlog, Oversight | 1583 | Open PR #38 |
-| Paged audit table | `AuditBrowser.tsx` | DataGrid plus a pager control | Gap: G10 |
-| Rows that are not all the same height (inbox, history) | `measuredWindow.ts` (measured heights) | `rows.rs` assumes a fixed row height | Gap: G11 |
-| File tree | `FileTree.tsx` | TreeView (1584) | Planned (branch exists, no PR) |
-| Session and inbox lists | `SessionList.tsx`, `Inbox.tsx` | List (1584) | Planned |
-| Kanban board with drag between columns | `Board.tsx` (~3.5k lines) | none; egui has drag-and-drop primitives only | Gap: G12 |
+| Sort, column resize | Backlog, Oversight | 1582 | Merged #35 |
+| Row selection, keyboard | Backlog, Oversight | 1583 | Merged #38 |
+| Paged audit table | `AuditBrowser.tsx` | DataGrid plus Pager (1803) | Closed: G10, #65 |
+| Rows that are not all the same height (inbox, history) | `measuredWindow.ts` (measured heights) | `List::variable_height` (1800) | Closed: G11, #63 |
+| File tree | `FileTree.tsx` | TreeView (1584) | Merged #44 |
+| Session and inbox lists | `SessionList.tsx`, `Inbox.tsx` | List (1584) | Merged #44 |
+| Kanban board with drag between columns | `Board.tsx` (~3.5k lines) | Reorder helper (1801); the board is the app's | Helper closed: G12, #60; board open (app) |
 
 ### Content renderers
 
 | Vogt pattern | Where | fluent2-egui | Status |
 |---|---|---|---|
-| Session terminal: ANSI/VT, scrollback, search, links, OSC52, touch | `Terminal.tsx`, `terminal*.ts` (xterm.js) | none | Gap: G13 |
-| Session screen snapshot (read-only) | `/api/sessions/{id}/screen` | none (G13 renderer without input) | Gap: G13 |
-| Markdown (chat, work items, inbox) | `markdown.tsx` | none | Gap: G14 |
-| Code editor | `Editor.tsx` (Monaco) | none; egui TextEdit only | Gap: G15 |
-| Diff view (side by side, inline) | `Git.tsx`, `diffLayout.ts` (Monaco diff) | none | Gap: G16 |
-| Syntax highlighting | Monaco only | none | Gap: G15 |
-| Search snippet with the match highlighted | `SafeSnippet.tsx` | none (a LayoutJob helper) | Gap: G17 |
-| Small charts (sparkline, bars) | inline SVG in App, Sessions, Assistant | none | Gap: G18 |
+| Session terminal: ANSI/VT, scrollback, search, links, OSC52, touch | `Terminal.tsx`, `terminal*.ts` (xterm.js) | TerminalView behind `terminal` (1791) | Closed: G13, #50 (input and transport stay with the app) |
+| Session screen snapshot (read-only) | `/api/sessions/{id}/screen` | TerminalView without input (1791) | Closed: G13, #50 |
+| Markdown (chat, work items, inbox) | `markdown.tsx` | MarkdownView behind `markdown` (1796) | Closed: G14, #59 |
+| Code editor | `Editor.tsx` (Monaco) | read-only CodeView behind `highlight` (1798); editing is not planned | Read-only closed: G15, #62 |
+| Diff view (side by side, inline) | `Git.tsx`, `diffLayout.ts` (Monaco diff) | DiffView behind `diff` (1797) | Closed: G16, #61 |
+| Syntax highlighting | Monaco only | `data::code` highlighter behind `highlight` (1798) | Closed: G15, #62 |
+| Search snippet with the match highlighted | `SafeSnippet.tsx` | `foundation::text::highlighted` (1799) | Closed: G17, #55 |
+| Small charts (sparkline, bars) | inline SVG in App, Sessions, Assistant | Sparkline, MiniBars (1804) | Closed: G18, #64 |
 | History replay timeline | `History.tsx`, `historyReplay.ts` | none (Slider plus app) | App, M (G19) |
 | Embedded GUI stream | `Gui.tsx` | none (texture viewer in the app) | App, M (G20) |
 
@@ -76,15 +79,15 @@ is in `docs/specs/*` but has no item.
 
 | Vogt pattern | Where | fluent2-egui | Status |
 |---|---|---|---|
-| Command palette with fuzzy match and recents | `CommandPalette.tsx`, `commandPaletteScore.ts` | none | Gap: G21 |
+| Command palette with fuzzy match and recents | `CommandPalette.tsx`, `commandPaletteScore.ts` | CommandPalette (1792) | Closed: G21, #52 |
 | Keyboard shortcuts, `?` help overlay | `keyboardShortcuts.ts`, `KeyboardShortcuts.tsx` | KeyTips (1566/1567) are Office access keys, not a shortcut registry | Gap: G22 |
 | Live updates: SSE over fetch, WebSocket, reconnect, SWR cache | `api.ts`, `transport.ts`, `swr.ts`, `connectionHealth.ts` | none (app; needs a repaint hook) | App, M (G23) |
 | Login (password, bearer token, auth profiles) | `App.tsx` login, `authApi.ts`, `authProfiles.ts` | Input, Button, Field cover the form | App, S (G24) |
-| Theme: named themes plus System, terminal themes | `appThemes.ts`, `terminalThemes.ts` | Theme, brand ramp, `theme_from_system` (1533, 1535, 1541) | Merged; terminal palette is G13 |
+| Theme: named themes plus System, terminal themes | `appThemes.ts`, `terminalThemes.ts` | Theme, brand ramp, `theme_from_system` (1533, 1535, 1541) | Merged; terminal palette closed with G13 (#50) |
 | Push notifications, service worker, offline page | `sw.js`, `push.ts` | none; egui has no service worker | Gap: G25 |
 | On-screen modifier keys and touch terminal on phones | `ModKeyRow.tsx`, `terminalTouch.ts` | none | Gap: G26 |
 | Voice input and calls | `voice*.ts`, `call*.ts`, audio worklet | none | Gap: G27 |
-| File upload | `<input type=file>` in `FileTree.tsx` | none (rfd on native, a browser picker on wasm) | App, S (G28) |
+| File upload | `<input type=file>` in `FileTree.tsx` | FileDialog behind `file-dialog` (1795) | Closed: G28, #56 |
 | Clipboard copy and paste | `terminalClipboard.ts` | egui clipboard | Built into egui |
 | i18n | none in Vogt | ids never come from labels (ARCHITECTURE rule 4) | Not needed |
 
@@ -147,6 +150,9 @@ end. It also did not trace which gpui element rdpapp draws RDP frames with.
 
 ## 3. Reading of the result
 
+Written before the items in section 4 were filed. Since then every library candidate below
+has merged (see the tables above); the app-side gaps are unchanged.
+
 - **Already enough for the chrome and forms:** shell, navigation (once #39 lands), dialogs,
   inputs, menus, tooltips, badges, cards, theming including System. Toasts arrive with #24 and
   the tables with #35/#38. With those, Settings, Projects, Backlog, Oversight, Audit, Login and
@@ -166,23 +172,23 @@ end. It also did not trace which gpui element rdpapp draws RDP frames with.
 
 Library items in the fluent2-egui project, listed in priority order (ported items first):
 
-| order | ref | gap | item | size | priority |
-|---|---|---|---|---|---|
-| 1 | WI-1791 | G13 | Terminal grid widget ported from rdpapp | L | p1 |
-| 2 | WI-1792 | G21 | CommandPalette with fuzzy scoring from fluent-gpui | M | p1 |
-| 3 | WI-1793 | G1 | TabStrip: close, reorder, overflow | M | p1 |
-| 4 | WI-1794 | G2 | Optional docking feature | L | p1 |
-| 5 | WI-1795 | G28 | File picker via rfd | S | p1 |
-| 6 | WI-1796 | G14 | Markdown view on pulldown-cmark | M | p1 |
-| 7 | WI-1797 | G16 | DiffView on imara-diff | M | p1 |
-| 8 | WI-1798 | G15 | Read-only CodeView on tree-sitter | L | p1 |
-| 9 | WI-1799 | G17 | Highlighted text helper | S | p2 |
-| 10 | WI-1800 | G11 | Variable-height List rows | M | p2 |
-| 11 | WI-1801 | G12 | Drag-reorder helper | S | p2 |
-| 12 | WI-1802 | G5 | Drawer and BottomSheet | S | p2 |
-| 13 | WI-1803 | G10 | Pager | S | p3 |
-| 14 | WI-1804 | G18 | Sparkline and mini bars | S | p3 |
-| 15 | WI-1805 | G4 | Compact and touch density | M | p3 |
+| order | ref | gap | item | size | priority | closed by |
+|---|---|---|---|---|---|---|
+| 1 | WI-1791 | G13 | Terminal grid widget ported from rdpapp | L | p1 | #50 |
+| 2 | WI-1792 | G21 | CommandPalette with fuzzy scoring from fluent-gpui | M | p1 | #52 |
+| 3 | WI-1793 | G1 | TabStrip: close, reorder, overflow | M | p1 | #54 |
+| 4 | WI-1794 | G2 | Optional docking feature | L | p1 | #57 |
+| 5 | WI-1795 | G28 | File picker via rfd | S | p1 | #56 |
+| 6 | WI-1796 | G14 | Markdown view on pulldown-cmark | M | p1 | #59 |
+| 7 | WI-1797 | G16 | DiffView on imara-diff | M | p1 | #61 |
+| 8 | WI-1798 | G15 | Read-only CodeView (shipped on syntect; tree-sitter was rejected for wasm) | L | p1 | #62 |
+| 9 | WI-1799 | G17 | Highlighted text helper | S | p2 | #55 |
+| 10 | WI-1800 | G11 | Variable-height List rows | M | p2 | #63 |
+| 11 | WI-1801 | G12 | Drag-reorder helper | S | p2 | #60 |
+| 12 | WI-1802 | G5 | Drawer and BottomSheet | S | p2 | #58 |
+| 13 | WI-1803 | G10 | Pager | S | p3 | #65 |
+| 14 | WI-1804 | G18 | Sparkline and mini bars | S | p3 | #64 |
+| 15 | WI-1805 | G4 | Compact and touch density | M | p3 | #66 |
 
 App-side gaps (G3, G4 layout, G6–G9, G12 board, G19, G20, G22–G27) are collected in the umbrella
 item **WI-1806 "Vogt-on-fluent2 POC"** in the vogt project.

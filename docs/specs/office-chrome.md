@@ -1,7 +1,7 @@
 # Office chrome spec
 
-Status: draft for WI-1555. Implementation items WI-1559 to WI-1570 cite the section numbers
-below; keep the numbering. This document contains no implementation. The only code is public
+Status: implemented. Written for WI-1555; WI-1559 to WI-1570 (PRs #25 to #46) implement it.
+Items cite the section numbers below; keep the numbering. This document contains no implementation. The only code is public
 type and function signatures, written as the contract an implementation must meet.
 
 Conventions are fixed by [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) (rules 1 to 10). Where this

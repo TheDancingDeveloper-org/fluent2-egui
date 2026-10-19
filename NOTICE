@@ -37,6 +37,10 @@ upstream repository, path, revision and copyright holder.
   feature; no vte source is copied.
 - imara-diff (pascalkuthe/imara-diff, Apache-2.0) is a Cargo dependency of the optional `diff`
   feature; no imara-diff source is copied.
+- rfd (PolyMeilex/rfd, MIT) is a Cargo dependency of the optional `file-dialog` feature; no rfd
+  source is copied.
+- pulldown-cmark (pulldown-cmark/pulldown-cmark, MIT) is a Cargo dependency of the optional
+  `markdown` feature; no pulldown-cmark source is copied.
 - syntect (trishume/syntect, MIT) is a Cargo dependency of the optional `highlight` feature; no
   syntect source is copied. Its bundled syntax definitions (from sublimehq/Packages and others)
   are compiled into binaries that turn the feature on; their licences are listed in the syntect

@@ -1,7 +1,8 @@
 # Data views spec
 
-Status: draft for WI-1580. Implementation items WI-1581 to WI-1585 cite the section numbers
-below; keep the numbering. This document contains no implementation. The only code is public
+Status: implemented. Written for WI-1580; WI-1581 to WI-1585 (PRs #34, #35, #38, #39, #44)
+implement it, and later amendments (§6.1 WI-1800, §9.1 WI-1794) say where they change it.
+Items cite the section numbers below; keep the numbering. This document contains no implementation. The only code is public
 type and function signatures, written as the contract an implementation must meet.
 
 Conventions are fixed by [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) (rules 1 to 10). Where this
@@ -36,6 +37,7 @@ data/
     column.rs        Column, ColumnWidth, Align                (§1)
     state.rs         DataGridState, SortSpec, Selection        (§1, §2, §3)
     header.rs        header row, sort, resize, autofit         (§2)
+    selection.rs     selection and keyboard                    (§3)
     a11y.rs          AccessKit nodes                           (§4)
   tree_view.rs                                                 (§5)
   list.rs                                                      (§6)

@@ -79,6 +79,30 @@ the item says it may stack).
 | WI-1586 | High-contrast and accessibility audit | S | opus | 1570, 1584, 1585, 1552, 1553 |
 | WI-1587 | 0.1.0 release (operator tags and publishes) | S | grok | 1586 |
 
+## Vogt port wave (after 0.1)
+
+Filed from `docs/vogt-port-gap-analysis.md` §4. All merged; the PR is in the last column.
+
+| ref | item | gap | PR |
+|---|---|---|---|
+| WI-1791 | TerminalView, `terminal` feature | G13 | #50 |
+| WI-1792 | CommandPalette | G21 | #52 |
+| WI-1793 | TabStrip | G1 | #54 |
+| WI-1794 | Docking, `docking` feature | G2 | #57 |
+| WI-1795 | File dialog, `file-dialog` feature | G28 | #56 |
+| WI-1796 | MarkdownView, `markdown` feature | G14 | #59 |
+| WI-1797 | DiffView, `diff` feature | G16 | #61 |
+| WI-1798 | CodeView and highlighter, `highlight` feature | G15 | #62 |
+| WI-1799 | Highlighted text helper | G17 | #55 |
+| WI-1800 | Variable-height List rows | G11 | #63 |
+| WI-1801 | Reorder helper | G12 | #60 |
+| WI-1802 | Drawer, BottomSheet | G5 | #58 |
+| WI-1803 | Pager | G10 | #65 |
+| WI-1804 | Sparkline, MiniBars | G18 | #64 |
+| WI-1805 | Density: compact, medium, touch | G4 | #66 |
+| WI-1886 | CI: merge queue, path-scoped checks | — | #53 |
+| WI-1910 | Docs overhaul and README gallery | — | open |
+
 ## Recurring
 
 | ref | item |
