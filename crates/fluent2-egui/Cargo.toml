@@ -24,6 +24,8 @@ unicode-width = { version = "0.2", optional = true }
 imara-diff = { version = "0.2", optional = true, default-features = false }
 rfd = { version = "0.17", optional = true, default-features = false, features = ["xdg-portal"] }
 pulldown-cmark = { version = "0.13.4", default-features = false, optional = true }
+# Syntax highlighting for CodeView (MIT). Pure-Rust regex engine so it builds for wasm.
+syntect = { version = "5.3", optional = true, default-features = false, features = ["default-syntaxes", "regex-fancy", "parsing", "yaml-load"] }
 
 [features]
 default = ["bundled-font"]
@@ -39,6 +41,9 @@ terminal = ["dep:vte", "dep:unicode-width"]
 # DiffView and its model (`data::diff`): line and word diffs through `imara-diff`, inline and
 # side by side. Off by default. See docs/ARCHITECTURE.md "Optional features".
 diff = ["dep:imara-diff", "dep:unicode-width"]
+# CodeView and the shared syntax highlighter (`data::code`), on syntect with its bundled
+# syntaxes. Not a Fluent component, so off by default; it adds about 1 MB of syntax data.
+highlight = ["dep:syntect"]
 # Async open and save dialogs through `rfd` (`platform::file_dialog`), polled from the frame.
 # Off by default; it pulls in the platform dialog bindings.
 file-dialog = ["dep:rfd", "dep:pollster", "dep:wasm-bindgen-futures"]

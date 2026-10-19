@@ -124,6 +124,12 @@ default build stays a Fluent library with no extra dependencies.
 - `markdown`: `data::markdown` (`Document`, parsed with `pulldown-cmark`, and `MarkdownView`).
   The app owns link handling through a `LinkPolicy` and may plug a syntax highlighter into
   code blocks. The gallery turns it on; `tests/markdown.rs` is `#![cfg(feature = "markdown")]`.
+- `highlight`: `data::code` (the shared highlighter `highlight`/`Highlighter`, which maps
+  source to `SyntaxToken` runs, `syntax_color`, which maps those to Fluent palette tokens, and
+  `CodeView`, a read-only view with line numbers, selection and copy). It is built on `syntect`
+  with the pure-Rust regex engine, so it builds for wasm. Diff and markdown views reuse the
+  highlighter. Spec: `docs/specs/code-view.md`. The gallery turns it on, and `tests/code_view.rs`
+  is `#![cfg(feature = "highlight")]`.
 
 ## Gates (run before every commit; CI runs the same)
 

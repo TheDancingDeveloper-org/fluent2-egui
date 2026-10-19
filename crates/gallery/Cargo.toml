@@ -20,7 +20,7 @@ system-preferences = ["fluent2-egui/system-preferences"]
 [dependencies]
 eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "accesskit", "x11", "wayland"] }
 egui = { workspace = true }
-fluent2-egui = { workspace = true, features = ["terminal", "file-dialog", "docking", "serde", "markdown", "diff"] }
+fluent2-egui = { workspace = true, features = ["terminal", "file-dialog", "docking", "serde", "markdown", "diff", "highlight"] }
 fluent2-icons = { workspace = true }
 fluent2-tokens = { workspace = true }
 log = "0.4"

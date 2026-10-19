@@ -73,6 +73,39 @@ role = "dependency"
 watch = ["src/lib.rs", "src/intern.rs", "CHANGELOG.md"]
 notes = "Cargo dependency of fluent2-egui behind the `diff` feature (crates.io imara-diff 0.2.0, tag v0.2.0, default features off). Zed's crates/buffer_diff and streaming_diff are GPL-3.0: design reference only, no code copied."
 
+[[source]]
+name = "syntect"
+repo = "trishume/syntect"
+branch = "master"
+rev = "e4670846ecf16d8832db6c43d531bec466214e27"
+reviewed = "2026-10-19"
+licence = "MIT"
+role = "dependency"
+watch = ["CHANGELOG.md", "Cargo.toml"]
+notes = "Cargo dependency of fluent2-egui behind the `highlight` feature (crates.io syntect 5.3.0, tag v5.3.0), with its bundled default syntaxes (plus a vendored TypeScript grammar, see the bat source) and the fancy-regex engine. tree-sitter was spiked and rejected: its grammars do not build for wasm32-unknown-unknown (docs/specs/code-view.md). Zed's crates/editor, language, rope and text are GPL-3.0: design reference only, no code copied."
+
+[[source]]
+name = "bat"
+repo = "sharkdp/bat"
+branch = "master"
+rev = "f748c1a467ae161682849949a7d036ab8362f9ba"
+reviewed = "2026-10-19"
+licence = "MIT OR Apache-2.0"
+role = "adapted"
+watch = ["assets/syntaxes/02_Extra/TypeScript.sublime-syntax"]
+notes = "bat's sublime-syntax conversion of the TypeScript grammar, vendored as crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax for the `highlight` feature (WI-1798), because syntect's bundled set has no TypeScript."
+
+[[source]]
+name = "typescript-sublime-plugin"
+repo = "microsoft/TypeScript-Sublime-Plugin"
+branch = "master"
+rev = "ba45efd058df5111837e30fb9598cfc8cbd51095"
+reviewed = "2026-10-19"
+licence = "Apache-2.0"
+role = "adapted"
+watch = ["TypeScript.tmLanguage"]
+notes = "Origin of the TypeScript grammar that bat converted (bat's submodule pin). Licence copy: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt."
+
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
 
@@ -242,3 +275,17 @@ source   = "fluent-gpui"
 path     = "crates/fluent-layout/src/command_palette.rs"
 rev      = "f601e54b4e58e416bc7495a75468b82af9a10545"
 notes    = "Score tiers and fields (label, subtitle, group, keywords), whitespace and case normalisation, disabled-row skipping. Added: label match positions for highlighting, recents order. No entry actions: the palette returns the chosen id. Rendering rewritten for egui."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax"
+source   = "bat"
+path     = "assets/syntaxes/02_Extra/TypeScript.sublime-syntax"
+rev      = "f748c1a467ae161682849949a7d036ab8362f9ba"
+notes    = "Verbatim apart from a provenance header comment."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax"
+source   = "typescript-sublime-plugin"
+path     = "TypeScript.tmLanguage"
+rev      = "ba45efd058df5111837e30fb9598cfc8cbd51095"
+notes    = "Converted to sublime-syntax by bat; the grammar rules are Microsoft's."
