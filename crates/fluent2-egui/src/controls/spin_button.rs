@@ -32,6 +32,7 @@ pub struct SpinButton<'a> {
     step: f64,
     decimals: u8,
     suffix: Option<String>,
+    label: Option<String>,
 }
 
 impl<'a> SpinButton<'a> {
@@ -45,6 +46,7 @@ impl<'a> SpinButton<'a> {
             step: 1.0,
             decimals: 2,
             suffix: None,
+            label: None,
         }
     }
 
@@ -87,6 +89,13 @@ impl<'a> SpinButton<'a> {
         self.suffix = Some(suffix.into());
         self
     }
+
+    /// Accessible name, read by screen readers on the field. Not drawn.
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -105,6 +114,7 @@ impl Widget for SpinButton<'_> {
             step,
             decimals,
             suffix,
+            label,
         } = self;
         let current = clamp_value(*value, min, max);
         *value = current;
@@ -256,7 +266,12 @@ impl Widget for SpinButton<'_> {
         if changed {
             response.mark_changed();
         }
-        response.widget_info(|| WidgetInfo::drag_value(enabled, *value));
+        let committed = *value;
+        response.widget_info(|| {
+            let mut info = WidgetInfo::drag_value(enabled, committed);
+            info.label.clone_from(&label);
+            info
+        });
         response
     }
 }

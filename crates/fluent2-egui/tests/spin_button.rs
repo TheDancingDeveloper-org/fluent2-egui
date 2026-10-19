@@ -3,6 +3,7 @@
 use std::cell::Cell;
 
 use egui_kittest::Harness;
+use egui_kittest::kittest::{NodeT, Queryable};
 use fluent2_egui::controls::SpinButton;
 use fluent2_egui::theme::{self, Theme};
 
@@ -98,4 +99,16 @@ fn renders_in_dark_and_high_contrast() {
         });
         harness.run();
     }
+}
+
+#[test]
+fn label_names_the_accesskit_node() {
+    let mut harness = Harness::new_ui(|ui| {
+        install(ui);
+        let mut value = 3.0;
+        ui.add(SpinButton::new(&mut value).decimals(0).label("Copies"));
+    });
+    harness.run();
+    let node = harness.get_by_label("Copies");
+    assert_eq!(node.accesskit_node().role(), egui::accesskit::Role::SpinButton);
 }
