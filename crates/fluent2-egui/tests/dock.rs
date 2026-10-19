@@ -6,8 +6,9 @@ use std::cell::RefCell;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use fluent2_egui::data::SplitSize;
 use fluent2_egui::surfaces::{
-    DockArea, DockEdge, DockSide, DockTree, DockViewer, SideDock, SideDockState, StripTab,
+    DockArea, DockEdge, DockNode, DockSide, DockTree, DockViewer, SideDock, SideDockState, StripTab,
 };
 use fluent2_egui::{Theme, install};
 
@@ -119,6 +120,88 @@ fn dragging_a_tab_to_a_pane_edge_splits_it() {
     drag(&mut harness, from, to);
     assert_eq!(layout(state), [vec!["a.rs"], vec!["c.rs"], vec!["b.rs"]]);
     assert_eq!(harness.get_all_by_role(Role::TabList).count(), 3);
+}
+
+#[test]
+fn dropping_a_tab_on_another_strip_joins_that_pane() {
+    let state = two_panes();
+    let mut harness = harness(state);
+    let from = harness.get_by_role_and_label(Role::Tab, "b.rs").rect().center();
+    // Just left of c.rs in the right pane's strip: insert before it, no split.
+    let c = harness.get_by_role_and_label(Role::Tab, "c.rs").rect();
+    let to = egui::pos2(c.min.x + 4.0, c.center().y);
+    drag(&mut harness, from, to);
+    assert_eq!(layout(state), [vec!["a.rs"], vec!["b.rs", "c.rs"]]);
+    assert_eq!(harness.get_all_by_role(Role::TabList).count(), 2);
+}
+
+/// `[a]`, split a right (c), then split a down (d): two splits whose first pane is a.
+fn nested() -> &'static RefCell<App> {
+    let mut tree = DockTree::new(vec!["a.rs".to_owned()]);
+    let a = tree.pane_ids()[0];
+    let _ = tree.split(a, DockSide::Right, "c.rs".to_owned());
+    let _ = tree.split(a, DockSide::Bottom, "d.rs".to_owned());
+    Box::leak(Box::new(RefCell::new(App {
+        tree,
+        closed: Vec::new(),
+    })))
+}
+
+/// The first-child sizes of the outer and inner splits.
+fn split_sizes(state: &RefCell<App>) -> Vec<SplitSize> {
+    fn walk(node: &DockNode<String>, out: &mut Vec<SplitSize>) {
+        if let DockNode::Split {
+            state, first, second, ..
+        } = node
+        {
+            out.push(state.size);
+            walk(first, out);
+            walk(second, out);
+        }
+    }
+    let mut out = Vec::new();
+    if let Some(root) = state.borrow().tree.root() {
+        walk(root, &mut out);
+    }
+    out
+}
+
+#[test]
+fn nested_splits_with_the_same_first_pane_have_their_own_dividers() {
+    let state = nested();
+    let mut harness = harness(state);
+    let dividers: Vec<egui::Rect> = harness
+        .get_all_by_label("Resize panes")
+        .map(|node| node.rect())
+        .collect();
+    assert_eq!(dividers.len(), 2);
+    let before = split_sizes(state);
+    let tall = dividers.iter().find(|rect| rect.height() > rect.width()).copied();
+    let wide = dividers.iter().find(|rect| rect.width() > rect.height()).copied();
+    let (Some(tall), Some(wide)) = (tall, wide) else {
+        unreachable!("one horizontal and one vertical divider");
+    };
+
+    drag(
+        &mut harness,
+        tall.center(),
+        tall.center() + egui::vec2(-80.0, 0.0),
+    );
+    let after_outer = split_sizes(state);
+    assert_ne!(
+        after_outer[0], before[0],
+        "the outer divider resizes the outer split"
+    );
+    assert_eq!(after_outer[1], before[1], "and leaves the inner split alone");
+
+    let wide = egui::Rect::from_center_size(wide.center() + egui::vec2(-40.0, 0.0), wide.size());
+    drag(&mut harness, wide.center(), wide.center() + egui::vec2(0.0, 60.0));
+    let after_inner = split_sizes(state);
+    assert_eq!(
+        after_inner[0], after_outer[0],
+        "the inner divider leaves the outer split alone"
+    );
+    assert_ne!(after_inner[1], after_outer[1], "and resizes the inner split");
 }
 
 #[test]

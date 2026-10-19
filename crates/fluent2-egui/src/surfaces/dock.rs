@@ -118,11 +118,38 @@ pub enum DockNode<T> {
 /// let right = tree.split(first, DockSide::Right, "notes.md").unwrap();
 /// assert_eq!(tree.pane(right).unwrap().tabs, ["notes.md"]);
 /// ```
+///
+/// A deserialised tree is checked on load (see [`DockTree::normalize`]), so a hand-edited or
+/// stale saved layout cannot hold empty panes, duplicate pane ids or a stale id counter.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(from = "DockTreeData<T>", bound(deserialize = "T: serde::Deserialize<'de>"))
+)]
 pub struct DockTree<T> {
     root: Option<DockNode<T>>,
     next_id: u64,
+}
+
+/// The serialised form of a [`DockTree`], normalised on its way in.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+struct DockTreeData<T> {
+    root: Option<DockNode<T>>,
+    next_id: u64,
+}
+
+#[cfg(feature = "serde")]
+impl<T> From<DockTreeData<T>> for DockTree<T> {
+    fn from(data: DockTreeData<T>) -> Self {
+        let mut tree = Self {
+            root: data.root,
+            next_id: data.next_id,
+        };
+        tree.normalize();
+        tree
+    }
 }
 
 impl<T> Default for DockTree<T> {
@@ -303,6 +330,25 @@ impl<T> DockTree<T> {
         }
     }
 
+    /// Restore the tree's invariants: drop empty panes, collapse one-child splits, clamp
+    /// selections, give a pane whose id repeats an earlier one a fresh id, and move the id
+    /// counter past every id in use. Every operation keeps these already; this is for trees
+    /// built by hand or loaded from storage, and runs on every serde load.
+    pub fn normalize(&mut self) {
+        self.prune();
+        let ids = self.pane_ids();
+        let max = ids.iter().map(|id| id.0).filter(|id| *id != u64::MAX).max();
+        if let Some(max) = max {
+            self.next_id = self.next_id.max(max.saturating_add(1));
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut next_id = self.next_id;
+        if let Some(root) = self.root.as_mut() {
+            dedupe_ids(root, &mut seen, &mut next_id);
+        }
+        self.next_id = next_id;
+    }
+
     fn fresh_id(&mut self) -> PaneId {
         let id = PaneId(self.next_id);
         self.next_id = self.next_id.saturating_add(1);
@@ -312,6 +358,22 @@ impl<T> DockTree<T> {
     /// Remove empty panes and collapse splits with one child.
     fn prune(&mut self) {
         self.root = self.root.take().and_then(prune);
+    }
+}
+
+fn dedupe_ids<T>(node: &mut DockNode<T>, seen: &mut std::collections::HashSet<PaneId>, next_id: &mut u64) {
+    match node {
+        DockNode::Pane(pane) => {
+            if pane.id.0 == u64::MAX || !seen.insert(pane.id) {
+                pane.id = PaneId(*next_id);
+                *next_id = next_id.saturating_add(1);
+                seen.insert(pane.id);
+            }
+        }
+        DockNode::Split { first, second, .. } => {
+            dedupe_ids(first, seen, next_id);
+            dedupe_ids(second, seen, next_id);
+        }
     }
 }
 
@@ -454,6 +516,11 @@ pub struct DockArea {
 struct PaneReport {
     pane: PaneId,
     rect: Rect,
+    /// The pane's tab strip: a drop here joins the pane's tabs.
+    strip: Rect,
+    /// Visible tabs of the strip, (index, rect).
+    tab_rects: Vec<(usize, Rect)>,
+    tab_count: usize,
     closed: Option<usize>,
     moved: Option<TabMove>,
     dragging: Option<usize>,
@@ -498,14 +565,18 @@ impl DockArea {
         ui.allocate_rect(rect, Sense::hover());
         let Paint { reports, resized, .. } = paint.into_inner();
 
+        // Reports were gathered while painting this frame and are applied in turn. A frame
+        // carries at most one pointer interaction, so they do not interfere.
         // A tab dragged out of its strip: show where it would land.
         let theme = Theme::get(ui.ctx());
         let pointer = ui.input(|input| input.pointer.latest_pos());
-        if reports.iter().any(|report| report.dragging.is_some())
+        if let Some(source) = reports.iter().find(|report| report.dragging.is_some())
             && let Some(pos) = pointer
-            && let Some((pane_rect, zone)) = drop_zone(&reports, pos)
+            && let Some((report, zone)) = locate(&reports, pos)
+            // Inside its own strip the drag is a reorder, which the strip shows itself.
+            && !(report.pane == source.pane && matches!(zone, Zone::Strip(_)))
         {
-            paint_drop_preview(ui, pane_rect, zone, &theme);
+            paint_drop_preview(ui, report, zone, &theme);
         }
 
         let mut closed = Vec::new();
@@ -517,7 +588,7 @@ impl DockArea {
         }
         for report in &reports {
             if let Some((index, pos)) = report.dropped
-                && let Some(target) = drop_target(&reports, tree, pos)
+                && let Some(target) = drop_target(&reports, pos)
             {
                 changed |= tree.move_tab(report.pane, index, target);
             }
@@ -547,7 +618,10 @@ fn paint_node<T>(ui: &mut Ui, node: &mut DockNode<T>, paint: &RefCell<Paint<'_, 
             second,
         } => {
             let id = paint.borrow().id;
-            let split_id = id.with(("split", first_id(first)));
+            // Keyed by the first pane of each child: the pair is unique per split (a pane is
+            // the first of a second child under exactly one split) and survives resizes and
+            // edits elsewhere in the tree.
+            let split_id = id.with(("split", first_id(first), first_id(second)));
             let response = SplitView::new(split_id, *axis).label("Resize panes").show(
                 ui,
                 state,
@@ -596,6 +670,9 @@ fn paint_pane<T>(ui: &mut Ui, pane: &mut Pane<T>, paint: &RefCell<Paint<'_, T>>)
     paint.borrow_mut().reports.push(PaneReport {
         pane: pane.id,
         rect,
+        strip: strip.response.rect,
+        tab_rects: strip.tab_rects,
+        tab_count: pane.tabs.len(),
         closed: strip.closed,
         moved: strip.moved,
         dragging: strip.dragging,
@@ -623,34 +700,59 @@ fn zone_of(rect: Rect, pos: Pos2) -> Option<DockSide> {
         .map(|(_, side)| side)
 }
 
-fn drop_zone(reports: &[PaneReport], pos: Pos2) -> Option<(Rect, Option<DockSide>)> {
-    let report = reports.iter().find(|report| report.rect.contains(pos))?;
-    Some((report.rect, zone_of(report.rect, pos)))
+/// Where over a pane a drop lands.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Zone {
+    /// Over the tab strip: join the pane's tabs at this index.
+    Strip(usize),
+    /// Over the body: split on a side, or join at the end in the centre.
+    Body(Option<DockSide>),
 }
 
-fn drop_target<T>(reports: &[PaneReport], tree: &DockTree<T>, pos: Pos2) -> Option<DropTarget> {
+fn locate(reports: &[PaneReport], pos: Pos2) -> Option<(&PaneReport, Zone)> {
     let report = reports.iter().find(|report| report.rect.contains(pos))?;
-    Some(match zone_of(report.rect, pos) {
-        Some(side) => DropTarget::Split {
-            pane: report.pane,
-            side,
-        },
-        None => DropTarget::Tabs {
-            pane: report.pane,
-            index: tree.pane(report.pane).map_or(0, |pane| pane.tabs.len()),
+    if report.strip.contains(pos) {
+        let index = report
+            .tab_rects
+            .iter()
+            .find(|(_, rect)| pos.x < rect.center().x)
+            .map(|(index, _)| *index)
+            .or_else(|| report.tab_rects.last().map(|(index, _)| index + 1))
+            .unwrap_or(report.tab_count);
+        return Some((report, Zone::Strip(index)));
+    }
+    let body = Rect::from_min_max(egui::pos2(report.rect.min.x, report.strip.max.y), report.rect.max);
+    Some((report, Zone::Body(zone_of(body, pos))))
+}
+
+fn drop_target(reports: &[PaneReport], pos: Pos2) -> Option<DropTarget> {
+    let (report, zone) = locate(reports, pos)?;
+    let pane = report.pane;
+    Some(match zone {
+        Zone::Strip(index) => DropTarget::Tabs { pane, index },
+        Zone::Body(Some(side)) => DropTarget::Split { pane, side },
+        Zone::Body(None) => DropTarget::Tabs {
+            pane,
+            index: report.tab_count,
         },
     })
 }
 
-fn paint_drop_preview(ui: &Ui, pane: Rect, zone: Option<DockSide>, theme: &Theme) {
+fn paint_drop_preview(ui: &Ui, report: &PaneReport, zone: Zone, theme: &Theme) {
+    let pane = report.rect;
     let half_w = pane.width() / 2.0;
     let half_h = pane.height() / 2.0;
     let area = match zone {
-        None => pane,
-        Some(DockSide::Left) => Rect::from_min_size(pane.min, Vec2::new(half_w, pane.height())),
-        Some(DockSide::Right) => Rect::from_min_max(egui::pos2(pane.min.x + half_w, pane.min.y), pane.max),
-        Some(DockSide::Top) => Rect::from_min_size(pane.min, Vec2::new(pane.width(), half_h)),
-        Some(DockSide::Bottom) => Rect::from_min_max(egui::pos2(pane.min.x, pane.min.y + half_h), pane.max),
+        Zone::Strip(_) => report.strip,
+        Zone::Body(None) => pane,
+        Zone::Body(Some(DockSide::Left)) => Rect::from_min_size(pane.min, Vec2::new(half_w, pane.height())),
+        Zone::Body(Some(DockSide::Right)) => {
+            Rect::from_min_max(egui::pos2(pane.min.x + half_w, pane.min.y), pane.max)
+        }
+        Zone::Body(Some(DockSide::Top)) => Rect::from_min_size(pane.min, Vec2::new(pane.width(), half_h)),
+        Zone::Body(Some(DockSide::Bottom)) => {
+            Rect::from_min_max(egui::pos2(pane.min.x, pane.min.y + half_h), pane.max)
+        }
     };
     let radius = CornerRadius::same(border_radius::MEDIUM.round().clamp(0.0, 255.0) as u8);
     let painter = ui.ctx().layer_painter(egui::LayerId::new(
@@ -1000,5 +1102,96 @@ mod tests {
         let mut back = back.unwrap_or_default();
         let next = right.and_then(|right| back.split(right, DockSide::Bottom, "n".to_owned()).ok());
         assert!(next > right);
+    }
+
+    #[test]
+    fn locate_treats_the_strip_as_join_and_measures_edges_over_the_body() {
+        let report = PaneReport {
+            pane: PaneId(7),
+            rect: Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(400.0, 232.0)),
+            strip: Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(400.0, 32.0)),
+            tab_rects: vec![
+                (
+                    0,
+                    Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(100.0, 32.0)),
+                ),
+                (
+                    1,
+                    Rect::from_min_max(egui::pos2(100.0, 0.0), egui::pos2(200.0, 32.0)),
+                ),
+            ],
+            tab_count: 2,
+            closed: None,
+            moved: None,
+            dragging: None,
+            dropped: None,
+        };
+        let reports = [report];
+        let at = |x: f32, y: f32| drop_target(&reports, egui::pos2(x, y));
+        let pane = PaneId(7);
+        assert_eq!(at(20.0, 16.0), Some(DropTarget::Tabs { pane, index: 0 }));
+        assert_eq!(at(160.0, 16.0), Some(DropTarget::Tabs { pane, index: 2 }));
+        assert_eq!(at(350.0, 16.0), Some(DropTarget::Tabs { pane, index: 2 }));
+        // Just under the strip is the body's top edge zone.
+        assert_eq!(
+            at(200.0, 40.0),
+            Some(DropTarget::Split {
+                pane,
+                side: DockSide::Top
+            })
+        );
+        assert_eq!(at(200.0, 132.0), Some(DropTarget::Tabs { pane, index: 2 }));
+        assert_eq!(at(500.0, 16.0), None);
+    }
+
+    #[test]
+    fn normalize_prunes_dedupes_and_advances_the_counter() {
+        let mut tree = DockTree {
+            root: Some(DockNode::Split {
+                axis: SplitAxis::Horizontal,
+                state: SplitState::default(),
+                first: Box::new(DockNode::Pane(Pane {
+                    id: PaneId(3),
+                    tabs: vec!["a"],
+                    selected: 9,
+                })),
+                second: Box::new(DockNode::Split {
+                    axis: SplitAxis::Vertical,
+                    state: SplitState::default(),
+                    first: Box::new(DockNode::Pane(Pane {
+                        id: PaneId(3),
+                        tabs: vec!["b"],
+                        selected: 0,
+                    })),
+                    second: Box::new(DockNode::Pane(Pane {
+                        id: PaneId(1),
+                        tabs: Vec::new(),
+                        selected: 0,
+                    })),
+                }),
+            }),
+            next_id: 0,
+        };
+        tree.normalize();
+        assert_eq!(tree.pane_ids(), [PaneId(3), PaneId(4)]);
+        assert_eq!(tree.pane(PaneId(3)).map(|pane| pane.selected), Some(0));
+        let new = tree.split(PaneId(4), DockSide::Right, "c");
+        assert_eq!(new, Ok(PaneId(5)));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn deserialising_normalizes_a_bad_layout() {
+        let json = r#"{"root":{"Split":{"axis":"Horizontal","state":{"size":{"Ratio":0.5}},
+            "first":{"Pane":{"id":2,"tabs":["a"],"selected":0}},
+            "second":{"Split":{"axis":"Vertical","state":{"size":{"Ratio":0.5}},
+                "first":{"Pane":{"id":2,"tabs":["b"],"selected":0}},
+                "second":{"Pane":{"id":0,"tabs":[],"selected":0}}}}}},"next_id":1}"#;
+        let mut tree: DockTree<String> = serde_json::from_str(json).unwrap_or_default();
+        assert_eq!(tree.pane_ids(), [PaneId(2), PaneId(3)]);
+        assert_eq!(
+            tree.split(PaneId(2), DockSide::Top, "c".to_owned()),
+            Ok(PaneId(4))
+        );
     }
 }

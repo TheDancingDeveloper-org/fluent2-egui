@@ -129,6 +129,9 @@ pub struct TabStripResponse {
     /// A tab drag that was released outside the strip: the tab and the release position.
     /// The strip does nothing with it; a container may move the tab there.
     pub dropped_outside: Option<(usize, egui::Pos2)>,
+    /// The visible tabs this frame, as (tab index, rect) in strip order. A container uses
+    /// these to turn a drop position over the strip into an insertion index.
+    pub tab_rects: Vec<(usize, Rect)>,
 }
 
 impl TabStripResponse {
@@ -346,6 +349,12 @@ impl<'a> TabStrip<'a> {
             x += width;
         }
 
+        let tab_rects: Vec<(usize, Rect)> = layout
+            .iter()
+            .enumerate()
+            .map(|(offset, rect)| (first + offset, *rect))
+            .collect();
+
         // Pointer: tabs, then their close buttons, so a close button sits above its tab.
         let drag_id = id.with("drag");
         // (dragged tab, last drop index seen, last pointer position). Both are kept so a
@@ -561,6 +570,7 @@ impl<'a> TabStrip<'a> {
             moved,
             dragging,
             dropped_outside,
+            tab_rects,
         }
     }
 }
