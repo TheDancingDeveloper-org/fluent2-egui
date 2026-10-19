@@ -4,8 +4,9 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Changed
-- CI: merge-queue support (`merge_group`), path-scoped PR checks (Windows leg in the queue and on `main` only), cancel-in-progress per ref, and a single `ci` gate job to require. See `docs/ci.md` (WI-1886).
+## [0.2.0] - 2026-10-19
+
+Minor release: 0.1.0 was prepared but never tagged or published, and a large additive widget wave has landed since (TabStrip, docking, DiffView, CodeView, MarkdownView, TerminalView, CommandPalette, Drawer, Pager, charts, density). Pre-1.0, new public API takes a minor bump.
 
 ### Added
 - README gallery images: `crates/gallery/tests/gallery_snapshots.rs` renders every gallery page (light and dark), a controls sheet and the editor sample (light, dark and high contrast) to `docs/images/gallery/` through egui_kittest and wgpu (gallery feature `snapshots`). `scripts/gallery-screenshots.sh` runs it in a pinned `rust:1.95-trixie` container with Mesa lavapipe; `--update` rewrites and optimises the images. The `gallery-screenshots` CI job runs the same check and fails when an image is stale (WI-1910).
@@ -31,6 +32,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
   with per-path commit queries (WI-1867).
 
 ### Changed
+- CI: merge-queue support (`merge_group`), path-scoped PR checks (Windows leg in the queue and on `main` only), cancel-in-progress per ref, and a single `ci` gate job to require. See `docs/ci.md` (WI-1886).
 - craft-libs pin bumped to `ae2f796b673f` after a local `git diff` review: 41 commits, none touch
   the watched paths or the adapted `crates/ui/src/layout` files (WI-1867).
 

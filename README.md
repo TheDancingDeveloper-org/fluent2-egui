@@ -8,7 +8,7 @@ Windows and Linux, and on the web through wasm.
 
 **Live gallery:** https://thedancingdeveloper.github.io/fluent2-egui/
 
-**Status: 0.1.0.** Milestones:
+**Status: 0.2.0.** Milestones:
 
 | milestone | contents |
 |---|---|
@@ -23,7 +23,7 @@ Windows and Linux, and on the web through wasm.
 ```toml
 [dependencies]
 egui = "0.36"
-fluent2-egui = "0.1"
+fluent2-egui = "0.2"
 ```
 
 Install the theme once (it is safe to call again, for example when the user switches theme),
