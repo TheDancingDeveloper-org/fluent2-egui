@@ -14,6 +14,9 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - Input, SearchBox, Textarea, SpinButton and Combobox painted their opaque frame fill after the text on the same layer, hiding the typed text, the placeholder and the Combobox chevron. Each field now reserves the fill's slot before its text paints. The gallery's controls images are regenerated (WI-1913).
 - Dialog bodies taller than the screen scroll inside the surface. The title and actions stay visible, every control stays inside the surface (so clicks no longer land on the backdrop and close a Modal), and a control that gains focus is scrolled into view. Found by the rdpapp port (WI-1815) (WI-1912).
 
+### Changed
+- Dark theme: two Fluent tokens failed WCAG AA for text. `Theme::dark` now sets `status_danger_foreground_1` to `status_danger_foreground_3` (danger text was 4.16:1; Field errors, the danger ribbon tab, danger badges and message bars) and `neutral_foreground_2_brand_hover` to `neutral_foreground_2_hover` (subtle button hover label was 4.18:1). Light and high contrast keep Fluent's values (WI-1844).
+
 ## [0.2.0] - 2026-10-19
 
 Minor release: 0.1.0 was prepared but never tagged or published, and a large additive widget wave has landed since (TabStrip, docking, DiffView, CodeView, MarkdownView, TerminalView, CommandPalette, Drawer, Pager, charts, density). Pre-1.0, new public API takes a minor bump.

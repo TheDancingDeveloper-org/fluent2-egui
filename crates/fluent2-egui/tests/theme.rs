@@ -56,3 +56,28 @@ fn high_contrast_follows_its_background() {
     theme::install(&ctx, &Theme::high_contrast());
     assert_eq!(Theme::get(&ctx).kind, ThemeKind::HighContrast);
 }
+
+#[test]
+fn dark_overrides_the_two_tokens_that_fail_aa_and_light_keeps_fluents() {
+    // WI-1844: dark danger text and the subtle brand-hover label take AA-passing tokens.
+    let dark = fluent2_egui::Theme::dark(fluent2_tokens::FLUENT).color;
+    let fluent_dark = fluent2_tokens::dark(&fluent2_tokens::FLUENT);
+    assert_eq!(
+        dark.status_danger_foreground_1,
+        fluent_dark.status_danger_foreground_3
+    );
+    assert_eq!(
+        dark.neutral_foreground_2_brand_hover,
+        fluent_dark.neutral_foreground_2_hover
+    );
+    let light = fluent2_egui::Theme::light(fluent2_tokens::FLUENT).color;
+    let fluent_light = fluent2_tokens::light(&fluent2_tokens::FLUENT);
+    assert_eq!(
+        light.status_danger_foreground_1,
+        fluent_light.status_danger_foreground_1
+    );
+    assert_eq!(
+        light.neutral_foreground_2_brand_hover,
+        fluent_light.neutral_foreground_2_brand_hover
+    );
+}

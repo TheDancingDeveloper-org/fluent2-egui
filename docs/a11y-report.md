@@ -23,7 +23,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Button | primary fill vs surface | non-text 3 | `brand_background` | `neutral_background_1` | 5.38 | **2.18 ✗** | 21.00 |
 | Button | subtle label | text 4.5 | `neutral_foreground_2` | `subtle_background` | 10.05 | 10.01 | 21.00 |
 | Button | subtle label, hover | text 4.5 | `neutral_foreground_2_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
-| Button | subtle label, brand hover | text 4.5 | `neutral_foreground_2_brand_hover` | `subtle_background_hover` | 4.94 | **4.18 ✗** | 14.37 |
+| Button | subtle label, brand hover | text 4.5 | `neutral_foreground_2_brand_hover` | `subtle_background_hover` | 4.94 | 11.73 | 14.37 |
 | Button | disabled label | disabled | `neutral_foreground_disabled` | `neutral_background_disabled` | 1.65 | 2.76 | 13.98 |
 | Checkbox | unchecked box | non-text 3 | `neutral_stroke_accessible` | `neutral_background_1` | 6.19 | 6.48 | 21.00 |
 | Checkbox | checked fill | non-text 3 | `compound_brand_background` | `neutral_background_1` | 5.38 | 5.18 | 14.37 |
@@ -41,7 +41,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Input | focus underline | non-text 3 | `compound_brand_stroke` | `neutral_background_1` | 5.38 | 5.18 | 14.37 |
 | Input | filled-darker value | text 4.5 | `neutral_foreground_1` | `neutral_background_3` | 14.24 | 18.42 | 21.00 |
 | Field | hint | text 4.5 | `neutral_foreground_3` | `neutral_background_1` | 6.19 | 6.48 | 21.00 |
-| Field | error message | text 4.5 | `status_danger_foreground_1` | `neutral_background_1` | 7.12 | **4.16 ✗** | 21.00 |
+| Field | error message | text 4.5 | `status_danger_foreground_1` | `neutral_background_1` | 7.12 | 7.74 | 21.00 |
 | Link | text | text 4.5 | `brand_foreground_link` | `neutral_background_1` | 6.66 | 5.18 | 19.56 |
 | Link | text, hover | text 4.5 | `brand_foreground_link_hover` | `neutral_background_1` | 7.87 | 6.00 | 19.56 |
 | Slider | rail | non-text 3 | `neutral_stroke_accessible` | `neutral_background_1` | 6.19 | 6.48 | 21.00 |
@@ -86,7 +86,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | MessageBar | error text | text 4.5 | `neutral_foreground_1` | `status_danger_background_1` | 14.27 | 17.33 | 21.00 |
 | MessageBar | success icon | non-text 3 | `status_success_foreground_1` | `status_success_background_1` | 5.89 | 6.06 | 21.00 |
 | MessageBar | warning icon | non-text 3 | `status_warning_foreground_1` | `status_warning_background_1` | 4.85 | 6.97 | 21.00 |
-| MessageBar | error icon | non-text 3 | `status_danger_foreground_1` | `status_danger_background_1` | 6.55 | 4.96 | 21.00 |
+| MessageBar | error icon | non-text 3 | `status_danger_foreground_1` | `status_danger_background_1` | 6.55 | 9.23 | 21.00 |
 | MessageBar | success border | non-text 3 | `status_success_border_1` | `neutral_background_1` | **1.64 ✗** | **2.71 ✗** | 21.00 |
 | MessageBar | error border | non-text 3 | `status_danger_border_1` | `neutral_background_1` | **1.88 ✗** | **2.40 ✗** | 21.00 |
 | TitleBar | title | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
@@ -97,7 +97,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Ribbon | selected tab label | text 4.5 | `brand_foreground_1` | `neutral_background_1` | 5.38 | 5.18 | 21.00 |
 | Ribbon | contextual tab, success | text 4.5 | `status_success_foreground_1` | `neutral_background_1` | 6.28 | 5.34 | 21.00 |
 | Ribbon | contextual tab, warning | text 4.5 | `status_warning_foreground_1` | `neutral_background_1` | 5.06 | 7.14 | 21.00 |
-| Ribbon | contextual tab, danger | text 4.5 | `status_danger_foreground_1` | `neutral_background_1` | 7.12 | **4.16 ✗** | 21.00 |
+| Ribbon | contextual tab, danger | text 4.5 | `status_danger_foreground_1` | `neutral_background_1` | 7.12 | 7.74 | 21.00 |
 | Ribbon | File tab label | text 4.5 | `neutral_foreground_on_brand` | `brand_background` | 5.38 | 6.66 | 21.00 |
 | Ribbon | group label | text 4.5 | `neutral_foreground_2` | `neutral_background_1` | 10.05 | 10.01 | 21.00 |
 | Ribbon | control label, hover | text 4.5 | `neutral_foreground_1_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
@@ -127,10 +127,12 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 
 Fluent's `neutral_stroke_1`, `neutral_stroke_2` and `status_*_border_1` measure 1.3 to 2.7:1 against the surface. These are the borders of Button, Card, Menu/Popover, MessageBar, KeyTip badges and the SplitView splitter. WCAG 1.4.11 does not require them: each control is identified by its label, fill or icon, and the controls whose state depends on an edge (Checkbox, Radio, Switch, Input, Slider) use `neutral_stroke_accessible` (≥ 6:1). In HC all of these strokes are white (21:1). Listed in `KNOWN_FAILURES`.
 
-### 2.2 Dark-theme token values: decision open (WI-1844)
+### 2.2 Dark-theme token values: overridden (WI-1844)
 
-- `status_danger_foreground_1` text on the surface is **4.16:1**. It is used for the Field error message and the danger contextual ribbon tab.
-- `neutral_foreground_2_brand_hover` on the subtle hover fill is **4.18:1** (subtle button, hover only).
+Fluent's dark values failed AA. On the operator's decision (2026-10-19), `Theme::dark` overrides both, and light and HC keep Fluent's values:
+
+- `status_danger_foreground_1` text on the surface was **4.16:1** (Field error message, danger contextual ribbon tab, and the other danger foregrounds). Dark now uses `status_danger_foreground_3`.
+- `neutral_foreground_2_brand_hover` on the subtle hover fill was **4.18:1** (subtle button, hover only). Dark now uses `neutral_foreground_2_hover`, so the dark hover label loses its brand tint.
 - The primary button fill against the dark surface is 2.18:1. It is not required, because the white label on the fill is 6.66:1.
 
 ### 2.3 Fixed in this PR

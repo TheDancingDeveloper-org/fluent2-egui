@@ -215,7 +215,7 @@ impl Theme {
     pub fn dark(brand: BrandRamp) -> Self {
         Self {
             kind: ThemeKind::Dark,
-            color: fluent2_tokens::dark(&brand),
+            color: dark_aa_overrides(fluent2_tokens::dark(&brand)),
             shadow: fluent2_tokens::generated::web_dark::SHADOWS,
             brand,
             chrome: ChromeMetrics::default(),
@@ -264,6 +264,17 @@ impl Default for Theme {
     fn default() -> Self {
         Self::light(fluent2_tokens::FLUENT)
     }
+}
+
+/// Dark-theme departures from Fluent's tokens, so text passes WCAG AA (WI-1844, operator
+/// decision 2026-10-19). Fluent's dark `status_danger_foreground_1` is 4.16:1 on
+/// `neutral_background_1` and `neutral_foreground_2_brand_hover` is 4.18:1 on
+/// `subtle_background_hover`. They take `status_danger_foreground_3` (about 8:1) and
+/// `neutral_foreground_2_hover` instead. Light and high contrast keep Fluent's values.
+fn dark_aa_overrides(mut color: AliasColors) -> AliasColors {
+    color.status_danger_foreground_1 = color.status_danger_foreground_3;
+    color.neutral_foreground_2_brand_hover = color.neutral_foreground_2_hover;
+    color
 }
 
 /// `Rgba` as an unmultiplied [`egui::Color32`].
