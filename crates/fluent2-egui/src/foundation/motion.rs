@@ -169,6 +169,18 @@ pub fn animate(ctx: &Context, id: Id, target: f32, duration: Duration, curve: Cu
     eased
 }
 
+/// Forget any run of [`animate`] under `id` and hold it at `value`, so the next call with a
+/// different target starts a fresh run from `value`. Use it when a surface reopens.
+pub fn reset(ctx: &Context, id: Id, value: f32) {
+    let value = if value.is_finite() { value } else { 0.0 };
+    ctx.animate_value_with_time(id, value, 0.0);
+    ctx.data_mut(|data| {
+        data.insert_temp(id.with("fluent2_motion_from"), value);
+        data.insert_temp(id.with("fluent2_motion_to"), value);
+        data.insert_temp(id.with("fluent2_motion_eased"), value);
+    });
+}
+
 fn reduced_motion_id() -> Id {
     Id::NULL.with(REDUCED_MOTION_KEY)
 }
