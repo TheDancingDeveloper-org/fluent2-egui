@@ -27,6 +27,7 @@ pub struct RadioGroup<'a> {
     selected: &'a mut usize,
     options: Vec<WidgetText>,
     horizontal: bool,
+    label: Option<String>,
 }
 
 impl<'a> RadioGroup<'a> {
@@ -36,6 +37,7 @@ impl<'a> RadioGroup<'a> {
             selected,
             options: Vec::new(),
             horizontal: false,
+            label: None,
         }
     }
 
@@ -43,6 +45,14 @@ impl<'a> RadioGroup<'a> {
     #[must_use]
     pub fn option(mut self, label: impl Into<WidgetText>) -> Self {
         self.options.push(label.into());
+        self
+    }
+
+    /// Accessible name of the group, read by screen readers. Not drawn. Inside a
+    /// [`super::Field`] the Field's label is the default.
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
         self
     }
 
@@ -67,7 +77,9 @@ impl RadioGroup<'_> {
             selected,
             options,
             horizontal,
+            label: group_label,
         } = self;
+        let group_label = group_label.or_else(|| super::field::enclosing_field_label(ui.ctx()));
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
         let enabled = ui.is_enabled();
@@ -212,6 +224,9 @@ impl RadioGroup<'_> {
         });
         ui.ctx().accesskit_node_builder(group_id, |node| {
             node.set_role(egui::accesskit::Role::RadioGroup);
+            if let Some(label) = group_label {
+                node.set_label(label);
+            }
             if let Some(active) = active {
                 node.set_active_descendant(active);
             }

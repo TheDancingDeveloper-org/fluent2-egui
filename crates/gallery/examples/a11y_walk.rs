@@ -94,14 +94,15 @@ impl Walk {
         });
         ui.add(Checkbox::new(&mut self.check, "Agree to the terms"));
         RadioGroup::new(&mut self.radio)
+            .label("Size")
             .option("Small")
             .option("Large")
             .horizontal()
             .show(ui);
         ui.add(Switch::new(&mut self.switch, "Wi-Fi"));
         ui.add(Input::new(&mut self.name).placeholder("Name"));
-        ui.add(Textarea::new(&mut self.notes));
-        ui.add(Slider::new(&mut self.volume, 0.0..=10.0));
+        ui.add(Textarea::new(&mut self.notes).label("Notes"));
+        ui.add(Slider::new(&mut self.volume, 0.0..=10.0).label("Volume"));
         ui.add(
             SpinButton::new(&mut self.copies)
                 .range(1.0..=99.0)

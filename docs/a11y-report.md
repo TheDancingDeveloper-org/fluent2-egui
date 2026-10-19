@@ -163,12 +163,12 @@ What Orca announces at the PR head:
 | Button | "Save, button" | ok |
 | ToggleButton | "Bold, toggle button not pressed" | ok |
 | Checkbox | "Agree to the terms, check box not checked" | ok |
-| RadioGroup | "Small, selected radio button" (active descendant) | ok; the group has no name (WI-1843) |
+| RadioGroup | "Small, selected radio button" (active descendant) | ok; fixed in tests (WI-1843): `RadioGroup::label`, or the enclosing Field's label, names the group |
 | Switch | "Wi-Fi, toggle button not pressed" | ok. AccessKit's AT-SPI bridge maps the Switch role to toggle button (upstream) |
 | Input | "Name, entry" (from the placeholder) | ok |
-| Textarea | "entry" | **gap:** no name (WI-1843) |
-| Slider | "Slider, slider, 100, 25 percent" | value and percent ok after the fix; the name is generic (WI-1843) |
-| SpinButton | "spin button, 1.00" | **gap:** no name (WI-1843) |
+| Textarea | "entry" | fixed (WI-1843): `a11y_walk` now passes `Textarea::label` |
+| Slider | "Slider, slider, 100, 25 percent" | value and percent ok after the fix; fixed in tests (WI-1843): `Slider::label`, or the enclosing Field's label |
+| SpinButton | "spin button, 1.00" | fixed (WI-1918, WI-1843): `SpinButton::label`, or the enclosing Field's label |
 | Dropdown / Combobox | "Colour, combo box" / "Font, combo box" | ok |
 | TabList | "Home, page tab" | ok |
 | Link | "Help, link" | ok |

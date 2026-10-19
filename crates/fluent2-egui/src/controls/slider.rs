@@ -27,6 +27,7 @@ pub struct Slider<'a> {
     max: f64,
     step: Option<f64>,
     vertical: bool,
+    label: Option<String>,
 }
 
 impl<'a> Slider<'a> {
@@ -39,6 +40,7 @@ impl<'a> Slider<'a> {
             max: 100.0,
             step: None,
             vertical: false,
+            label: None,
         };
         let (start, end) = (*range.start(), *range.end());
         if start.is_finite() {
@@ -51,6 +53,14 @@ impl<'a> Slider<'a> {
             std::mem::swap(&mut slider.min, &mut slider.max);
         }
         slider
+    }
+
+    /// Accessible name, read by screen readers. Not drawn. Inside a [`super::Field`] the
+    /// Field's label is the default; otherwise it is "Slider".
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
     }
 
     /// Snap to multiples of `step` measured from the minimum. `None` and non-positive
@@ -78,7 +88,11 @@ impl Widget for Slider<'_> {
             max,
             step,
             vertical,
+            label,
         } = self;
+        let label = label
+            .or_else(|| super::field::enclosing_field_label(ui.ctx()))
+            .unwrap_or_else(|| "Slider".to_owned());
         let current = snap(clamp(*value, min, max), min, max, step);
         *value = current;
 
@@ -143,7 +157,7 @@ impl Widget for Slider<'_> {
             enabled,
             response.has_focus(),
         );
-        response.widget_info(|| WidgetInfo::slider(enabled, current, "Slider"));
+        response.widget_info(|| WidgetInfo::slider(enabled, current, label.clone()));
         // The range, so screen readers can say where the value sits: without it Orca read a
         // 100 on a 10..=400 zoom slider as "0 percent" (WI-1586).
         ui.ctx().accesskit_node_builder(response.id, |node| {

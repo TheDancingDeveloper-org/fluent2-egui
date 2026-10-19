@@ -11,8 +11,8 @@ use fluent2_egui::foundation::motion;
 use fluent2_egui::surfaces::{Intent, Toast, ToastPosition, Toaster};
 use fluent2_egui::theme::c;
 use fluent2_egui::{
-    CheckState, Checkbox, Dropdown, Input, Link, RadioGroup, Slider, SpinButton, Spinner, Switch, TabList,
-    Theme, ToggleButton, install,
+    CheckState, Checkbox, Dropdown, Field, Input, Link, RadioGroup, Slider, SpinButton, Spinner, Switch,
+    TabList, Theme, ToggleButton, install,
 };
 
 #[derive(Default)]
@@ -38,13 +38,15 @@ fn page(theme: Theme) -> Harness<'static, Page> {
                 ui.add(ToggleButton::new(&mut page.toggle, "Bold"));
                 ui.add(Checkbox::new(&mut page.check, "Agree"));
                 RadioGroup::new(&mut page.radio)
+                    .label("Size")
                     .option("Small")
                     .option("Large")
                     .show(ui);
                 ui.add(Switch::new(&mut page.switch, "Wi-Fi"));
                 ui.add(Input::new(&mut page.text).placeholder("Name"));
-                ui.add(Slider::new(&mut page.slider, 0.0..=10.0));
-                ui.add(SpinButton::new(&mut page.spin));
+                ui.add(Slider::new(&mut page.slider, 0.0..=10.0).label("Volume"));
+                // No label of its own: the Field's label names it (WI-1843).
+                Field::new("Copies").show(ui, |ui| ui.add(SpinButton::new(&mut page.spin)));
                 ui.add(Dropdown::new("pick", &mut page.pick, &["Red", "Green"]).placeholder("Colour"));
                 TabList::new("tabs", &mut page.tab)
                     .tab("Home")
@@ -124,6 +126,21 @@ fn tab_reaches_every_control_with_a_visible_ring() {
                 "Tab never reached {role:?} {label:?}; stops: {stops:#?}"
             );
         }
+        // Every stop has a name a screen reader can read (WI-1843).
+        for (role, label) in &stops {
+            assert!(
+                !label.trim().is_empty(),
+                "{role:?} stop has no name; stops: {stops:#?}"
+            );
+        }
+        assert!(
+            reached(Role::Slider, "Volume"),
+            "the slider is named; stops: {stops:#?}"
+        );
+        assert!(
+            reached(Role::SpinButton, "Copies"),
+            "the spin button takes its Field's label; stops: {stops:#?}"
+        );
         for role in [
             Role::RadioButton,
             Role::TextInput,
@@ -394,4 +411,28 @@ fn dialog_is_described_by_its_body_on_open() {
             ),
         "the describing node holds the body text"
     );
+}
+
+#[test]
+fn radio_group_is_named_by_its_label_or_its_field() {
+    let mut harness = Harness::new_ui(|ui| {
+        install(ui.ctx(), &Theme::default());
+        let mut a = 0;
+        let mut b = 0;
+        let mut volume = 3.0;
+        RadioGroup::new(&mut a)
+            .label("Size")
+            .option("Small")
+            .option("Large")
+            .show(ui);
+        Field::new("Alignment").show(ui, |ui| {
+            RadioGroup::new(&mut b).option("Left").option("Right").show(ui);
+        });
+        // Outside any Field again: the default name is back to the generic one.
+        ui.add(Slider::new(&mut volume, 0.0..=10.0));
+    });
+    harness.run();
+    let _ = harness.get_by_role_and_label(Role::RadioGroup, "Size");
+    let _ = harness.get_by_role_and_label(Role::RadioGroup, "Alignment");
+    let _ = harness.get_by_role_and_label(Role::Slider, "Slider");
 }
