@@ -8,6 +8,7 @@ mod command_palette;
 mod data_grid;
 mod icons;
 mod ribbon;
+mod tab_strip;
 mod terminal;
 mod tokens;
 mod typography;
@@ -17,6 +18,7 @@ pub use command_palette::CommandPalettePage;
 pub use data_grid::DataGridPage;
 pub use icons::IconsPage;
 pub use ribbon::RibbonPage;
+pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
 pub use typography::TypographyPage;
@@ -41,5 +43,6 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(RibbonPage::default()),
         Box::new(TerminalPage::default()),
         Box::new(CommandPalettePage::default()),
+        Box::new(TabStripPage::default()),
     ]
 }

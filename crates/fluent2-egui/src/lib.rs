@@ -65,8 +65,9 @@ pub use data::{
 pub use platform::{SystemPreferences, system_preferences, theme_from_system};
 pub use surfaces::{
     Card, CardAppearance, CardHeader, CloseReason, CommandPalette, Dialog, DialogActions, DialogKind,
-    DialogResult, FluentTooltip, MenuItem, PaletteCommand, Popover, TabAppearance, TabList, TabSize,
-    TooltipExt, TooltipTone, context_menu, divider, group_header, menu_frame, submenu,
+    DialogResult, FluentTooltip, MenuItem, PaletteCommand, Popover, StripTab, TabAppearance, TabList,
+    TabSize, TabStrip, TabStripResponse, TooltipExt, TooltipTone, context_menu, divider, group_header,
+    menu_frame, submenu,
 };
 pub use theme::{Theme, ThemeKind};
 
