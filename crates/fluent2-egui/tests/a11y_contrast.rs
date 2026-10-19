@@ -198,9 +198,6 @@ const KNOWN_FAILURES: &[(&str, &str, &str)] = &[
     ("dark", "SplitView", "splitter"),
     // Dark-only token values (report §2.2).
     ("dark", "Button", "primary fill vs surface"),
-    ("dark", "Button", "subtle label, brand hover"),
-    ("dark", "Field", "error message"),
-    ("dark", "Ribbon", "contextual tab, danger"),
 ];
 
 fn themes() -> [(&'static str, AliasColors); 3] {
