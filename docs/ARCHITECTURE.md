@@ -116,6 +116,9 @@ default build stays a Fluent library with no extra dependencies.
   §9.1): a pane split tree with a TabStrip per pane and collapsible side docks. No extra
   dependencies. The gallery turns it on, with `serde`, so `tests/dock.rs` and the tree's serde
   round trip run under `cargo test --workspace`.
+- `markdown`: `data::markdown` (`Document`, parsed with `pulldown-cmark`, and `MarkdownView`).
+  The app owns link handling through a `LinkPolicy` and may plug a syntax highlighter into
+  code blocks. The gallery turns it on; `tests/markdown.rs` is `#![cfg(feature = "markdown")]`.
 
 ## Gates (run before every commit; CI runs the same)
 

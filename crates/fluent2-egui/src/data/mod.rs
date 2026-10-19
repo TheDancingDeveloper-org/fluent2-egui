@@ -1,8 +1,11 @@
-//! Data views: DataGrid, TreeView, List, NavigationView SplitView and the Reorder drag helper (see
-//! `docs/specs/data-views.md`), and TerminalView behind the `terminal` feature.
+//! Data views: DataGrid, TreeView, List, NavigationView, SplitView and the Reorder drag helper
+//! (see `docs/specs/data-views.md`), TerminalView behind the `terminal` feature and MarkdownView
+//! behind `markdown`.
 
 pub mod data_grid;
 pub mod list;
+#[cfg(feature = "markdown")]
+pub mod markdown;
 pub mod nav_view;
 pub mod reorder;
 pub(crate) mod rows;
