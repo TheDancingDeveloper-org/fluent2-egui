@@ -62,6 +62,7 @@ does not see the key. This is the one change this item makes to a control, in `c
 | Shadow | `shadow64` |
 | Padding | 24 (`spacingHorizontalXXL` / `spacingVerticalXXL`) |
 | Max width | 600 by default (`Dialog::width`) |
+| Max height | The screen height less 24 above and below. A taller body scrolls vertically inside the surface; the title and actions stay visible, and a control that gains focus is scrolled into view (WI-1912). |
 | Title | `subtitle1`, `neutral_foreground_1` |
 | Actions | right-aligned, gap 8 (`spacingHorizontalS`); below 480 pt of screen width the actions stack vertically, full width |
 | Backdrop | `backgroundOverlay` — black at alpha 102, which is 0.4 (`web_light.background_overlay`). High contrast uses the same alias from the high-contrast token set. |
