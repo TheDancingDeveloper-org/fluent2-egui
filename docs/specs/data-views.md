@@ -15,7 +15,7 @@ it starts.
 | # | Decision | Why |
 |---|---|---|
 | D1 | The grid is virtualised with one `egui::ScrollArea::both().show_viewport`, not `egui_extras::TableBuilder` and not `ScrollArea::show_rows`. Visible rows are computed from the viewport and a uniform row height (§1.4). | `TableBuilder` keeps column widths in its own egui memory, so `DataGridState` could not own them (item §1); it has no sort, selection, roving focus or AccessKit hooks; and its resize handles cannot autofit from visible rows. `show_rows` scrolls only the rows: a sticky header that also scrolls horizontally needs the viewport rect, which `show_viewport` gives. gridcraft's sheet (`crates/ui-egui/src/grid.rs`) uses the same shape: one allocated rect, its own geometry, only visible cells painted. |
-| D2 | Rows have one uniform height per grid, chosen by `DataGridSize` (§10). Variable row heights are not supported in 0.1. | Row index ↔ y is then O(1) both ways, which virtualisation, PageUp/PageDown and scroll-to-focus need. |
+| D2 | Rows have one uniform height per grid, chosen by `DataGridSize` (§10). Variable row heights are not supported in 0.1. Amended by WI-1800: List (only) may opt in to measured heights (§6.1); the DataGrid and TreeView keep D2. | Row index ↔ y is then O(1) both ways, which virtualisation, PageUp/PageDown and scroll-to-focus need. |
 | D3 | The app identifies rows with a `RowId(u64)` it supplies (`row_id` closure, default: the row index). Selection and focus are stored as `RowId`s, never as indices. | The app sorts (item §2). After a sort the same index is a different row; ids keep the selection. |
 | D4 | One cell closure per grid, `FnMut(CellCtx, &mut Ui) -> R` with `R: CellResponse`, passed to `show`. `R` is `()` for a cell with no interactive child, or the child's `Response` (or `Option` of it). Enter on a cell with a focusable child moves focus into it, and Escape returns (§3.3). Columns hold no closures. | Rows are never copied (item §1) and the app's data is borrowed by one closure, not by one closure per column competing for `&mut`. craft-libs' docking `DockContent` adapter takes the same approach. |
 | D5 | State structs (`DataGridState`, `TreeState`, `ListState`, `NavState`, `SplitState`) are plain data with public fields and derive `serde::{Serialize, Deserialize}` behind a new optional `serde` cargo feature of `fluent2-egui`. WI-1581 adds the feature. | The item asks for serde-able state. An optional feature keeps the default dependency set unchanged (office-chrome D3). |
@@ -472,6 +472,46 @@ focus. `CellCtx::column` is `""` and `column_index` is 0. Multi mode has no chec
 Ctrl/Shift/Space select. Roles: `ListBox` with `ListBoxOption` children when selection is Single
 or Multi; `List` / `ListItem` when None. `size_of_set` and `position_in_set` are absolute, as in
 §4.
+
+### 6.1 Variable-height rows (WI-1800, 2026-10-19)
+
+Inbox, history and chat rows differ in height (gap G11). List gets an opt-in mode; the fixed
+mode, and DataGrid and TreeView, are unchanged (D2 still holds for them).
+
+```rust
+impl<'a> List<'a> {
+    /// Measure rows; `estimate` is the height of rows not measured yet. `row_height` becomes
+    /// the minimum.
+    pub fn variable_height(self, estimate: f32) -> Self;
+    /// Forget the measurements of the list made with `id_salt` (font or bulk content change).
+    pub fn forget_heights(ctx: &egui::Context, id_salt: impl std::hash::Hash);
+}
+```
+
+- **Measurement.** A visible row's content is laid out top to bottom in a child `Ui` with no
+  height limit; its height plus `spacingVerticalSNudge` above and below, at least `row_height`,
+  is stored. A row is drawn with its cached height (or the estimate) and corrected on the next
+  frame, which is requested when a height changes by more than half a point.
+- **Cache.** `rows::HeightCache` maps `RowId` (D3) to height, so measurements follow rows
+  through inserts and sorts. It lives in egui temp memory under the list's id, not in
+  `ListState`, so `ListState` stays plain serde data (D5). Heights are clamped to
+  `1..=100_000`; non-finite measurements are ignored (rule 9).
+- **Geometry.** Each frame builds prefix offsets over all rows, O(n) with one hash lookup per
+  row (about 0.1 ms for 10,000 rows); the visible range and the row under a y are binary
+  searches. gpui's `ListState` keeps a sum tree for O(log n) updates; a flat prefix array is
+  enough at the sizes Vogt shows, and Zed's `sum_tree` (GPL) is not used. Revisit if a list
+  needs well over 100,000 rows.
+- **Anchoring.** After each frame the list stores a `rows::ScrollAnchor`: the `RowId` at the
+  top of the viewport and the distance from its top. On the next frame, if that row's new
+  offset plus the distance differs from the last scroll position (rows above changed height,
+  or rows were inserted or removed above), the scroll offset is set to it, so the content on
+  screen does not move. If the anchor row is gone, nothing is forced.
+- **Keyboard reveal.** Arrow, Page, Home and End moves scroll the focused row into view as in
+  §3.3. Because the rows they reach are measured only once shown, the reveal is repeated each
+  frame, ahead of the anchor, until the row is in view and no height changed, or for at most
+  30 frames.
+- **Layout.** Row content is top-down (`Align::Min`) rather than the fixed mode's centred
+  left-to-right row. Selection, focus ring, roles and `position_in_set` are as in §6.
 
 ## 7. NavigationView
 

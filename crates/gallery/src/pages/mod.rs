@@ -15,6 +15,7 @@ mod tab_strip;
 mod terminal;
 mod tokens;
 mod typography;
+mod variable_list;
 
 pub use backstage::BackstagePage;
 pub use command_palette::CommandPalettePage;
@@ -28,6 +29,7 @@ pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
 pub use typography::TypographyPage;
+pub use variable_list::VariableListPage;
 
 /// A page in the gallery's left-hand list.
 pub trait Page {
@@ -45,6 +47,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TypographyPage),
         Box::new(IconsPage::default()),
         Box::new(DataGridPage::default()),
+        Box::new(VariableListPage::default()),
         Box::new(BackstagePage::default()),
         Box::new(RibbonPage::default()),
         Box::new(TerminalPage::default()),
