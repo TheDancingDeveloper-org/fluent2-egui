@@ -671,7 +671,8 @@ impl NavigationView {
                                 Pos2::new(rect.min.x, y),
                                 Vec2::new(stroke_width::THICKER, h),
                             );
-                            paint_indicator(ui, bar, theme);
+                            // The selected item always has a selected fill.
+                            paint_indicator(ui, bar, theme, true);
                         }
                         // A hover-only widget gives the item its accessibility bounds; the pane
                         // still takes the click.

@@ -25,7 +25,7 @@ use crate::foundation::focus::{self, paint_focus_ring};
 use crate::foundation::icon::paint_icon;
 use crate::foundation::motion::{self, Curve, Duration};
 use crate::foundation::text::TypeRamp;
-use crate::theme::{Theme, c};
+use crate::theme::{Theme, ThemeKind, c};
 
 /// Height of a tab. [`Medium`](Self::Medium) is the Fluent default.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -225,7 +225,9 @@ impl<'a> TabList<'a> {
             if count > 0 && !self.tabs[selected].disabled {
                 let indicator = indicator_rect(layout[selected], self.vertical, metrics.indicator);
                 let animated = animate_indicator(ui, id, indicator, self.vertical);
-                paint_indicator(ui, animated, &theme);
+                // Subtle tabs paint a selected fill under the bar (`paint_tab_face`).
+                let on_fill = self.appearance == TabAppearance::Subtle;
+                paint_indicator(ui, animated, &theme, on_fill);
             }
             if focus::focus_visible(ui, &response) {
                 let ring = layout.get(selected).copied().unwrap_or(rect);
@@ -379,16 +381,21 @@ pub(crate) fn tab_layout(rect: Rect, sizes: &[Vec2], vertical: bool, gap: f32) -
 }
 
 /// Paint the selected indicator: a circular-radius bar in `compound_brand_stroke`.
-pub(crate) fn paint_indicator(ui: &Ui, rect: Rect, theme: &Theme) {
+///
+/// `on_fill` says the selected item has a selected fill under the bar. High contrast paints
+/// that fill and `compound_brand_stroke` in the same highlight colour, so there the bar takes
+/// the fill's foreground instead (WI-1845).
+pub(crate) fn paint_indicator(ui: &Ui, rect: Rect, theme: &Theme, on_fill: bool) {
     if !rect.is_positive() {
         return;
     }
     let radius = CornerRadius::same(rounded_u8(border_radius::CIRCULAR));
-    ui.painter().add(RectShape::filled(
-        rect,
-        radius,
-        c(theme.color.compound_brand_stroke),
-    ));
+    let color = if on_fill && theme.kind == ThemeKind::HighContrast {
+        theme.color.neutral_foreground_1_selected
+    } else {
+        theme.color.compound_brand_stroke
+    };
+    ui.painter().add(RectShape::filled(rect, radius, c(color)));
 }
 
 fn indicator_rect(tab: Rect, vertical: bool, thickness: f32) -> Rect {

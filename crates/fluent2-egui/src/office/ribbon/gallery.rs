@@ -271,7 +271,7 @@ impl<'a> Gallery<'a> {
                 enabled,
             );
             paint_tile(ui, &theme, tile, state);
-            draw(ui, index, tile, state);
+            draw_tile(ui, &theme, state, |ui| draw(ui, index, tile, state));
             if state.focused {
                 paint_focus_ring(ui, tile, radius);
             }
@@ -542,7 +542,7 @@ impl<'a> Gallery<'a> {
                                             true,
                                         );
                                         paint_tile(ui, &theme, tile, state);
-                                        draw(ui, index, tile, state);
+                                        draw_tile(ui, &theme, state, |ui| draw(ui, index, tile, state));
                                         if state.focused {
                                             paint_focus_ring(ui, tile, radius);
                                         }
@@ -692,6 +692,36 @@ fn item_state(response: &Response, selected: bool, focused: bool, enabled: bool)
         focused,
         enabled,
     }
+}
+
+/// Run the caller's tile drawing with the text colour that matches the tile's fill.
+///
+/// High contrast fills hovered, pressed and selected tiles with the highlight colour, which
+/// needs the matching `neutral_foreground_1_*` ink; the resting foreground is about 1.46:1 on
+/// it (WI-1845). `ui.visuals().text_color()` returns it, and labels pick it up.
+fn draw_tile(ui: &mut Ui, theme: &Theme, state: GalleryItemState, draw: impl FnOnce(&mut Ui)) {
+    let saved = ui.visuals().override_text_color;
+    if let Some(ink) = tile_ink(theme, state) {
+        ui.visuals_mut().override_text_color = Some(ink);
+    }
+    draw(ui);
+    ui.visuals_mut().override_text_color = saved;
+}
+
+/// The foreground for a tile's fill, or `None` at rest.
+fn tile_ink(theme: &Theme, state: GalleryItemState) -> Option<egui::Color32> {
+    let color = if !state.enabled {
+        return None;
+    } else if state.pressed {
+        theme.color.neutral_foreground_1_pressed
+    } else if state.hovered {
+        theme.color.neutral_foreground_1_hover
+    } else if state.selected {
+        theme.color.neutral_foreground_1_selected
+    } else {
+        return None;
+    };
+    Some(c(color))
 }
 
 /// Tile background: subtle hover and pressed fills, and the selected fill with a brand stroke.

@@ -70,6 +70,16 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | TabList | selected indicator | non-text 3 | `compound_brand_stroke` | `neutral_background_1` | 5.38 | 5.18 | 14.37 |
 | Card | text on filled-alternative | text 4.5 | `neutral_foreground_1` | `neutral_background_2` | 14.87 | 16.48 | 21.00 |
 | Card | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| Card | content, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_1_hover` | 14.24 | 10.86 | 14.37 |
+| Card | content, pressed | text 4.5 | `neutral_foreground_1_pressed` | `neutral_background_1_pressed` | 11.76 | 16.48 | 14.37 |
+| Card | content, selected | text 4.5 | `neutral_foreground_1_selected` | `neutral_background_1_selected` | 13.02 | 11.73 | 14.37 |
+| Card | filled-alternative content, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_2_hover` | 13.62 | 12.63 | 14.37 |
+| Card | filled-alternative content, selected | text 4.5 | `neutral_foreground_1_selected` | `neutral_background_2_selected` | 12.44 | 13.58 | 14.37 |
+| Card | subtle content, hover | text 4.5 | `neutral_foreground_1_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
+| Card | subtle content, selected | text 4.5 | `neutral_foreground_1_selected` | `subtle_background_selected` | 13.02 | 12.63 | 14.37 |
+| Ribbon gallery | tile content, hover | text 4.5 | `neutral_foreground_1_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
+| Ribbon gallery | tile content, pressed | text 4.5 | `neutral_foreground_1_pressed` | `subtle_background_pressed` | 11.76 | 13.58 | 14.37 |
+| Ribbon gallery | tile content, selected | text 4.5 | `neutral_foreground_1_selected` | `subtle_background_selected` | 13.02 | 12.63 | 14.37 |
 | MessageBar | info text | text 4.5 | `neutral_foreground_1` | `neutral_background_3` | 14.24 | 18.42 | 21.00 |
 | MessageBar | success text | text 4.5 | `neutral_foreground_1` | `status_success_background_1` | 14.55 | 16.49 | 21.00 |
 | MessageBar | warning text | text 4.5 | `neutral_foreground_1` | `status_warning_background_1` | 14.87 | 14.20 | 21.00 |
@@ -138,7 +148,7 @@ Fluent HC draws boundaries with strokes, not fills. Every component was checked:
 
 - **Fixed:** Dialog had no edge on a black page, and the inverted Tooltip had none either. Both now carry `transparent_stroke`, which is clear in light and dark and white in HC, matching Fluent's surface border. The ProgressBar rail was black on black, so an empty bar was invisible; it now has a `transparent_stroke` outline. A disabled Primary button lost its edge in HC; it now keeps `neutral_stroke_disabled`, as SplitButton already did.
 - **Already fine:** Input, Dropdown, Combobox, SpinButton, Checkbox, Radio, Switch, Slider rail, Card (Filled uses `transparent_stroke`, Outline uses `neutral_stroke_1`), Menu, Popover, normal Tooltip, MessageBar, Toast, KeyTips, TitleBar, Ribbon, StatusBar, DataGrid, TreeView, List, NavigationView, SplitView. Subtle and Transparent buttons have no edge at rest, as in Fluent.
-- **Open (WI-1845):** CardHeader text and ribbon gallery tile content keep the resting foreground on the HC highlight fill. The TabList and NavigationView selected indicator is the highlight colour on a highlight fill; selection still shows through the fill.
+- **Fixed (WI-1845):** CardHeader text and icon on a hovered, pressed or selected Card, and caller-drawn ribbon gallery tile content (through `override_text_color`), take `neutral_foreground_1_{hover,pressed,selected}`. The TabList (subtle) and NavigationView selected indicator takes `neutral_foreground_1_selected` in HC, where `compound_brand_stroke` matched the highlight fill.
 
 ## 4. Screen reader
 

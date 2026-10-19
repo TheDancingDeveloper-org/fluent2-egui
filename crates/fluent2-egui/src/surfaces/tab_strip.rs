@@ -777,7 +777,7 @@ fn paint_tab(
             egui::pos2(rect.min.x, rect.max.y - thickness),
             Vec2::new(rect.width(), thickness),
         );
-        crate::surfaces::paint_indicator(ui, bar, theme);
+        crate::surfaces::paint_indicator(ui, bar, theme, false);
     }
 
     let slot = close_rect(rect);
@@ -830,7 +830,7 @@ fn paint_drop_marker(ui: &Ui, layout: &[Rect], first: usize, from: usize, to: us
         egui::pos2(x - thickness / 2.0, top.min.y),
         Vec2::new(thickness, top.height()),
     );
-    crate::surfaces::paint_indicator(ui, bar, theme);
+    crate::surfaces::paint_indicator(ui, bar, theme, false);
 }
 
 fn paint_overflow(ui: &Ui, more: &Response, theme: &Theme, enabled: bool) {

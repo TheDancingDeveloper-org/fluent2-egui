@@ -8,6 +8,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
 ### Fixed
+- High contrast: Card header text and icon on a hovered, pressed or selected Card, and caller-drawn ribbon gallery tile content, kept the resting foreground on the highlight fill (about 1.46:1). They now take `neutral_foreground_1_{hover,pressed,selected}`; gallery draw closures see it through `ui.visuals().text_color()`. The subtle TabList and NavigationView selected indicator takes the selected foreground in high contrast, where the brand stroke matched the fill (WI-1845).
 - Input, SearchBox, Textarea, SpinButton and Combobox painted their opaque frame fill after the text on the same layer, hiding the typed text, the placeholder and the Combobox chevron. Each field now reserves the fill's slot before its text paints. The gallery's controls images are regenerated (WI-1913).
 
 ## [0.2.0] - 2026-10-19
