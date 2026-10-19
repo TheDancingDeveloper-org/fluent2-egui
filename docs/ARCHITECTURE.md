@@ -108,6 +108,10 @@ default build stays a Fluent library with no extra dependencies.
   Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
   (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
   --workspace` through the gallery's feature unification.
+- `file-dialog`: `platform::file_dialog::FileDialog`, async open and save dialogs through `rfd`
+  (MIT) on native and wasm. The dialog future runs on a worker thread (native) or the browser
+  event loop (wasm), and the app polls the outcome each frame; nothing blocks. The gallery
+  turns it on.
 
 ## Gates (run before every commit; CI runs the same)
 

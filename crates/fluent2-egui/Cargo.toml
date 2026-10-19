@@ -19,6 +19,8 @@ fluent2-icons = { workspace = true }
 serde = { version = "1", optional = true, features = ["derive"] }
 vte = { version = "0.15", optional = true }
 unicode-width = { version = "0.2", optional = true }
+# Native and browser file dialogs (MIT). `xdg-portal` keeps Linux free of GTK.
+rfd = { version = "0.17", optional = true, default-features = false, features = ["xdg-portal"] }
 
 [features]
 default = ["bundled-font"]
@@ -31,6 +33,9 @@ serde = ["dep:serde"]
 # TerminalView and its VT grid model (`data::terminal`). Not a Fluent component, so off by
 # default; it adds the `vte` parser. See docs/ARCHITECTURE.md "Optional features".
 terminal = ["dep:vte", "dep:unicode-width"]
+# Async open and save dialogs through `rfd` (`platform::file_dialog`), polled from the frame.
+# Off by default; it pulls in the platform dialog bindings.
+file-dialog = ["dep:rfd", "dep:pollster", "dep:wasm-bindgen-futures"]
 # Pixel snapshots through a wgpu adapter. Off in `cargo test`; see tests/font_snapshots.rs.
 # Also turns on egui's default fonts, so the egui-default option has its Ubuntu-Light face.
 snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot", "egui/default_fonts"]
@@ -40,6 +45,13 @@ system-preferences = [
     "dep:windows",
     "dep:zbus",
 ]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Drives the dialog future on its worker thread (native only).
+pollster = { version = "0.4", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", optional = true, features = ["UI_ViewManagement"] }
