@@ -18,12 +18,21 @@ The `classify changes` job diffs the PR against its merge base:
 | Changed paths | Runs |
 |---|---|
 | `.github/workflows/`, `Cargo.toml`, `Cargo.lock`, `rustfmt.toml` | everything except the Windows leg |
-| `crates/gallery/`, `gallery/` | everything except the Windows leg |
+| `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh` | everything except the Windows leg |
 | `crates/*`, `xtask/` | fmt + token check, clippy + test (Linux), wasm check, doc, msrv |
 | anything else (docs, markdown, `scripts/`, `upstream.toml`) | nothing; the `ci` gate passes |
 
 `test (windows-latest)` and `gallery-wasm` for library-only changes run in
 the queue and on `main`, never on a PR.
+
+### Gallery screenshots
+
+`gallery-screenshots` runs when the gallery runs. It re-renders the README
+gallery images in the `rust:1.95-trixie` container with Mesa lavapipe and
+fails when a committed PNG in `docs/images/gallery/` differs. On failure the
+rendered set is uploaded as the `gallery-screenshots` artifact. To refresh the
+images locally, run `scripts/gallery-screenshots.sh --update` (needs Docker)
+and commit the result.
 
 ### The `ci` gate
 

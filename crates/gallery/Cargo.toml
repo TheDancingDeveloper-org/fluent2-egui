@@ -16,6 +16,9 @@ workspace = true
 # keeps it off by default. Without it, "Follow system" falls back to the light theme.
 default = ["system-preferences"]
 system-preferences = ["fluent2-egui/system-preferences"]
+# Pixel snapshots of every page for the README gallery, through a wgpu adapter. Off in
+# `cargo test`; see tests/gallery_snapshots.rs and scripts/gallery-screenshots.sh.
+snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot"]
 
 [dependencies]
 eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "accesskit", "x11", "wayland"] }
