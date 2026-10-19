@@ -32,6 +32,7 @@ Minor release: 0.1.0 was prepared but never tagged or published, and a large add
   with per-path commit queries (WI-1867).
 
 ### Changed
+- `release.yml` no longer publishes to crates.io on a tag push: publishing needs a manual run on the tag with the `publish_crates` input (default false) (WI-1911).
 - CI: merge-queue support (`merge_group`), path-scoped PR checks (Windows leg in the queue and on `main` only), cancel-in-progress per ref, and a single `ci` gate job to require. See `docs/ci.md` (WI-1886).
 - craft-libs pin bumped to `ae2f796b673f` after a local `git diff` review: 41 commits, none touch
   the watched paths or the adapted `crates/ui/src/layout` files (WI-1867).
