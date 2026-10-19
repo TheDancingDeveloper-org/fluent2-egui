@@ -395,7 +395,8 @@ pub(super) fn option_row(
 
 fn paint_field(ui: &Ui, rect: Rect, theme: &Theme, state: (bool, bool, bool, bool), label: &str) {
     let (enabled, focused, hovered, placeholder) = state;
-    paint_outline(ui, rect, theme, enabled, focused, hovered);
+    let background = ui.painter().add(egui::Shape::Noop);
+    paint_outline(ui, rect, theme, background, (enabled, focused, hovered));
     let color = if !enabled {
         c(theme.color.neutral_foreground_disabled)
     } else if placeholder {
@@ -439,7 +440,15 @@ fn paint_field(ui: &Ui, rect: Rect, theme: &Theme, state: (bool, bool, bool, boo
     );
 }
 
-pub(super) fn paint_outline(ui: &Ui, rect: Rect, theme: &Theme, enabled: bool, focused: bool, hovered: bool) {
+/// `background` is a slot reserved with `Shape::Noop` before any content inside the field was
+/// painted; the fill is set into it so it stays beneath that content (WI-1913).
+pub(super) fn paint_outline(
+    ui: &Ui,
+    rect: Rect,
+    theme: &Theme,
+    background: egui::layers::ShapeIdx,
+    (enabled, focused, hovered): (bool, bool, bool),
+) {
     let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
     let stroke = if !enabled {
         Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_disabled))
@@ -448,13 +457,16 @@ pub(super) fn paint_outline(ui: &Ui, rect: Rect, theme: &Theme, enabled: bool, f
     } else {
         Stroke::new(stroke_width::THIN, c(theme.color.neutral_stroke_1))
     };
-    ui.painter().add(RectShape::new(
-        rect,
-        radius,
-        c(theme.color.neutral_background_1),
-        stroke,
-        StrokeKind::Inside,
-    ));
+    ui.painter().set(
+        background,
+        RectShape::new(
+            rect,
+            radius,
+            c(theme.color.neutral_background_1),
+            stroke,
+            StrokeKind::Inside,
+        ),
+    );
     let target = if focused { 1.0 } else { 0.0 };
     let t = animate(
         ui.ctx(),
