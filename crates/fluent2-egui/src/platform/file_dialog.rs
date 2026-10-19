@@ -20,6 +20,14 @@
 //! ```
 //!
 //! On wasm a save writes through the browser's download prompt; filters are ignored there.
+//!
+//! # Large files (SFTP upload and download)
+//!
+//! [`FileDialog::open`] and [`FileDialog::open_many`] read whole files into memory, which is
+//! what the browser offers. On native targets an app that streams (an SFTP upload or
+//! download, say) asks for paths instead: [`FileDialog::pick_paths`] returns the chosen paths
+//! without reading them, and [`FileDialog::pick_save_path`] returns the target path without
+//! writing it. The app then streams to or from the path on its own thread.
 
 use std::future::Future;
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
@@ -67,6 +75,13 @@ pub enum FileDialogOutcome {
         /// Full path on native targets; [`None`] on wasm.
         path: Option<std::path::PathBuf>,
     },
+    /// An open-many dialog returned these files, in the order the platform gave them.
+    OpenedMany(Vec<PickedFile>),
+    /// A path-only pick ([`FileDialog::pick_paths`], native only) returned these paths.
+    Paths(Vec<std::path::PathBuf>),
+    /// A path-only save pick ([`FileDialog::pick_save_path`], native only) chose this target.
+    /// Nothing has been written.
+    SavePath(std::path::PathBuf),
     /// The user closed the dialog without choosing.
     Cancelled,
     /// Writing the saved file failed. The text is the I/O error.
@@ -105,6 +120,80 @@ impl FileDialog {
                     path: handle_path(&handle),
                     bytes: handle.read().await,
                 }),
+                None => FileDialogOutcome::Cancelled,
+            }
+        });
+    }
+
+    /// Show an open dialog that accepts several files and read each one.
+    /// Ignored while another dialog is pending.
+    pub fn open_many(&mut self, ctx: &egui::Context, title: &str, filters: &[FileFilter]) {
+        if self.is_pending() {
+            return;
+        }
+        let dialog = with_filters(rfd::AsyncFileDialog::new().set_title(title), filters);
+        self.start(ctx, async move {
+            let Some(handles) = dialog.pick_files().await else {
+                return FileDialogOutcome::Cancelled;
+            };
+            let mut files = Vec::with_capacity(handles.len());
+            for handle in handles {
+                files.push(PickedFile {
+                    name: handle.file_name(),
+                    path: handle_path(&handle),
+                    bytes: handle.read().await,
+                });
+            }
+            FileDialogOutcome::OpenedMany(files)
+        });
+    }
+
+    /// Show an open dialog and return the chosen paths without reading them
+    /// ([`FileDialogOutcome::Paths`]). `multiple` allows more than one file. Native only.
+    /// Ignored while another dialog is pending.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn pick_paths(&mut self, ctx: &egui::Context, title: &str, filters: &[FileFilter], multiple: bool) {
+        if self.is_pending() {
+            return;
+        }
+        let dialog = with_filters(rfd::AsyncFileDialog::new().set_title(title), filters);
+        self.start(ctx, async move {
+            let handles = if multiple {
+                dialog.pick_files().await
+            } else {
+                dialog.pick_file().await.map(|h| vec![h])
+            };
+            match handles {
+                Some(handles) => {
+                    FileDialogOutcome::Paths(handles.iter().map(|h| h.path().to_path_buf()).collect())
+                }
+                None => FileDialogOutcome::Cancelled,
+            }
+        });
+    }
+
+    /// Show a save dialog proposing `file_name` and return the chosen path without writing
+    /// ([`FileDialogOutcome::SavePath`]). Native only. Ignored while another dialog is pending.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn pick_save_path(
+        &mut self,
+        ctx: &egui::Context,
+        title: &str,
+        file_name: &str,
+        filters: &[FileFilter],
+    ) {
+        if self.is_pending() {
+            return;
+        }
+        let dialog = with_filters(
+            rfd::AsyncFileDialog::new()
+                .set_title(title)
+                .set_file_name(file_name),
+            filters,
+        );
+        self.start(ctx, async move {
+            match dialog.save_file().await {
+                Some(handle) => FileDialogOutcome::SavePath(handle.path().to_path_buf()),
                 None => FileDialogOutcome::Cancelled,
             }
         });

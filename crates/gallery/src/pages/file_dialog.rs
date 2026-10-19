@@ -33,6 +33,10 @@ impl Page for FileDialogPage {
             if ui.add_enabled(idle, open).clicked() {
                 self.dialog.open(ui.ctx(), "Open a file", &[]);
             }
+            let many = Button::new("Open several…").id_salt("file_dialog_open_many");
+            if ui.add_enabled(idle, many).clicked() {
+                self.dialog.open_many(ui.ctx(), "Open files", &[]);
+            }
             let save = Button::new("Save sample…").id_salt("file_dialog_save");
             if ui.add_enabled(idle, save).clicked() {
                 self.dialog.save(
@@ -58,6 +62,12 @@ fn describe(outcome: &FileDialogOutcome) -> String {
         FileDialogOutcome::Opened(file) => {
             format!("Opened {} ({} bytes)", file.name, file.bytes.len())
         }
+        FileDialogOutcome::OpenedMany(files) => {
+            let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+            format!("Opened {} files: {}", files.len(), names.join(", "))
+        }
+        FileDialogOutcome::Paths(paths) => format!("Picked {} paths", paths.len()),
+        FileDialogOutcome::SavePath(path) => format!("Save to {}", path.display()),
         FileDialogOutcome::Saved { name, .. } => format!("Saved {name}"),
         FileDialogOutcome::Cancelled => "Cancelled".to_owned(),
         FileDialogOutcome::Failed(err) => format!("Save failed: {err}"),

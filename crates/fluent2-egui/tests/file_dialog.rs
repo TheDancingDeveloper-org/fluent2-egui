@@ -30,3 +30,17 @@ fn opened_outcome_carries_the_file() {
     assert_eq!(outcome, FileDialogOutcome::Opened(file));
     assert_ne!(outcome, FileDialogOutcome::Cancelled);
 }
+
+#[test]
+fn multi_and_path_outcomes_compare_by_content() {
+    let a = FileDialogOutcome::Paths(vec!["/tmp/a".into(), "/tmp/b".into()]);
+    assert_eq!(
+        a,
+        FileDialogOutcome::Paths(vec!["/tmp/a".into(), "/tmp/b".into()])
+    );
+    assert_ne!(a, FileDialogOutcome::SavePath("/tmp/a".into()));
+    assert_eq!(
+        FileDialogOutcome::OpenedMany(Vec::new()),
+        FileDialogOutcome::OpenedMany(Vec::new())
+    );
+}
