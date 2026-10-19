@@ -123,6 +123,15 @@ pub struct TabStripResponse {
     pub closed: Option<usize>,
     /// A drag or Ctrl+Shift+Arrow moved a tab.
     pub moved: Option<TabMove>,
+    /// The tab being dragged this frame, if any. A container (such as a dock) uses this to
+    /// show where the tab could go outside the strip.
+    pub dragging: Option<usize>,
+    /// A tab drag that was released outside the strip: the tab and the release position.
+    /// The strip does nothing with it; a container may move the tab there.
+    pub dropped_outside: Option<(usize, egui::Pos2)>,
+    /// The visible tabs this frame, as (tab index, rect) in strip order. A container uses
+    /// these to turn a drop position over the strip into an insertion index.
+    pub tab_rects: Vec<(usize, Rect)>,
 }
 
 impl TabStripResponse {
@@ -340,11 +349,17 @@ impl<'a> TabStrip<'a> {
             x += width;
         }
 
+        let tab_rects: Vec<(usize, Rect)> = layout
+            .iter()
+            .enumerate()
+            .map(|(offset, rect)| (first + offset, *rect))
+            .collect();
+
         // Pointer: tabs, then their close buttons, so a close button sits above its tab.
         let drag_id = id.with("drag");
-        // (dragged tab, last drop index seen). The drop index is kept so a release with no
-        // pointer position still lands where the marker was.
-        let mut drag: Option<(usize, usize)> = ui.data(|data| data.get_temp(drag_id));
+        // (dragged tab, last drop index seen, last pointer position). Both are kept so a
+        // release with no pointer position still lands where the pointer last was.
+        let mut drag: Option<(usize, usize, Option<egui::Pos2>)> = ui.data(|data| data.get_temp(drag_id));
         let mut drop_at = None;
         let mut tab_responses = Vec::with_capacity(layout.len());
         for (offset, tab_rect) in layout.iter().enumerate() {
@@ -366,7 +381,7 @@ impl<'a> TabStrip<'a> {
                     closed = Some(index);
                 }
                 if self.reorderable && tab_response.drag_started() {
-                    drag = Some((index, index));
+                    drag = Some((index, index, None));
                 }
             }
             tab_responses.push(tab_response);
@@ -389,18 +404,26 @@ impl<'a> TabStrip<'a> {
         }
 
         let mut dragging = None;
-        if let Some((from, last)) = drag {
-            let pointer = ui.input(|input| input.pointer.latest_pos());
+        let mut dropped_outside = None;
+        if let Some((from, last, last_pos)) = drag {
+            let pointer = ui.input(|input| input.pointer.latest_pos()).or(last_pos);
             let target = pointer.map_or(last, |pos| drop_index(&layout, first, from, pos.x));
+            let outside = pointer.filter(|pos| !rect.contains(*pos));
             if ui.input(|input| input.pointer.primary_down()) {
                 dragging = Some(from);
-                drop_at = Some(target);
-                ui.data_mut(|data| data.insert_temp(drag_id, (from, target)));
+                if outside.is_none() {
+                    drop_at = Some(target);
+                }
+                ui.data_mut(|data| data.insert_temp(drag_id, (from, target, pointer)));
             } else {
-                if target != from && enabled {
+                if let Some(pos) = outside {
+                    if enabled {
+                        dropped_outside = Some((from, pos));
+                    }
+                } else if target != from && enabled {
                     moved = Some(TabMove { from, to: target });
                 }
-                ui.data_mut(|data| data.remove::<(usize, usize)>(drag_id));
+                ui.data_mut(|data| data.remove::<(usize, usize, Option<egui::Pos2>)>(drag_id));
             }
         }
 
@@ -545,6 +568,9 @@ impl<'a> TabStrip<'a> {
             selected,
             closed,
             moved,
+            dragging,
+            dropped_outside,
+            tab_rects,
         }
     }
 }

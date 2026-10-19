@@ -6,6 +6,7 @@
 mod backstage;
 mod command_palette;
 mod data_grid;
+mod docking;
 mod drawer;
 mod file_dialog;
 mod icons;
@@ -18,6 +19,7 @@ mod typography;
 pub use backstage::BackstagePage;
 pub use command_palette::CommandPalettePage;
 pub use data_grid::DataGridPage;
+pub use docking::DockingPage;
 pub use drawer::DrawerPage;
 pub use file_dialog::FileDialogPage;
 pub use icons::IconsPage;
@@ -50,5 +52,6 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TabStripPage::default()),
         Box::new(FileDialogPage::default()),
         Box::new(DrawerPage::default()),
+        Box::new(DockingPage::default()),
     ]
 }

@@ -4,6 +4,8 @@ mod bottom_sheet;
 mod card;
 mod command_palette;
 mod dialog;
+#[cfg(feature = "docking")]
+mod dock;
 mod drawer;
 mod menu;
 mod message_bar;
@@ -17,6 +19,11 @@ pub use bottom_sheet::BottomSheet;
 pub use card::{Card, CardAppearance, CardHeader};
 pub use command_palette::{CommandPalette, PaletteCommand, PaletteMatch, rank};
 pub use dialog::{CloseReason, Dialog, DialogActions, DialogKind, DialogResult};
+#[cfg(feature = "docking")]
+pub use dock::{
+    DockArea, DockEdge, DockNode, DockResponse, DockSide, DockTree, DockViewer, DropTarget, Pane, PaneId,
+    SideDock, SideDockResponse, SideDockState,
+};
 pub use drawer::{CLOSE_LABEL, Drawer, DrawerPosition, DrawerSize};
 pub use menu::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
 pub use message_bar::{Intent, MessageBar, MessageBarResponse};
