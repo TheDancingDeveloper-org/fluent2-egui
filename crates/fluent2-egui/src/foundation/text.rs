@@ -10,7 +10,10 @@
 //! With that feature off, egui's own defaults stay in place. A font file that cannot be read is
 //! skipped and logged at debug.
 
-use egui::{FontDefinitions, FontFamily, FontId, RichText, TextStyle};
+use std::ops::Range;
+
+use egui::text::{LayoutJob, TextFormat};
+use egui::{Color32, FontDefinitions, FontFamily, FontId, RichText, Stroke, TextStyle};
 
 /// Name of the family used for semibold steps of the ramp.
 ///
@@ -150,6 +153,128 @@ pub fn font_id(name: TypeRamp) -> FontId {
 /// ```
 pub fn rich(text: impl Into<String>, name: TypeRamp) -> RichText {
     RichText::new(text).text_style(style(name))
+}
+
+/// `text` as a [`LayoutJob`] with the byte `ranges` drawn in the theme's highlight colour.
+///
+/// Plain text uses `neutralForeground1`; matches use `brandForeground1` and are underlined, so
+/// the highlight does not rely on colour alone. See [`highlighted_with`] for the rules on
+/// `ranges` and for custom colours.
+///
+/// ```
+/// # use fluent2_egui::foundation::text::{font_id, highlighted, TypeRamp};
+/// let theme = fluent2_egui::Theme::default();
+/// let job = highlighted("Save as", &[0..1, 5..7], font_id(TypeRamp::Body1), &theme);
+/// assert_eq!(job.text, "Save as");
+/// ```
+pub fn highlighted(text: &str, ranges: &[Range<usize>], font: FontId, theme: &crate::Theme) -> LayoutJob {
+    highlighted_with(
+        text,
+        ranges,
+        font,
+        crate::theme::c(theme.color.neutral_foreground_1),
+        crate::theme::c(theme.color.brand_foreground_1),
+    )
+}
+
+/// `text` as a [`LayoutJob`] in `color`, with the byte `ranges` in `accent` and underlined.
+///
+/// The ranges come from the caller (a fuzzy matcher, a search). They may be in any order,
+/// overlap, be empty or reach past the end: they are clamped to the text, widened to the
+/// enclosing `char` boundaries and merged. The job has one section per run, and never panics.
+pub fn highlighted_with(
+    text: &str,
+    ranges: &[Range<usize>],
+    font: FontId,
+    color: Color32,
+    accent: Color32,
+) -> LayoutJob {
+    let plain = TextFormat::simple(font.clone(), color);
+    let marked = TextFormat {
+        underline: Stroke::new(fluent2_tokens::generated::global::stroke_width::THIN, accent),
+        ..TextFormat::simple(font, accent)
+    };
+    let mut job = LayoutJob::default();
+    let mut at = 0;
+    for range in highlight_runs(text, ranges) {
+        if let Some(before) = text.get(at..range.start).filter(|s| !s.is_empty()) {
+            job.append(before, 0.0, plain.clone());
+        }
+        if let Some(matched) = text.get(range.clone()) {
+            job.append(matched, 0.0, marked.clone());
+        }
+        at = range.end;
+    }
+    if let Some(rest) = text.get(at..).filter(|s| !s.is_empty()) {
+        job.append(rest, 0.0, plain);
+    }
+    job
+}
+
+/// Byte ranges for the `char` positions in `indices`, for [`highlighted`].
+///
+/// Fuzzy matchers (the command palette's scorer, nucleo) report matched `char` positions,
+/// while substring search reports byte ranges; this bridges the first to the second. Adjacent
+/// positions become one range. Positions past the end are dropped, and order and duplicates do
+/// not matter.
+///
+/// ```
+/// # use fluent2_egui::foundation::text::char_ranges;
+/// assert_eq!(char_ranges("é日x", &[0, 1, 9]), [0..5]);
+/// ```
+pub fn char_ranges(text: &str, indices: &[usize]) -> Vec<Range<usize>> {
+    let mut wanted = indices.to_vec();
+    wanted.sort_unstable();
+    wanted.dedup();
+    let mut ranges: Vec<Range<usize>> = Vec::new();
+    let mut next = wanted.iter().peekable();
+    for (index, (byte, ch)) in text.char_indices().enumerate() {
+        if next.peek().is_none() {
+            break;
+        }
+        if next.next_if(|&&want| want == index).is_none() {
+            continue;
+        }
+        let end = byte + ch.len_utf8();
+        match ranges.last_mut() {
+            Some(last) if last.end == byte => last.end = end,
+            _ => ranges.push(byte..end),
+        }
+    }
+    ranges
+}
+
+/// The non-empty, sorted, disjoint byte ranges of `text` to highlight, on `char` boundaries.
+fn highlight_runs(text: &str, ranges: &[Range<usize>]) -> Vec<Range<usize>> {
+    let floor = |mut i: usize| {
+        i = i.min(text.len());
+        while !text.is_char_boundary(i) {
+            i -= 1;
+        }
+        i
+    };
+    let ceil = |mut i: usize| {
+        i = i.min(text.len());
+        while !text.is_char_boundary(i) {
+            i += 1;
+        }
+        i
+    };
+    let mut runs: Vec<Range<usize>> = ranges
+        .iter()
+        .filter(|range| range.start < range.end)
+        .map(|range| floor(range.start)..ceil(range.end))
+        .filter(|range| range.start < range.end)
+        .collect();
+    runs.sort_by_key(|range| range.start);
+    let mut merged: Vec<Range<usize>> = Vec::with_capacity(runs.len());
+    for range in runs {
+        match merged.last_mut() {
+            Some(last) if range.start <= last.end => last.end = last.end.max(range.end),
+            _ => merged.push(range),
+        }
+    }
+    merged
 }
 
 /// Write the type ramp into both of egui's styles (light and dark).
@@ -365,8 +490,105 @@ fn semibold_fallback_definitions() -> Option<FontDefinitions> {
 }
 
 #[cfg(test)]
+// One-element and reversed range slices are inputs under test.
+#[allow(clippy::single_range_in_vec_init, clippy::reversed_empty_ranges)]
 mod tests {
     use super::*;
+
+    fn sections(job: &LayoutJob) -> Vec<(&str, bool)> {
+        let accent = Color32::RED;
+        job.sections
+            .iter()
+            .map(|section| {
+                (
+                    &job.text[section.byte_range.start.0..section.byte_range.end.0],
+                    section.format.color == accent,
+                )
+            })
+            .collect()
+    }
+
+    fn job(text: &str, ranges: &[Range<usize>]) -> LayoutJob {
+        highlighted_with(
+            text,
+            ranges,
+            FontId::proportional(14.0),
+            Color32::WHITE,
+            Color32::RED,
+        )
+    }
+
+    #[test]
+    fn char_positions_become_byte_ranges() {
+        let text = "é日🦀x";
+        assert_eq!(char_ranges(text, &[]), Vec::<Range<usize>>::new());
+        assert_eq!(char_ranges(text, &[1]), [2..5]);
+        assert_eq!(char_ranges(text, &[3, 0, 1, 1]), [0..5, 9..10]);
+        assert_eq!(char_ranges(text, &[2, 3, 99]), [5..10]);
+        assert_eq!(char_ranges("", &[0]), Vec::<Range<usize>>::new());
+        let job = job(text, &char_ranges(text, &[2]));
+        assert_eq!(sections(&job), [("é日", false), ("🦀", true), ("x", false)]);
+    }
+
+    #[test]
+    fn highlights_disjoint_ranges() {
+        let job = job("Save as", &[5..7, 0..1]);
+        assert_eq!(job.text, "Save as");
+        assert_eq!(sections(&job), [("S", true), ("ave ", false), ("as", true)]);
+        assert!(job.sections[0].format.underline.width > 0.0);
+        assert_eq!(job.sections[1].format.underline, Stroke::NONE);
+    }
+
+    #[test]
+    fn overlapping_and_touching_ranges_merge() {
+        let job = job("abcdefgh", &[1..4, 2..3, 3..5, 5..6]);
+        assert_eq!(sections(&job), [("a", false), ("bcdef", true), ("gh", false)]);
+    }
+
+    #[test]
+    fn empty_and_out_of_range_ranges() {
+        assert_eq!(sections(&job("abc", &[])), [("abc", false)]);
+        assert_eq!(sections(&job("abc", &[1..1, 2..1])), [("abc", false)]);
+        let reversed = [3..0];
+        assert_eq!(sections(&job("abc", &reversed)), [("abc", false)]);
+        assert_eq!(sections(&job("abc", &[2..99])), [("ab", false), ("c", true)]);
+        assert_eq!(sections(&job("abc", &[50..99])), [("abc", false)]);
+        assert_eq!(sections(&job("abc", &[0..usize::MAX])), [("abc", true)]);
+        assert!(job("", &[0..4]).sections.is_empty());
+    }
+
+    #[test]
+    fn multi_byte_ranges_snap_to_char_boundaries() {
+        // "é" is two bytes, "日" three, "🦀" four.
+        let text = "é日🦀x";
+        assert_eq!(sections(&job(text, &[1..2])), [("é", true), ("日🦀x", false)]);
+        assert_eq!(
+            sections(&job(text, &[3..4, 6..7])),
+            [("é", false), ("日🦀", true), ("x", false)]
+        );
+        for start in 0..=text.len() + 1 {
+            for end in 0..=text.len() + 1 {
+                let job = job(text, &[start..end]);
+                assert_eq!(job.text, text);
+                let joined: String = sections(&job).iter().map(|(s, _)| *s).collect();
+                assert_eq!(joined, text);
+            }
+        }
+    }
+
+    #[test]
+    fn theme_variant_uses_brand_foreground() {
+        let theme = crate::Theme::default();
+        let job = highlighted("ab", &[1..2], FontId::proportional(14.0), &theme);
+        assert_eq!(
+            job.sections[1].format.color,
+            crate::theme::c(theme.color.brand_foreground_1)
+        );
+        assert_eq!(
+            job.sections[0].format.color,
+            crate::theme::c(theme.color.neutral_foreground_1)
+        );
+    }
 
     #[test]
     fn ramp_matches_the_generated_tokens() {
