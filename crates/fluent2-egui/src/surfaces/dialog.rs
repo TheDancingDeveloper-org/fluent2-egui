@@ -162,37 +162,10 @@ impl<'a> Dialog<'a> {
         let id = self.id_salt;
         let surface_id = id.with("surface");
         let title_id = id.with("title");
-        let opener_key = id.with("opener");
-        let seen_key = id.with("seen");
-
-        // A close requests focus for the opener while the modal still blocks it, and egui
-        // drops a focus request for a widget that was not interactive last frame. Ask again on
-        // the first frame after the close (found by the WI-1586 Orca walk).
-        if let Some(opener) = ctx.data_mut(|data| {
-            data.remove_temp::<Option<Id>>(opener_key.with("pending"))
-                .flatten()
-        }) {
-            ctx.memory_mut(|memory| memory.request_focus(opener));
-        }
-
-        if !*open {
-            // Closed by the app: forget the open state so the next opening captures the opener again.
-            if ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false)) {
-                restore_focus(ctx, opener_key);
-                ctx.data_mut(|data| data.insert_temp(seen_key, false));
-            }
+        let Some(opening) = track_open(ctx, id, *open) else {
             return DialogResult::Closed(CloseReason::Programmatic);
-        }
-
+        };
         let theme = Theme::get(ctx);
-        let opening = !ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false));
-        if opening {
-            let previous = ctx.memory(|memory| memory.focused());
-            ctx.data_mut(|data| {
-                data.insert_temp(opener_key, previous);
-                data.insert_temp(seen_key, true);
-            });
-        }
 
         let width = if self.width.is_finite() && self.width > 0.0 {
             self.width.min(10_000.0)
@@ -279,19 +252,7 @@ impl<'a> Dialog<'a> {
         // A popup open before the body owns Escape. Otherwise the dialog reads the key even when
         // a focused control's event filter would have hidden it from `key_pressed`.
         if close.is_none() && shown.is_top_modal && !shown.any_popup_open {
-            let escape = ctx.input(|input| {
-                input.key_pressed(Key::Escape)
-                    || input.events.iter().any(|event| {
-                        matches!(
-                            event,
-                            egui::Event::Key {
-                                key: Key::Escape,
-                                pressed: true,
-                                ..
-                            }
-                        )
-                    })
-            });
+            let escape = escape_pressed(ctx);
             if escape && !matches!(self.kind, DialogKind::Alert) {
                 close = Some(CloseReason::Escape);
             }
@@ -325,8 +286,7 @@ impl<'a> Dialog<'a> {
 
         if let Some(reason) = close {
             *open = false;
-            ctx.data_mut(|data| data.insert_temp(seen_key, false));
-            restore_focus(ctx, opener_key);
+            finish_close(ctx, id);
             return DialogResult::Closed(reason);
         }
 
@@ -339,12 +299,70 @@ struct ActionState {
     close_requested: bool,
 }
 
-/// Give focus back to the widget that had it when the dialog opened.
-fn restore_focus(ctx: &Context, opener_key: Id) {
+/// Opener tracking shared by the modal surfaces (Dialog, Drawer, BottomSheet).
+///
+/// Returns `None` while `open` is `false`, after giving focus back to the opener if the surface
+/// was open last frame. Otherwise returns whether this is the frame the surface opens, and on
+/// that frame records the focused widget as the opener.
+pub(crate) fn track_open(ctx: &Context, id: Id, open: bool) -> Option<bool> {
+    let opener_key = id.with("opener");
+    let seen_key = id.with("seen");
+
+    // A close requests focus for the opener while the modal still blocks it, and egui
+    // drops a focus request for a widget that was not interactive last frame. Ask again on
+    // the first frame after the close (found by the WI-1586 Orca walk).
+    if let Some(opener) = ctx.data_mut(|data| {
+        data.remove_temp::<Option<Id>>(opener_key.with("pending"))
+            .flatten()
+    }) {
+        ctx.memory_mut(|memory| memory.request_focus(opener));
+    }
+
+    if !open {
+        // Closed by the app: forget the open state so the next opening captures the opener again.
+        if ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false)) {
+            finish_close(ctx, id);
+        }
+        return None;
+    }
+
+    let opening = !ctx.data(|data| data.get_temp::<bool>(seen_key).unwrap_or(false));
+    if opening {
+        let previous = ctx.memory(|memory| memory.focused());
+        ctx.data_mut(|data| {
+            data.insert_temp(opener_key, previous);
+            data.insert_temp(seen_key, true);
+        });
+    }
+    Some(opening)
+}
+
+/// Mark the surface closed and give focus back to the widget that had it when it opened.
+pub(crate) fn finish_close(ctx: &Context, id: Id) {
+    let opener_key = id.with("opener");
+    ctx.data_mut(|data| data.insert_temp(id.with("seen"), false));
     if let Some(opener) = ctx.data(|data| data.get_temp::<Option<Id>>(opener_key)).flatten() {
         ctx.memory_mut(|memory| memory.request_focus(opener));
         ctx.data_mut(|data| data.insert_temp(opener_key.with("pending"), Some(opener)));
     }
+}
+
+/// Escape was pressed this frame, even if a focused control's event filter hid it from
+/// `key_pressed`.
+pub(crate) fn escape_pressed(ctx: &Context) -> bool {
+    ctx.input(|input| {
+        input.key_pressed(Key::Escape)
+            || input.events.iter().any(|event| {
+                matches!(
+                    event,
+                    egui::Event::Key {
+                        key: Key::Escape,
+                        pressed: true,
+                        ..
+                    }
+                )
+            })
+    })
 }
 
 fn show_actions(ui: &mut Ui, actions: DialogActions<'_>, stack: bool, opening: bool) -> ActionState {
@@ -412,7 +430,7 @@ fn note_button(ui: &Ui, dialog_scope: Id, button_id: Id, label: &str, primary: O
     }
 }
 
-fn rounded_u8(value: f32) -> u8 {
+pub(crate) fn rounded_u8(value: f32) -> u8 {
     if !value.is_finite() {
         return 0;
     }
