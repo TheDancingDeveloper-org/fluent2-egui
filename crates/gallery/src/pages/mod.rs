@@ -10,6 +10,7 @@ mod docking;
 mod drawer;
 mod file_dialog;
 mod icons;
+mod markdown;
 mod ribbon;
 mod tab_strip;
 mod terminal;
@@ -23,6 +24,7 @@ pub use docking::DockingPage;
 pub use drawer::DrawerPage;
 pub use file_dialog::FileDialogPage;
 pub use icons::IconsPage;
+pub use markdown::MarkdownPage;
 pub use ribbon::RibbonPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
@@ -53,5 +55,6 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(FileDialogPage::default()),
         Box::new(DrawerPage::default()),
         Box::new(DockingPage::default()),
+        Box::new(MarkdownPage::default()),
     ]
 }

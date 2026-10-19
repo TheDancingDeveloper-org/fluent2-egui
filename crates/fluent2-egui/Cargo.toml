@@ -21,6 +21,7 @@ vte = { version = "0.15", optional = true }
 unicode-width = { version = "0.2", optional = true }
 # Native and browser file dialogs (MIT). `xdg-portal` keeps Linux free of GTK.
 rfd = { version = "0.17", optional = true, default-features = false, features = ["xdg-portal"] }
+pulldown-cmark = { version = "0.13.4", default-features = false, optional = true }
 
 [features]
 default = ["bundled-font"]
@@ -40,6 +41,9 @@ file-dialog = ["dep:rfd", "dep:pollster", "dep:wasm-bindgen-futures"]
 # pane, tab drag between panes and collapsible side docks. Not a Fluent component, so off by
 # default. No extra dependencies. See docs/specs/data-views.md §9.
 docking = []
+# MarkdownView (`data::markdown`): CommonMark plus GFM tables, strikethrough and task lists on
+# `pulldown-cmark`, painted with the Fluent type ramp. Not a Fluent component, so off by default.
+markdown = ["dep:pulldown-cmark"]
 # Pixel snapshots through a wgpu adapter. Off in `cargo test`; see tests/font_snapshots.rs.
 # Also turns on egui's default fonts, so the egui-default option has its Ubuntu-Light face.
 snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot", "egui/default_fonts"]

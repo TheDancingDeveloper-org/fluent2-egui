@@ -40,6 +40,28 @@ role = "dependency"
 watch = ["src/lib.rs", "CHANGELOG.md"]
 notes = "Cargo dependency of fluent2-egui behind the `terminal` feature (crates.io vte 0.15.0, tag v0.15.0). Zed's crates/terminal and terminal_view are GPL-3.0: design reference only, no code copied."
 
+[[source]]
+name = "pulldown-cmark"
+repo = "pulldown-cmark/pulldown-cmark"
+branch = "master"
+rev = "38e4d08f14ec4bd9783270e9623db7681ebed968"
+reviewed = "2026-10-19"
+licence = "MIT"
+role = "dependency"
+watch = ["pulldown-cmark/src/lib.rs", "pulldown-cmark/Cargo.toml"]
+notes = "Cargo dependency of fluent2-egui behind the `markdown` feature (crates.io pulldown-cmark 0.13.4, tag v0.13.4, default features off). Zed's crates/markdown and markdown_preview are GPL-3.0: design reference only, no code copied."
+
+[[source]]
+name = "egui_commonmark"
+repo = "lampsitter/egui_commonmark"
+branch = "master"
+rev = "4374859276536d5660ba05b1f64f009e2e8199c1"
+reviewed = "2026-10-19"
+licence = "MIT OR Apache-2.0"
+role = "reference"
+watch = ["egui_commonmark_backend/src"]
+notes = "Compared before writing data/markdown (WI-1796); not used because it paints with egui visuals and opens links itself. No code copied."
+
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
 
