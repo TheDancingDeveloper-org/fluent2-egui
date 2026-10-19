@@ -82,6 +82,7 @@ pub struct List<'a> {
     row_height: Option<f32>,
     estimate: Option<f32>,
     label: Option<String>,
+    row_label: Option<Box<dyn Fn(usize) -> String + 'a>>,
 }
 
 /// Per-list memory of the variable-height mode (§6.1): measured heights and the scroll anchor.
@@ -152,7 +153,18 @@ impl<'a> List<'a> {
             row_height: None,
             estimate: None,
             label: None,
+            row_label: None,
         }
+    }
+
+    /// Accessible text of each row, from its index (WI-1848).
+    ///
+    /// AccessKit derives no name from a ListBoxOption's or ListItem's children, so without this
+    /// a screen reader says nothing as focus moves through the list. Usually the row's main text.
+    #[must_use]
+    pub fn row_label(mut self, f: impl Fn(usize) -> String + 'a) -> Self {
+        self.row_label = Some(Box::new(f));
+        self
     }
 
     /// Rows of different heights (§6.1). Each row is laid out top to bottom, measured when it is
@@ -373,7 +385,11 @@ impl<'a> List<'a> {
                     ui.painter().rect_filled(row_rect, ring_radius, fill);
                 }
                 hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
+                let row_text = self.row_label.as_ref().map(|label| label(index));
                 ui.ctx().accesskit_node_builder(hit.id, |node| {
+                    if let Some(text) = row_text {
+                        node.set_label(text);
+                    }
                     if mode == SelectionMode::None {
                         node.set_role(Role::ListItem);
                     } else {

@@ -176,7 +176,11 @@ pub struct DataGrid<'a> {
     selection_mode: SelectionMode,
     focus_mode: FocusMode,
     label: Option<String>,
+    cell_text: Option<CellText<'a>>,
 }
+
+/// The accessible text of one cell, from its row index and column id.
+type CellText<'a> = Box<dyn Fn(usize, &'static str) -> String + 'a>;
 
 /// Reports gathered inside the scroll area and returned by [`DataGrid::show`].
 #[derive(Default)]
@@ -211,6 +215,7 @@ impl<'a> DataGrid<'a> {
             selection_mode: SelectionMode::None,
             focus_mode: FocusMode::Row,
             label: None,
+            cell_text: None,
         }
     }
 
@@ -246,6 +251,17 @@ impl<'a> DataGrid<'a> {
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
+        self
+    }
+
+    /// Accessible text of each data cell, from its row index and column id (WI-1848).
+    ///
+    /// Screen readers read the focused cell's text, and a row reads its cells' text joined with
+    /// ", ". AccessKit does not derive a cell's or row's name from the widgets drawn in it, so
+    /// without this the grid is silent as focus moves. Usually the same string the cell draws.
+    #[must_use]
+    pub fn cell_text(mut self, f: impl Fn(usize, &'static str) -> String + 'a) -> Self {
+        self.cell_text = Some(Box::new(f));
         self
     }
 
@@ -452,7 +468,15 @@ impl<'a> DataGrid<'a> {
                         ui.painter().hline(row_rect.x_range(), row_rect.bottom(), stroke);
                     }
                     let row_selected = (self.selection_mode != SelectionMode::None).then_some(selected);
-                    a11y::row(ui.ctx(), row_hit.id, row + 1, row_selected);
+                    let row_label = self.cell_text.as_ref().map(|text| {
+                        self.columns
+                            .iter()
+                            .map(|column| text(row, column.id))
+                            .filter(|part| !part.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    });
+                    a11y::row(ui.ctx(), row_hit.id, row + 1, row_selected, row_label);
                     if state
                         .focus
                         .is_some_and(|focus| !focus.header && focus.row == id && focus.column.is_none())
@@ -490,7 +514,8 @@ impl<'a> DataGrid<'a> {
                             grid_key.with(("cell", id.0, index)),
                             Sense::hover(),
                         );
-                        a11y::cell(ui.ctx(), cell_hit.id, row + 1, index + lead_columns);
+                        let cell_label = self.cell_text.as_ref().map(|text| text(row, column.id));
+                        a11y::cell(ui.ctx(), cell_hit.id, row + 1, index + lead_columns, cell_label);
                         if state.focus.is_some_and(|focus| {
                             !focus.header && focus.row == id && focus.column == Some(index)
                         }) {
@@ -565,7 +590,7 @@ impl<'a> DataGrid<'a> {
                     grid_key.with("header-row"),
                     Sense::hover(),
                 );
-                a11y::row(ui.ctx(), header_row.id, 0, None);
+                a11y::row(ui.ctx(), header_row.id, 0, None, None);
                 for (index, column) in self.columns.iter().enumerate() {
                     // A sortable cell is interacted by `header::show`; its node is named here.
                     let id = if column.sortable {

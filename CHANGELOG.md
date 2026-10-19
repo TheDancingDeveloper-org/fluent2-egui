@@ -7,6 +7,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ### Added
 - `RadioGroup::label` and `Slider::label` set the accessible name (not drawn). Inside a `Field`, SpinButton, RadioGroup and Slider without a label of their own take the Field's label. The Slider still defaults to "Slider" outside a Field. `tests/a11y_keyboard.rs` now checks that every Tab stop has a name (WI-1843).
 - `Dialog::description` sets a plain-text accessible description on the dialog node (WI-1850).
+- Accessible text for data views: `DataGrid::cell_text(|row, column_id| ..)` labels each GridCell, and each Row reads its cells joined with ", "; `List::row_label(|row| ..)` labels each option. AccessKit derives no name from these nodes' children, so Orca was silent as focus moved through a grid or list. `Column::id()` returns a column's id. Used in the gallery DataGrid and List pages and in `examples/a11y_walk.rs` (WI-1848).
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
 ### Fixed

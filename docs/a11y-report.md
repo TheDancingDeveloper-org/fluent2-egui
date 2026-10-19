@@ -177,8 +177,8 @@ What Orca announces at the PR head:
 | Toast | "Saved" spoken on push, with no focus move | ok |
 | MessageBar, ProgressBar | not Tab stops; present as "notification 'Storage. Disk is almost full'" and "progress bar 40%" | ok |
 | TreeView | "Files, tree" then "Documents", "Report" on the arrow keys | ok; level and expanded state not spoken |
-| List | "Folders, list box"; arrows silent | **gap:** rows have no name (WI-1848) |
-| DataGrid | focus enters the grid, arrows silent | **gap:** cells and rows have no name (WI-1848) |
+| List | "Folders, list box"; arrows silent | fixed in tests (WI-1848): `List::row_label` names each option; not re-walked with Orca |
+| DataGrid | focus enters the grid, arrows silent | fixed in tests (WI-1848): `DataGrid::cell_text` names each cell, and a row reads its cells joined; not re-walked with Orca |
 | Title bar / QAT | "Save, button", "Undo", "Redo", "Customize", "Search, entry", "Minimize", "Maximize", "Close" | ok |
 | Ribbon | "File, button", "Home, page tab", "Paste, button", … "Font, combo box", "Size, combo box", "Bold, toggle button not pressed", "More, button", "Font dialog, button" | ok |
 | F6 regions | Save → Close → Select all → document entry → Zoom out | ok |

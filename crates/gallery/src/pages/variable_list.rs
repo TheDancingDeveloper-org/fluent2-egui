@@ -72,6 +72,7 @@ impl Page for VariableListPage {
             .selection_mode(SelectionMode::Multi)
             .row_id(|index| RowId(ids.get(index).copied().unwrap_or(u64::MAX)))
             .variable_height(56.0)
+            .row_label(|index| ids.get(index).map(|id| subject(*id)).unwrap_or_default())
             .show(ui, &mut self.state, |cell, ui| {
                 let id = cell.row_id.0;
                 ui.strong(subject(id));

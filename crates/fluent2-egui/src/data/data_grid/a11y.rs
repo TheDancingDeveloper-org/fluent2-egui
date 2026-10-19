@@ -35,9 +35,13 @@ pub(super) fn grid(
 
 /// A row. `row_index` is absolute (header 0, data rows from 1). `selected` is set only in
 /// Single and Multi modes.
-pub(super) fn row(ctx: &Context, id: Id, row_index: usize, selected: Option<bool>) {
+pub(super) fn row(ctx: &Context, id: Id, row_index: usize, selected: Option<bool>, label: Option<String>) {
     ctx.accesskit_node_builder(id, |node| {
         node.set_role(Role::Row);
+        // AccessKit derives no name from a Row's children, so the row carries its text (WI-1848).
+        if let Some(label) = label {
+            node.set_label(label);
+        }
         node.set_row_index(row_index);
         if let Some(selected) = selected {
             node.set_selected(selected);
@@ -46,9 +50,13 @@ pub(super) fn row(ctx: &Context, id: Id, row_index: usize, selected: Option<bool
 }
 
 /// A data cell.
-pub(super) fn cell(ctx: &Context, id: Id, row_index: usize, column_index: usize) {
+pub(super) fn cell(ctx: &Context, id: Id, row_index: usize, column_index: usize, label: Option<String>) {
     ctx.accesskit_node_builder(id, |node| {
         node.set_role(Role::GridCell);
+        // Nor from a GridCell's: egui labels inside the cell are not its text (WI-1848).
+        if let Some(label) = label {
+            node.set_label(label);
+        }
         node.set_row_index(row_index);
         node.set_column_index(column_index);
     });
