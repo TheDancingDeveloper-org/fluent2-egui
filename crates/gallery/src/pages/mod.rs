@@ -4,6 +4,7 @@
 //! [`pages`] below. Nothing else in the gallery needs to change.
 
 mod backstage;
+mod charts;
 mod code_view;
 mod command_palette;
 mod data_grid;
@@ -23,6 +24,7 @@ mod typography;
 mod variable_list;
 
 pub use backstage::BackstagePage;
+pub use charts::ChartsPage;
 pub use code_view::CodeViewPage;
 pub use command_palette::CommandPalettePage;
 pub use data_grid::DataGridPage;
@@ -68,6 +70,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TabStripPage::default()),
         Box::new(FileDialogPage::default()),
         Box::new(DrawerPage::default()),
+        Box::new(ChartsPage::default()),
         Box::new(DockingPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(MarkdownPage::default()),
