@@ -73,3 +73,8 @@ Primary actions use `Button` `Appearance::Primary`. Secondary actions use `Appea
 
 The surface sets AccessKit role `Dialog`, or `AlertDialog` for `DialogKind::Alert`. The accessible
 name is the title, via the node's label and a labelled-by relation to the title widget.
+
+The body runs in its own container node, and the surface has a described-by relation to it, the
+AccessKit form of Fluent's `aria-describedby`. Focus opens on the primary button, so this is how
+the body is announced with the dialog. `Dialog::description` also sets a plain-text description
+on the node, for screen readers that do not follow the relation (WI-1850).

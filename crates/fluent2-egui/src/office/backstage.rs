@@ -125,6 +125,7 @@ impl<'a> Backstage<'a> {
         let seen_key = id.with("seen");
         let text_focus_key = id.with("text_focus");
         let pending_key = id.with("pending");
+        let focus_in_key = id.with("focus_in");
 
         if !state.open {
             // Closed by the app: forget the opening, then give focus back to the opener once it
@@ -145,6 +146,7 @@ impl<'a> Backstage<'a> {
             ctx.data_mut(|data| {
                 data.insert_temp(opener_key, previous);
                 data.insert_temp(seen_key, true);
+                data.insert_temp(focus_in_key, FOCUS_IN_FRAMES);
             });
         }
 
@@ -227,6 +229,22 @@ impl<'a> Backstage<'a> {
                 });
             });
 
+        // Focus moves into the backstage on open, to the selected entry (WI-1850). egui drops a
+        // focus request for a widget that was not interactive last frame, and the entries are
+        // new on the opening frame, so the request repeats until it takes, for a few frames.
+        let focus_in = ctx.data(|data| data.get_temp::<u8>(focus_in_key)).unwrap_or(0);
+        if focus_in > 0
+            && let Some(key) = selected
+        {
+            let target = row_id(id, key);
+            if ctx.memory(|memory| memory.has_focus(target)) {
+                ctx.data_mut(|data| data.insert_temp(focus_in_key, 0_u8));
+            } else {
+                ctx.memory_mut(|memory| memory.request_focus(target));
+                ctx.data_mut(|data| data.insert_temp(focus_in_key, focus_in - 1));
+            }
+        }
+
         // The backstage region, for assistive technology.
         let region = ui.interact(ui.min_rect(), id.with("region"), Sense::hover());
         ctx.accesskit_node_builder(region.id, |node| {
@@ -251,6 +269,9 @@ impl<'a> Backstage<'a> {
         }
     }
 }
+
+/// How many frames the backstage keeps asking for focus on its selected entry after opening.
+const FOCUS_IN_FRAMES: u8 = 3;
 
 /// Close the backstage: clear `open`, give focus back to the opener, and report it.
 fn close(state: &mut BackstageState, ctx: &Context, seen_key: Id, pending_key: Id) -> BackstageResponse {
