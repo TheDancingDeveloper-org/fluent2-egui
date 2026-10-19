@@ -18,6 +18,12 @@ use crate::theme::{Theme, c};
 const NARROW_SCREEN: f32 = 480.0;
 /// Default maximum surface width.
 const DEFAULT_WIDTH: f32 = 600.0;
+/// Space kept between a full-height surface and the screen's top and bottom edges.
+const SCREEN_MARGIN: f32 = spacing_vertical::XXL;
+/// Title and action row height assumed on the first frame, before they have been measured.
+const CHROME_ESTIMATE: f32 = 96.0;
+/// The body is never squeezed below this, even on a very short screen.
+const MIN_BODY_HEIGHT: f32 = 48.0;
 
 /// How the dialog reacts to the backdrop and to Escape.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -202,7 +208,29 @@ impl<'a> Dialog<'a> {
                     })
                     .inner;
 
-                let value = body(ui);
+                // The body scrolls when it is taller than the screen leaves room for, so the
+                // title and actions stay visible and every control stays inside the surface
+                // (WI-1912). The title and action heights come from the previous frame.
+                let chrome_key = id.with("chrome_height");
+                let chrome = ui
+                    .ctx()
+                    .data(|data| data.get_temp::<f32>(chrome_key))
+                    .unwrap_or(CHROME_ESTIMATE);
+                let max_body = (ui.ctx().content_rect().height()
+                    - 2.0 * (SCREEN_MARGIN + spacing_vertical::XXL)
+                    - chrome)
+                    .max(MIN_BODY_HEIGHT);
+                let scrolled = egui::ScrollArea::vertical()
+                    .id_salt(id.with("body"))
+                    .max_height(max_body)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        let value = body(ui);
+                        reveal_new_focus(ui, id.with("body_focus"));
+                        value
+                    });
+                let value = scrolled.inner;
+                let body_rect = scrolled.inner_rect;
 
                 let mut declared = DialogActions {
                     primary: None,
@@ -216,6 +244,15 @@ impl<'a> Dialog<'a> {
                 }
                 let primary = declared.primary;
                 let shown_actions = show_actions(ui, declared, stack_actions, opening);
+                // Measured from the layout cursor, not `min_rect`: the surface keeps last
+                // frame's size, so its rect would feed the old height back in and never shrink.
+                let measured = ((body_rect.top() - ui.max_rect().top())
+                    + (ui.cursor().top() - body_rect.bottom()))
+                .max(0.0);
+                if (measured - chrome).abs() > 0.5 {
+                    ui.ctx().data_mut(|data| data.insert_temp(chrome_key, measured));
+                    ui.ctx().request_discard("dialog chrome height changed");
+                }
 
                 // A focusable surface, so Tab has a stop even when the body has no widgets.
                 // It is allocated last, which makes it the last stop; the title is not a stop.
@@ -291,6 +328,25 @@ impl<'a> Dialog<'a> {
         }
 
         DialogResult::Open(value)
+    }
+}
+
+/// Scroll the body so a control that has just gained focus is in view.
+///
+/// Egui only scrolls to a widget focused by its own Tab handling; the dialog's focus trap and
+/// `request_focus` calls move focus without that, so the body does it here (WI-1912).
+fn reveal_new_focus(ui: &Ui, key: Id) {
+    let focused = ui.ctx().memory(|memory| memory.focused());
+    let last = ui.ctx().data(|data| data.get_temp::<Option<Id>>(key)).flatten();
+    if focused == last {
+        return;
+    }
+    ui.ctx().data_mut(|data| data.insert_temp(key, focused));
+    let Some(response) = focused.and_then(|id| ui.ctx().read_response(id)) else {
+        return;
+    };
+    if ui.min_rect().contains_rect(response.rect) && !ui.clip_rect().contains_rect(response.rect) {
+        ui.scroll_to_rect(response.rect, None);
     }
 }
 
@@ -398,7 +454,10 @@ fn show_actions(ui: &mut Ui, actions: DialogActions<'_>, stack: bool, opening: b
             }
         });
     } else if !labels.is_empty() {
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        // `Align::Min`, not `Center`: a centred cross axis spans all the height left in the
+        // surface, which is last frame's height, so the row (and the surface) never shrank.
+        // The buttons share one height, so top alignment looks the same (WI-1912).
+        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
             ui.spacing_mut().item_spacing.x = spacing_horizontal::S;
             for (label, appearance) in labels.iter().rev() {
                 let response = ui.add(Button::new(*label).appearance(*appearance).id_salt(*label));
