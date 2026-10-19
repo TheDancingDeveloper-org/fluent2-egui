@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- `RadioGroup::label` and `Slider::label` set the accessible name (not drawn). Inside a `Field`, SpinButton, RadioGroup and Slider without a label of their own take the Field's label. The Slider still defaults to "Slider" outside a Field. `tests/a11y_keyboard.rs` now checks that every Tab stop has a name (WI-1843).
 - `Dialog::description` sets a plain-text accessible description on the dialog node (WI-1850).
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 

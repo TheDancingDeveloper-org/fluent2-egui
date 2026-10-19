@@ -53,6 +53,16 @@ pub struct Field<'a> {
     _lifetime: std::marker::PhantomData<&'a ()>,
 }
 
+fn field_label_key() -> egui::Id {
+    egui::Id::new("fluent2_field_label")
+}
+
+/// The label of the [`Field`] whose child is running, if any. Controls use it as their
+/// accessible name when they have no label of their own.
+pub(crate) fn enclosing_field_label(ctx: &egui::Context) -> Option<String> {
+    ctx.data(|data| data.get_temp::<String>(field_label_key()))
+}
+
 impl<'a> Field<'a> {
     /// A field labelled `label`.
     pub fn new(label: impl Into<WidgetText>) -> Self {
@@ -139,7 +149,20 @@ impl<'a> Field<'a> {
                 .widget_info(|| WidgetInfo::labeled(WidgetType::Label, ui.is_enabled(), accessible.clone()));
         });
         ui.add_space(spacing_vertical::XXS);
+        // Controls in the child without a label of their own take the Field's label as their
+        // accessible name (WI-1843). The previous value is restored, so nested Fields work.
+        let key = field_label_key();
+        let outer = ui.ctx().data(|data| data.get_temp::<String>(key));
+        ui.ctx()
+            .data_mut(|data| data.insert_temp(key, accessible.clone()));
         let result = child(ui);
+        ui.ctx().data_mut(|data| {
+            if let Some(outer) = outer {
+                data.insert_temp(key, outer);
+            } else {
+                data.remove::<String>(key);
+            }
+        });
         if let Some(hint) = &self.hint {
             ui.add_space(spacing_vertical::XXS);
             paint_line(

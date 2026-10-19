@@ -116,6 +116,8 @@ impl Widget for SpinButton<'_> {
             suffix,
             label,
         } = self;
+        // Inside a Field, the Field's label is the default accessible name (WI-1843).
+        let label = label.or_else(|| super::field::enclosing_field_label(ui.ctx()));
         let current = clamp_value(*value, min, max);
         *value = current;
 
