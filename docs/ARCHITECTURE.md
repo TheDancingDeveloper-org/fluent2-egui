@@ -108,6 +108,11 @@ default build stays a Fluent library with no extra dependencies.
   Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
   (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
   --workspace` through the gallery's feature unification.
+- `diff`: `data::diff` (`DiffModel`, line and word diffs through `imara-diff`, and `DiffView`,
+  a read-only inline or side-by-side view virtualised with `rows::visible_rows`). Lines are
+  compared without terminators; colours come from palette tokens, with strokes in high
+  contrast. The gallery turns it on. Its tests (`tests/diff.rs`) are `#![cfg(feature = "diff")]`
+  and run under `cargo test --workspace` like the terminal ones.
 - `file-dialog`: `platform::file_dialog::FileDialog`, async open and save dialogs through `rfd`
   (MIT) on native and wasm. The dialog future runs on a worker thread (native) or the browser
   event loop (wasm), and the app polls the outcome each frame; nothing blocks. The gallery

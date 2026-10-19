@@ -62,6 +62,17 @@ role = "reference"
 watch = ["egui_commonmark_backend/src"]
 notes = "Compared before writing data/markdown (WI-1796); not used because it paints with egui visuals and opens links itself. No code copied."
 
+[[source]]
+name = "imara-diff"
+repo = "pascalkuthe/imara-diff"
+branch = "master"
+rev = "c0b655a86b5b4fc05324e08b9c684368e7413e1f"
+reviewed = "2026-10-19"
+licence = "Apache-2.0"
+role = "dependency"
+watch = ["src/lib.rs", "src/intern.rs", "CHANGELOG.md"]
+notes = "Cargo dependency of fluent2-egui behind the `diff` feature (crates.io imara-diff 0.2.0, tag v0.2.0, default features off). Zed's crates/buffer_diff and streaming_diff are GPL-3.0: design reference only, no code copied."
+
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
 
