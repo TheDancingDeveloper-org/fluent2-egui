@@ -1,10 +1,18 @@
 name: release
 
-# Publishes the three library crates to crates.io. Runs only on a version tag, never on push
-# to main. The operator tags; the crates.io token is the repo secret CARGO_REGISTRY_TOKEN.
+# Runs the gates on a version tag. Publishing the three library crates to crates.io happens
+# only from a manual run on the tag ref (Actions > release > Run workflow, use workflow from the
+# tag) with `publish_crates` ticked; a tag push never publishes. The crates.io token is the repo
+# secret CARGO_REGISTRY_TOKEN.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish_crates:
+        description: Publish fluent2-tokens, fluent2-icons and fluent2-egui to crates.io
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +47,7 @@ jobs:
 
   publish:
     needs: gates
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_crates && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
