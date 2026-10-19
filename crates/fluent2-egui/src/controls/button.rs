@@ -176,7 +176,7 @@ impl Widget for Button<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
-        let metrics = Metrics::of(self.size);
+        let metrics = Metrics::of(self.size).at(crate::theme::density_of(ui));
         let enabled = ui.is_enabled();
         let has_icon = self.icon.is_some();
         let icon_px = if has_icon { metrics.icon } else { 0.0 };
@@ -415,6 +415,12 @@ impl Metrics {
                 ramp: TypeRamp::Subtitle2,
             },
         }
+    }
+
+    /// These metrics at `density`: only the height (and so the icon-only width) changes.
+    pub(crate) fn at(mut self, density: crate::theme::Density) -> Self {
+        self.min_height = density.height(self.min_height);
+        self
     }
 
     pub(crate) fn text_style(&self) -> TextStyle {

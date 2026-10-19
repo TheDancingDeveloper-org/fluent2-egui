@@ -22,7 +22,13 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, strok
 use super::ButtonSize;
 
 pub(super) const VIRTUAL_THRESHOLD: usize = 50;
+/// Option row height at Medium density.
 pub(super) const OPTION_HEIGHT: f32 = 32.0;
+
+/// Option row height at `density`.
+pub(super) fn option_height(density: crate::theme::Density) -> f32 {
+    density.row(OPTION_HEIGHT)
+}
 const MAX_VISIBLE_ROWS: f32 = 8.0;
 
 pub(super) type PreviewFn<'a> = Box<dyn Fn(&mut Ui, &str) + 'a>;
@@ -96,7 +102,7 @@ impl Widget for Dropdown<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         let enabled = ui.is_enabled();
-        let height = field_height(self.size);
+        let height = field_height(self.size, theme.density);
         let width = finite(self.width.unwrap_or_else(|| ui.available_width())).max(0.0);
         let id = ui.make_persistent_id(self.id_salt);
         let open_id = id.with("open");
@@ -248,7 +254,8 @@ pub(super) fn show_listbox(
     if count == 0 {
         return (None, false);
     }
-    let popup_height = rows * OPTION_HEIGHT;
+    let option_h = option_height(crate::theme::density_of(ui));
+    let popup_height = rows * option_h;
     let popup_id = id.with("popup");
     let mut picked = None;
     // `Popup` is the layer egui hit-tests. A bare `Area` receives no pointer events, so a click
@@ -290,7 +297,7 @@ pub(super) fn show_listbox(
                 ScrollArea::vertical()
                     .id_salt(popup_id.with("scroll"))
                     .max_height(popup_height)
-                    .show_rows(ui, OPTION_HEIGHT, count, |ui, range| {
+                    .show_rows(ui, option_h, count, |ui, range| {
                         for index in range {
                             row(ui, index);
                         }
@@ -325,7 +332,10 @@ pub(super) fn option_row(
 ) -> Response {
     let theme = Theme::get(ui.ctx());
     let width = ui.available_width();
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width.max(0.0), OPTION_HEIGHT), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(
+        Vec2::new(width.max(0.0), option_height(theme.density)),
+        Sense::click(),
+    );
     let fill = if response.is_pointer_button_down_on() {
         Some(theme.color.subtle_background_pressed)
     } else if response.hovered() || active {
@@ -544,12 +554,13 @@ fn typed_letter(input: &egui::InputState) -> Option<char> {
     })
 }
 
-pub(super) fn field_height(size: ButtonSize) -> f32 {
-    match size {
+/// Field height for `size` at `density`.
+pub(super) fn field_height(size: ButtonSize, density: crate::theme::Density) -> f32 {
+    density.height(match size {
         ButtonSize::Small => 24.0,
         ButtonSize::Medium => 32.0,
         ButtonSize::Large => 40.0,
-    }
+    })
 }
 
 pub(super) fn icon_size(size: ButtonSize) -> IconSize {

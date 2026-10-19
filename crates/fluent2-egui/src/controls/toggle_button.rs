@@ -121,7 +121,7 @@ impl Widget for ToggleButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
-        let metrics = super::button::Metrics::of(self.size);
+        let metrics = super::button::Metrics::of(self.size).at(crate::theme::density_of(ui));
         let enabled = ui.is_enabled();
         let has_icon = self.icon.is_some();
         let icon_px = if has_icon { metrics.icon } else { 0.0 };

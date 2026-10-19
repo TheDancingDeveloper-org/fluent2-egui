@@ -87,10 +87,12 @@ impl Widget for Slider<'_> {
         } else {
             ui.available_width().clamp(120.0, 240.0)
         };
+        // Density grows the cross axis only (44 in Touch); the thumb stays 20.
+        let cross = crate::theme::density_of(ui).height(THUMB);
         let size = if vertical {
-            Vec2::new(THUMB, length)
+            Vec2::new(cross, length)
         } else {
-            Vec2::new(length, THUMB)
+            Vec2::new(length, cross)
         };
         let (rect, mut response) = ui.allocate_exact_size(size, Sense::drag());
         let enabled = ui.is_enabled();

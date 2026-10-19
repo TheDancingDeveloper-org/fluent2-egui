@@ -2,6 +2,11 @@
 
 use egui::CornerRadius;
 
+mod density;
+
+pub(crate) use density::of as density_of;
+pub use density::{Density, TOUCH_TARGET};
+
 use crate::foundation::text;
 use fluent2_tokens::generated::global;
 use fluent2_tokens::{AliasColors, BrandRamp, Rgba, Shadows};
@@ -34,6 +39,9 @@ pub struct Theme {
     /// Data view sizes (DataGrid, TreeView, List, NavigationView). Not Fluent tokens, so they
     /// are the same for every kind. See `docs/specs/data-views.md` §10 and D6.
     pub data: DataMetrics,
+    /// Compact, medium or touch sizing (`docs/specs/density.md`). Medium by default. Change it
+    /// with [`Self::with_density`], which also resizes [`Self::data`].
+    pub density: Density,
 }
 
 /// Sizes of the Office chrome, in points. Fixed by `docs/specs/office-chrome.md` §10 (D2).
@@ -145,6 +153,28 @@ pub struct DataMetrics {
     pub nav_item_height: f32,
 }
 
+impl DataMetrics {
+    /// The default metrics with row heights and hit targets for `density`. Pane widths and
+    /// breakpoints do not change.
+    #[must_use]
+    pub fn for_density(density: Density) -> Self {
+        let base = Self::default();
+        let row = |h: f32| density.row(h);
+        Self {
+            grid_row_height_medium: row(base.grid_row_height_medium),
+            grid_row_height_small: row(base.grid_row_height_small),
+            grid_row_height_extra_small: row(base.grid_row_height_extra_small),
+            grid_header_height: row(base.grid_header_height),
+            selection_cell_width: base.selection_cell_width.max(row(0.0)),
+            tree_row_height_medium: row(base.tree_row_height_medium),
+            tree_row_height_small: row(base.tree_row_height_small),
+            list_row_height: row(base.list_row_height),
+            nav_item_height: row(base.nav_item_height),
+            ..base
+        }
+    }
+}
+
 impl Default for DataMetrics {
     fn default() -> Self {
         Self {
@@ -176,6 +206,7 @@ impl Theme {
             brand,
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
+            density: Density::Medium,
         }
     }
 
@@ -189,6 +220,7 @@ impl Theme {
             brand,
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
+            density: Density::Medium,
         }
     }
 
@@ -202,7 +234,24 @@ impl Theme {
             brand: fluent2_tokens::FLUENT,
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
+            density: Density::Medium,
         }
+    }
+
+    /// This theme at `density`. Data-view row heights follow ([`DataMetrics::for_density`]).
+    ///
+    /// ```
+    /// use fluent2_egui::Theme;
+    /// use fluent2_egui::theme::Density;
+    ///
+    /// let touch = Theme::default().with_density(Density::Touch);
+    /// assert_eq!(touch.data.list_row_height, 44.0);
+    /// ```
+    #[must_use]
+    pub fn with_density(mut self, density: Density) -> Self {
+        self.density = density;
+        self.data = DataMetrics::for_density(density);
+        self
     }
 
     /// The theme last passed to [`install`], or [`Theme::default`] when none has.
@@ -236,7 +285,7 @@ pub fn install(ctx: &egui::Context, theme: &Theme) {
     text::install_system_fonts(ctx);
     text::install_text_styles(ctx);
     let visuals = visuals_of(theme);
-    let spacing = spacing_of();
+    let spacing = spacing_of(theme.density);
     for egui_theme in [egui::Theme::Light, egui::Theme::Dark] {
         ctx.style_mut_of(egui_theme, |style| {
             style.visuals = visuals.clone();
@@ -268,13 +317,16 @@ fn is_dark(rgba: Rgba) -> bool {
     sum < 3 * 128
 }
 
-fn spacing_of() -> egui::Spacing {
+fn spacing_of(density: Density) -> egui::Spacing {
     let mut spacing = egui::Spacing {
-        item_spacing: egui::vec2(global::spacing_horizontal::S, global::spacing_vertical::S),
+        item_spacing: density.item_spacing(),
         button_padding: egui::vec2(global::spacing_horizontal::M, global::spacing_vertical::XS),
         ..Default::default()
     };
-    spacing.interact_size.y = 32.0;
+    spacing.interact_size.y = density.height(32.0);
+    if density == Density::Touch {
+        spacing.interact_size.x = spacing.interact_size.x.max(TOUCH_TARGET);
+    }
     spacing
 }
 

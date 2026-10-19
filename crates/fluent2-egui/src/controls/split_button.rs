@@ -112,7 +112,7 @@ impl<'a> SplitButton<'a> {
     pub fn show(self, ui: &mut Ui, menu: impl FnOnce(&mut Ui)) -> SplitButtonResponse {
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
-        let metrics = Metrics::of(self.size);
+        let metrics = Metrics::of(self.size).at(crate::theme::density_of(ui));
         let enabled = ui.is_enabled();
         let label = self.text.text().to_owned();
 
@@ -242,6 +242,13 @@ impl Metrics {
                 ramp: TypeRamp::Subtitle2,
             },
         }
+    }
+
+    /// These metrics at `density`: the height and the chevron box change.
+    pub(crate) fn at(mut self, density: crate::theme::Density) -> Self {
+        self.min_height = density.height(self.min_height);
+        self.chevron = density.height(self.chevron);
+        self
     }
 
     pub(super) fn text_style(&self) -> TextStyle {

@@ -97,7 +97,7 @@ impl Widget for Combobox<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         let enabled = ui.is_enabled();
-        let height = field_height(self.size);
+        let height = field_height(self.size, crate::theme::density_of(ui));
         let width = finite(self.width.unwrap_or_else(|| ui.available_width())).max(0.0);
         let id = ui.make_persistent_id(self.id_salt);
         let open_id = id.with("open");

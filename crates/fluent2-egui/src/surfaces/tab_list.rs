@@ -168,7 +168,7 @@ impl<'a> TabList<'a> {
             } else {
                 0.0
             };
-            let cross = metrics.height;
+            let cross = crate::theme::density_of(ui).height(metrics.height);
             let main = finite(metrics.padding * 2.0 + icon_w + galley.size().x);
             sizes.push(if self.vertical {
                 Vec2::new(main.max(metrics.min_main), cross)

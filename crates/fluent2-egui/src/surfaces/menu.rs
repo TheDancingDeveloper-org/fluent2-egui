@@ -174,7 +174,8 @@ impl Widget for MenuItem<'_> {
             .clone()
             .into_galley(ui, Some(TextWrapMode::Truncate), text_width, font);
         let width = available;
-        let (auto_id, rect) = ui.allocate_space(Vec2::new(width, ITEM_HEIGHT));
+        let item_height = crate::theme::density_of(ui).row(ITEM_HEIGHT);
+        let (auto_id, rect) = ui.allocate_space(Vec2::new(width, item_height));
         let id = match self.id_salt {
             Some(salt) => ui.make_persistent_id(salt),
             None => auto_id,

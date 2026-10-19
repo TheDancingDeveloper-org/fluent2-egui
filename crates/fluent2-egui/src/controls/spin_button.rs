@@ -1,4 +1,4 @@
-//! Fluent SpinButton: an input field with stacked up and down chevrons.
+//! Fluent SpinButton: an input field with stacked up and down chevrons (side by side in Touch).
 //!
 //! The text buffer is edited freely and committed on Enter or focus loss. Invalid text
 //! reverts to the last committed value; Escape reverts without committing. Non-finite or
@@ -128,14 +128,36 @@ impl Widget for SpinButton<'_> {
         }
 
         let field_width = ui.available_width().clamp(96.0, 160.0);
+        let density = crate::theme::density_of(ui);
+        let field_height = density.height(FIELD_HEIGHT);
+        let chevron_width = CHEVRON_WIDTH.max(density.min_target());
+        // Touch puts the steppers side by side, each the full field height, so each is a 44×44
+        // target (DN3). The other densities stack them in one column.
+        let side_by_side = density == theme::Density::Touch;
+        let chevrons_width = if side_by_side {
+            chevron_width * 2.0
+        } else {
+            chevron_width
+        };
         let (rect, mut response) = ui.allocate_exact_size(
-            Vec2::new(field_width + CHEVRON_WIDTH, FIELD_HEIGHT),
+            Vec2::new(field_width + chevrons_width, field_height),
             Sense::hover(),
         );
-        let field = egui::Rect::from_min_size(rect.min, Vec2::new(field_width, FIELD_HEIGHT));
+        let field = egui::Rect::from_min_size(rect.min, Vec2::new(field_width, field_height));
         let chevrons = egui::Rect::from_min_max(field.right_top(), rect.right_bottom());
-        let up_rect = egui::Rect::from_min_size(chevrons.min, Vec2::new(CHEVRON_WIDTH, FIELD_HEIGHT / 2.0));
-        let down_rect = egui::Rect::from_min_max(up_rect.left_bottom(), chevrons.right_bottom());
+        let (up_rect, down_rect) = if side_by_side {
+            let down = egui::Rect::from_min_size(chevrons.min, Vec2::new(chevron_width, field_height));
+            (
+                egui::Rect::from_min_max(down.right_top(), chevrons.right_bottom()),
+                down,
+            )
+        } else {
+            let up = egui::Rect::from_min_size(chevrons.min, Vec2::new(chevron_width, field_height / 2.0));
+            (
+                up,
+                egui::Rect::from_min_max(up.left_bottom(), chevrons.right_bottom()),
+            )
+        };
 
         // The field is the one Tab stop; the arrows are for the pointer, and the keyboard
         // steps with Up/Down. Focusable arrows were unnamed Tab stops with no ring (WI-1586).
@@ -298,14 +320,14 @@ fn paint(ui: &Ui, theme: &Theme, parts: &Paint) {
         stroke,
         StrokeKind::Inside,
     );
-    painter.line_segment(
-        [up.left_top(), up.left_bottom()],
-        Stroke::new(1.0, theme::c(color.neutral_stroke_accessible)),
-    );
-    painter.line_segment(
-        [up.left_bottom(), up.right_bottom()],
-        Stroke::new(1.0, theme::c(color.neutral_stroke_accessible)),
-    );
+    let divider = Stroke::new(1.0, theme::c(color.neutral_stroke_accessible));
+    // Stacked: one rule left of the column and one between. Side by side (Touch): a rule left
+    // of each stepper.
+    painter.line_segment([down.left_top(), down.left_bottom()], divider);
+    painter.line_segment([up.left_top(), up.left_bottom()], divider);
+    if (up.left() - down.left()).abs() < f32::EPSILON {
+        painter.line_segment([up.left_bottom(), up.right_bottom()], divider);
+    }
     chevron(painter, up.center(), true, theme::c(color.neutral_foreground_1));
     chevron(
         painter,

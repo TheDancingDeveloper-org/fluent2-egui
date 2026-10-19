@@ -67,8 +67,9 @@ impl Widget for Switch<'_> {
             TextStyle::Name(TypeRamp::Body1.name().into()),
         );
         let label_text = galley.text().to_string();
-        let height = TRACK_H.max(galley.size().y);
-        let width = TRACK_W + gap + galley.size().x;
+        let density = crate::theme::density_of(ui);
+        let height = density.height(TRACK_H.max(galley.size().y));
+        let width = (TRACK_W + gap + galley.size().x).max(density.min_target());
         let (rect, response) =
             ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), Sense::click());
         let activated = response.clicked() || (response.has_focus() && space_pressed(ui));
