@@ -132,7 +132,20 @@ impl<'a> Card<'a> {
             id,
             sense,
         );
+        // High contrast fills a hovered, pressed or selected interactive card with the highlight
+        // colour, so its content takes the matching foreground (WI-1845). The hit area was
+        // registered above, so this frame's state is known before the content runs.
+        let ink = card_ink(
+            &theme,
+            interactive && enabled,
+            response.hovered(),
+            response.is_pointer_button_down_on(),
+            selected.as_deref().copied().unwrap_or(false),
+        );
         let scope = ui.scope(|ui| {
+            if let Some(ink) = ink {
+                ui.visuals_mut().override_text_color = Some(ink);
+            }
             ui.set_min_width(width);
             ui.add_space(padding);
             ui.horizontal(|ui| {
@@ -272,6 +285,11 @@ impl<'a> CardHeader<'a> {
     pub fn show(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         button::ensure_type_ramp(ui);
+        // Inside a hovered, pressed or selected card the card sets the text colour for its fill
+        // (WI-1845); the header follows it for the title, description and icon.
+        let ink = ui.visuals().override_text_color;
+        let title_color = ink.unwrap_or_else(|| c(theme.color.neutral_foreground_1));
+        let description_color = ink.unwrap_or_else(|| c(theme.color.neutral_foreground_2));
         ui.horizontal(|ui| {
             if let Some(icon) = self.image {
                 let size = 32.0;
@@ -282,7 +300,7 @@ impl<'a> CardHeader<'a> {
                     icon,
                     IconSize::S20,
                     fluent2_icons::Style::Regular,
-                    Some(c(theme.color.neutral_foreground_1)),
+                    Some(title_color),
                 );
             }
             ui.vertical(|ui| {
@@ -296,8 +314,7 @@ impl<'a> CardHeader<'a> {
                     Vec2::new(galley.size().x.max(1.0), galley.size().y.max(1.0)),
                     Sense::hover(),
                 );
-                ui.painter()
-                    .galley(rect.min, galley, c(theme.color.neutral_foreground_1));
+                ui.painter().galley(rect.min, galley, title_color);
                 if let Some(description) = self.description {
                     let galley = description.into_galley(
                         ui,
@@ -309,8 +326,7 @@ impl<'a> CardHeader<'a> {
                         Vec2::new(galley.size().x.max(1.0), galley.size().y.max(1.0)),
                         Sense::hover(),
                     );
-                    ui.painter()
-                        .galley(rect.min, galley, c(theme.color.neutral_foreground_2));
+                    ui.painter().galley(rect.min, galley, description_color);
                 }
             });
             if let Some(action) = self.action {
@@ -319,6 +335,29 @@ impl<'a> CardHeader<'a> {
         })
         .response
     }
+}
+
+/// The content foreground for an interactive card's fill, or `None` at rest.
+fn card_ink(
+    theme: &Theme,
+    live: bool,
+    hovered: bool,
+    pressed: bool,
+    selected: bool,
+) -> Option<egui::Color32> {
+    if !live {
+        return None;
+    }
+    let color = if pressed {
+        theme.color.neutral_foreground_1_pressed
+    } else if hovered {
+        theme.color.neutral_foreground_1_hover
+    } else if selected {
+        theme.color.neutral_foreground_1_selected
+    } else {
+        return None;
+    };
+    Some(c(color))
 }
 
 fn card_face(
