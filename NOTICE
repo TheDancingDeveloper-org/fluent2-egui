@@ -37,6 +37,10 @@ upstream repository, path, revision and copyright holder.
   feature; no vte source is copied.
 - imara-diff (pascalkuthe/imara-diff, Apache-2.0) is a Cargo dependency of the optional `diff`
   feature; no imara-diff source is copied.
+- syntect (trishume/syntect, MIT) is a Cargo dependency of the optional `highlight` feature; no
+  syntect source is copied. Its bundled syntax definitions (from sublimehq/Packages and others)
+  are compiled into binaries that turn the feature on; their licences are listed in the syntect
+  repository.
 - fluent-gpui (thedancingdeveloper/fluent-gpui, Apache-2.0): `crates/fluent-layout/src/command_palette.rs`
   @ f601e54b4e58e416bc7495a75468b82af9a10545, adapted into
   `crates/fluent2-egui/src/surfaces/command_palette.rs`. Copyright (c) 2026 sprooty, who relicensed
