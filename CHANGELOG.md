@@ -4,6 +4,9 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+- `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
+
 ## [0.2.0] - 2026-10-19
 
 Minor release: 0.1.0 was prepared but never tagged or published, and a large additive widget wave has landed since (TabStrip, docking, DiffView, CodeView, MarkdownView, TerminalView, CommandPalette, Drawer, Pager, charts, density). Pre-1.0, new public API takes a minor bump.

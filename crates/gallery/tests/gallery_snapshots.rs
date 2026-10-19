@@ -215,7 +215,11 @@ impl Controls {
             ui.add_space(4.0);
             ui.add(Slider::new(&mut self.volume, 0.0..=10.0));
             ui.add_space(4.0);
-            ui.add(SpinButton::new(&mut self.copies).range(1.0..=99.0));
+            ui.add(
+                SpinButton::new(&mut self.copies)
+                    .range(1.0..=99.0)
+                    .label("Copies"),
+            );
             ui.add_space(4.0);
             ui.add(
                 Dropdown::new("colour", &mut self.colour, &["Red", "Green", "Blue"]).placeholder("Colour"),

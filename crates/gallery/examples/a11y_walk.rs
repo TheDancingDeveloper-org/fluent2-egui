@@ -102,7 +102,11 @@ impl Walk {
         ui.add(Input::new(&mut self.name).placeholder("Name"));
         ui.add(Textarea::new(&mut self.notes));
         ui.add(Slider::new(&mut self.volume, 0.0..=10.0));
-        ui.add(SpinButton::new(&mut self.copies).range(1.0..=99.0));
+        ui.add(
+            SpinButton::new(&mut self.copies)
+                .range(1.0..=99.0)
+                .label("Copies"),
+        );
         ui.add(Dropdown::new("colour", &mut self.colour, &["Red", "Green", "Blue"]).placeholder("Colour"));
         ui.add(Combobox::new("font", &mut self.font, &["Arial", "Calibri"]).placeholder("Font"));
         TabList::new("tabs", &mut self.tab)
