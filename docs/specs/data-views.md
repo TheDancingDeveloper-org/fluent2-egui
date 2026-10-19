@@ -22,7 +22,7 @@ it starts.
 | D6 | Sizes that are not Fluent tokens (row heights, selection column width, nav pane widths) are fields of a `DataMetrics` struct held by `Theme` (`Theme::data`), the same way `Theme::chrome` holds `ChromeMetrics`. WI-1581 adds it. | Rule 7. The precedent is office-chrome D2. |
 | D7 | DataGrid, TreeView and List share one crate-private module, `data/rows.rs`: viewport-to-row maths, focus movement, selection maths (anchor, ranges, toggles) and row background painting. It is the "single code path" of item §6. | One keyboard and selection behaviour across the three views. |
 | D8 | SplitView adapts craft-libs `crates/ui/src/layout/geometry.rs` and `resize.rs` (§8). craft-libs moves from `role = "reference"` to `role = "adapted"` in that PR. | The code is small, panic-free, already handles NaN and tiny rects, and has keyboard and AccessKit support. Writing it again gains nothing. |
-| D9 | **No docking in 0.1** (§9). | See §9. |
+| D9 | **No docking in 0.1** (§9). Amended by WI-1794: docking ships after 0.1 as the optional `docking` feature, on our own split tree (§9.1). | See §9. |
 | D10 | Column ids, tree keys of the default type, and nav item keys are `&'static str` or caller-chosen hashable values, never labels. Duplicates do not panic: the first wins. | Rules 4 and 9; office-chrome D4. |
 
 ## File layout
@@ -640,6 +640,48 @@ an adapter over **`egui_tiles`**: its `Behavior` trait lets us paint tabs with T
 theme without a parallel style struct, and its licence matches ours. This needs its own work
 item and an `upstream.toml` dependency entry.
 
+### 9.1 Amendment (WI-1794, 2026-10-19): our own split tree
+
+The Vogt port (gap G2 in `docs/vogt-port-gap-analysis.md`) needs pane splits, side docks and
+dragging a tab into a pane. That reopens the 0.1 decision above. Docking ships as the optional,
+off-by-default `docking` cargo feature, on **our own split tree**, not an adapter over
+`egui_tiles` or `egui_dock`:
+
+- **No third-party dependency.** Reason 2 above still holds: a docking crate would make every
+  egui minor upgrade wait on its release. The feature adds no dependency at all.
+- **It is small.** The parts we need are a binary split tree and drop zones. Dividers reuse
+  SplitView (§8) and each pane is a TabStrip (WI-1793), so the new code is the tree model,
+  its painter and the drop logic.
+- **The model is plain data.** `DockTree<T>` holds the app's tab values, so restoring a saved
+  layout needs no id-to-widget registry; with `serde` it serialises as is.
+
+Design references only, nothing copied: fluent-gpui `fluent-layout` `dock.rs`, `pane_group.rs`,
+`pane.rs`, `workspace.rs` (a two-pane splitter and fixed dock panels; no split tree), Zed's
+workspace panes (GPL, design only), and `egui_tiles`.
+
+**Model** (`surfaces::DockTree<T>`). A tree of `DockNode::Pane(Pane { id, tabs, selected })`
+and `DockNode::Split { axis, state: SplitState, first, second }`. `PaneId`s are never reused.
+Operations: `add_tab`, `split(pane, side, tab)`, `close_tab`, `move_tab(from, index,
+DropTarget::{Tabs, Split})`, `reorder_tab`. Invariants after every operation: no empty pane,
+no split with one child (an emptied pane is removed and its sibling takes the parent's place),
+and a pane's `selected` is in range. A tab cannot split its own pane when it is that pane's
+only tab. Invalid ids or indices change nothing.
+
+**View** (`surfaces::DockArea`). The app implements `DockViewer<T>` (`tab(&T) -> StripTab`,
+`ui(&mut Ui, &mut T)`). Each split is a SplitView keyed by its first pane's id. Each pane is a
+TabStrip above the selected tab's body. A tab dragged out of its strip shows a drop preview
+on the pane under the pointer: the outer 25 % of each side splits that side, the middle joins
+the pane's tabs. `DockArea::show` applies reorders, moves and closes to the tree and returns
+the closed tab values in `DockResponse`. TabStrip gains `dragging` and `dropped_outside` on its
+response for this.
+
+**Side docks** (`surfaces::SideDock`). One collapsible panel on the left, right or bottom of
+some content, with a title, a close button and a SplitView divider. `SideDockState { open,
+size }` is the app's (serde). The app reopens a closed dock.
+
+Out of scope: floating windows, tabs torn out to new OS windows, and docks that hold a
+`DockArea` of their own panes (nest a `DockArea` in a dock body instead).
+
 ## 10. Tokens
 
 `color.` is `Theme::color`. Sizes marked *DM* are `DataMetrics` fields (D6); others are
@@ -718,7 +760,7 @@ Against the Vogt titles of WI-1581 to WI-1585 (read 2026-10-17).
 | §3, §4 | WI-1583 |
 | §5, §6, `rows.rs` selection reuse | WI-1584 |
 | §7, §8, UPSTREAM changes | WI-1585 |
-| §9 | none needed (no docking in 0.1) |
+| §9 | none needed (no docking in 0.1); §9.1 docking: WI-1794 |
 | §10 | every item, for its part |
 
 **Correction:** §2.2 reuses SplitView's adapted `ResizeHandle`, but WI-1585 can land after

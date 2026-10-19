@@ -112,6 +112,10 @@ default build stays a Fluent library with no extra dependencies.
   (MIT) on native and wasm. The dialog future runs on a worker thread (native) or the browser
   event loop (wasm), and the app polls the outcome each frame; nothing blocks. The gallery
   turns it on.
+- `docking`: `surfaces::DockTree`, `DockArea` and `SideDock` (`docs/specs/data-views.md`
+  §9.1): a pane split tree with a TabStrip per pane and collapsible side docks. No extra
+  dependencies. The gallery turns it on, with `serde`, so `tests/dock.rs` and the tree's serde
+  round trip run under `cargo test --workspace`.
 
 ## Gates (run before every commit; CI runs the same)
 
