@@ -173,7 +173,7 @@ What Orca announces at the PR head:
 | TabList | "Home, page tab" | ok |
 | Link | "Help, link" | ok |
 | Menu (MenuItem) | "New." / "Close." | ok |
-| Dialog | open: "Save, button"; Tab: "Save changes?, dialog"; Escape: "Open dialog, button" (focus restored) | the title and body are not read on open (WI-1850) |
+| Dialog | open: "Save, button"; Tab: "Save changes?, dialog"; Escape: "Open dialog, button" (focus restored) | fixed (WI-1850): the dialog is described by its body (`described_by`), and `Dialog::description` sets a plain-text description; not re-walked with Orca |
 | Toast | "Saved" spoken on push, with no focus move | ok |
 | MessageBar, ProgressBar | not Tab stops; present as "notification 'Storage. Disk is almost full'" and "progress bar 40%" | ok |
 | TreeView | "Files, tree" then "Documents", "Report" on the arrow keys | ok; level and expanded state not spoken |
@@ -183,7 +183,7 @@ What Orca announces at the PR head:
 | Ribbon | "File, button", "Home, page tab", "Paste, button", … "Font, combo box", "Size, combo box", "Bold, toggle button not pressed", "More, button", "Font dialog, button" | ok |
 | F6 regions | Save → Close → Select all → document entry → Zoom out | ok |
 | KeyTips (Alt) | nothing | **gap** (WI-1849) |
-| Backstage | Space on File: "frame", focus lost | **gap** (WI-1850) |
+| Backstage | Space on File: "frame", focus lost | fixed (WI-1850): focus moves to the selected entry on open, covered by `a11y_keyboard.rs`; not re-walked with Orca |
 | Status bar | "100%, button", "Zoom in", "Zoom, slider, 100, 25 percent", "Zoom out" | ok |
 
 **Fixed in this PR because of the walk**, each re-walked afterwards:

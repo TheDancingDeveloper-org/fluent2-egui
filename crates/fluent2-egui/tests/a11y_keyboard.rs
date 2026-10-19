@@ -306,3 +306,92 @@ fn escape_returns_focus_to_a_keyboard_opener() {
         "focus did not return to the opener"
     );
 }
+
+#[test]
+fn opening_backstage_from_the_keyboard_moves_focus_into_it() {
+    use fluent2_egui::office::backstage::{Backstage, BackstageState};
+    // WI-1850: Tab to File, Space. Focus lands on the selected Backstage entry, and Tab
+    // moves on inside the backstage instead of back to the page.
+    let mut harness = Harness::new_ui_state(
+        |ui, state: &mut BackstageState| {
+            install(ui.ctx(), &Theme::default());
+            if !state.open {
+                ui.add(Button::new("Before"));
+                if ui.add(Button::new("File")).clicked() {
+                    state.open = true;
+                }
+            }
+            let _ = Backstage::new(state)
+                .page("info", "Info", |ui| {
+                    ui.label("Info body");
+                })
+                .page("new", "New", |ui| {
+                    ui.label("New body");
+                })
+                .show(ui);
+        },
+        BackstageState::default(),
+    );
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    assert!(harness.get_by_label("File").is_focused(), "Tab reached File");
+    harness.key_press(egui::Key::Space);
+    harness.run();
+    assert!(harness.state().open, "Space opened the backstage");
+    assert!(
+        harness.get_by_role_and_label(Role::Button, "Info").is_focused(),
+        "focus moved to the selected backstage entry"
+    );
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    assert!(
+        harness.get_by_role_and_label(Role::Button, "New").is_focused(),
+        "Tab stays inside the backstage"
+    );
+}
+
+#[test]
+fn dialog_is_described_by_its_body_on_open() {
+    use fluent2_egui::Dialog;
+    // WI-1850: focus opens on the primary button, so the dialog node carries its body as the
+    // description relation, and an explicit description when one is given.
+    let mut harness = Harness::new_ui(|ui| {
+        install(ui.ctx(), &Theme::default());
+        let mut open = true;
+        let _ = Dialog::new("described")
+            .title("Save changes?")
+            .description("Your document has unsaved changes.")
+            .actions(|actions| actions.primary("Save"))
+            .show(ui.ctx(), &mut open, |ui| {
+                ui.label("Your document has unsaved changes.");
+            });
+    });
+    harness.run();
+    harness.run();
+    let dialog = harness.get_by_role_and_label(Role::Dialog, "Save changes?");
+    let node = dialog.accesskit_node();
+    assert_eq!(
+        node.description().as_deref(),
+        Some("Your document has unsaved changes.")
+    );
+    let described_by = node.data().described_by().to_vec();
+    assert_eq!(described_by.len(), 1, "one describing node");
+    let Some(body) = harness
+        .root()
+        .children_recursive()
+        .find(|n| n.accesskit_node().locate().0 == described_by[0])
+    else {
+        panic!("the describing node is not in the tree");
+    };
+    assert!(
+        body.children_recursive()
+            .any(
+                |n| n.accesskit_node().label().as_deref() == Some("Your document has unsaved changes.")
+                    || n.accesskit_node().value().as_deref() == Some("Your document has unsaved changes.")
+            ),
+        "the describing node holds the body text"
+    );
+}

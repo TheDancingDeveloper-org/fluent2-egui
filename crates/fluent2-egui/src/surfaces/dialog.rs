@@ -118,6 +118,7 @@ pub struct Dialog<'a> {
     kind: DialogKind,
     width: f32,
     actions: Option<ActionBuild<'a>>,
+    description: Option<String>,
 }
 
 impl<'a> Dialog<'a> {
@@ -129,6 +130,7 @@ impl<'a> Dialog<'a> {
             kind: DialogKind::Modal,
             width: DEFAULT_WIDTH,
             actions: None,
+            description: None,
         }
     }
 
@@ -150,6 +152,17 @@ impl<'a> Dialog<'a> {
     #[must_use]
     pub fn width(mut self, width: f32) -> Self {
         self.width = width;
+        self
+    }
+
+    /// Plain-text accessible description, read with the title when the dialog opens.
+    ///
+    /// Without it the dialog is still described by its body (AccessKit `described_by`), but a
+    /// screen reader that does not follow that relation reads only the focused button on open
+    /// (WI-1850). Use the body's main sentence, for example "Your document has unsaved changes."
+    #[must_use]
+    pub fn description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
         self
     }
 
@@ -225,11 +238,15 @@ impl<'a> Dialog<'a> {
                     .max_height(max_body)
                     .auto_shrink([false, true])
                     .show(ui, |ui| {
-                        let value = body(ui);
-                        reveal_new_focus(ui, id.with("body_focus"));
-                        value
+                        // The body gets its own container node, which describes the dialog.
+                        ui.scope_builder(egui::UiBuilder::new().id_salt("fluent2_dialog_body"), |ui| {
+                            let value = body(ui);
+                            reveal_new_focus(ui, id.with("body_focus"));
+                            (value, ui.unique_id())
+                        })
+                        .inner
                     });
-                let value = scrolled.inner;
+                let (value, body_node) = scrolled.inner;
                 let body_rect = scrolled.inner_rect;
 
                 let mut declared = DialogActions {
@@ -269,6 +286,13 @@ impl<'a> Dialog<'a> {
                     node.set_role(role);
                     node.set_label(title_text.clone());
                     node.push_labelled_by(title_response.id.accesskit_id());
+                    // Focus opens on the primary button, so the title and body are announced
+                    // through the dialog's description, as Fluent does with aria-describedby
+                    // (WI-1850).
+                    node.push_described_by(body_node.accesskit_id());
+                    if let Some(description) = &self.description {
+                        node.set_description(description.clone());
+                    }
                 });
 
                 (value, primary, shown_actions)
