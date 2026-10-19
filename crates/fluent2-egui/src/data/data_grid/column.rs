@@ -71,6 +71,12 @@ impl Column {
         }
     }
 
+    /// The column's id, as passed to [`Column::new`] and to [`super::DataGrid::cell_text`].
+    #[must_use]
+    pub fn id(&self) -> &'static str {
+        self.id
+    }
+
     /// Width policy. Default `ColumnWidth::Fraction(1.0)`.
     #[must_use]
     pub fn width(mut self, width: ColumnWidth) -> Self {

@@ -134,6 +134,7 @@ impl Walk {
         List::new("list", rows.len())
             .label("Folders")
             .selection_mode(SelectionMode::Single)
+            .row_label(|index| rows.get(index).copied().unwrap_or_default().to_owned())
             .show(ui, &mut self.list, |cell, ui| {
                 ui.label(rows.get(cell.row).copied().unwrap_or_default());
             });

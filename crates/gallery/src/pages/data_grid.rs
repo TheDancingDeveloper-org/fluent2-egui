@@ -36,6 +36,11 @@ impl Page for DataGridPage {
         DataGrid::new("gallery_data_grid", &columns, ROWS)
             .label("Synthetic rows")
             .size(self.size)
+            // Screen readers read the focused cell and row from this text (WI-1848).
+            .cell_text(|row, column| {
+                let index = columns.iter().position(|c| c.id() == column).unwrap_or(0);
+                cell_text(row, index)
+            })
             .show(ui, &mut self.state, |cell, ui| {
                 ui.add(egui::Label::new(cell_text(cell.row, cell.column_index)).truncate());
             });
