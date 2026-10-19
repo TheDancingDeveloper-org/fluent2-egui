@@ -294,9 +294,10 @@ impl<'a> TabStrip<'a> {
             .map(|(tab, galley)| tab_width(tab, galley.size().x))
             .collect();
 
+        let tab_height = crate::theme::density_of(ui).height(TAB_HEIGHT);
         let available = finite(ui.available_width());
         let (rect, mut response) = ui.allocate_exact_size(
-            Vec2::new(available, TAB_HEIGHT),
+            Vec2::new(available, tab_height),
             Sense::focusable_noninteractive(),
         );
 
@@ -344,7 +345,7 @@ impl<'a> TabStrip<'a> {
         for width in widths.get(first..end).unwrap_or(&[]) {
             layout.push(Rect::from_min_size(
                 egui::pos2(x, rect.min.y),
-                Vec2::new(*width, TAB_HEIGHT),
+                Vec2::new(*width, tab_height),
             ));
             x += width;
         }
@@ -432,7 +433,7 @@ impl<'a> TabStrip<'a> {
         if overflowing {
             let button_rect = Rect::from_min_size(
                 egui::pos2(rect.max.x - OVERFLOW, rect.min.y),
-                Vec2::new(OVERFLOW, TAB_HEIGHT),
+                Vec2::new(OVERFLOW.max(tab_height), tab_height),
             );
             let more = ui.interact(button_rect, id.with("overflow"), Sense::click());
             more.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "More tabs"));

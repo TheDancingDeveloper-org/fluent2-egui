@@ -240,7 +240,7 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
     let height = if field.multiline {
         line * field.rows.max(1) as f32 + pad_x
     } else {
-        field.height
+        crate::theme::density_of(ui).height(field.height)
     };
     let (rect, _) = ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), Sense::hover());
 

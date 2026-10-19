@@ -128,13 +128,16 @@ impl Widget for SpinButton<'_> {
         }
 
         let field_width = ui.available_width().clamp(96.0, 160.0);
+        let density = crate::theme::density_of(ui);
+        let field_height = density.height(FIELD_HEIGHT);
+        let chevron_width = CHEVRON_WIDTH.max(density.min_target());
         let (rect, mut response) = ui.allocate_exact_size(
-            Vec2::new(field_width + CHEVRON_WIDTH, FIELD_HEIGHT),
+            Vec2::new(field_width + chevron_width, field_height),
             Sense::hover(),
         );
-        let field = egui::Rect::from_min_size(rect.min, Vec2::new(field_width, FIELD_HEIGHT));
+        let field = egui::Rect::from_min_size(rect.min, Vec2::new(field_width, field_height));
         let chevrons = egui::Rect::from_min_max(field.right_top(), rect.right_bottom());
-        let up_rect = egui::Rect::from_min_size(chevrons.min, Vec2::new(CHEVRON_WIDTH, FIELD_HEIGHT / 2.0));
+        let up_rect = egui::Rect::from_min_size(chevrons.min, Vec2::new(chevron_width, field_height / 2.0));
         let down_rect = egui::Rect::from_min_max(up_rect.left_bottom(), chevrons.right_bottom());
 
         // The field is the one Tab stop; the arrows are for the pointer, and the keyboard

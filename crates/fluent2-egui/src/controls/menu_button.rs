@@ -91,7 +91,7 @@ impl<'a> MenuButton<'a> {
     pub fn show<R>(self, ui: &mut Ui, menu: impl FnOnce(&mut Ui) -> R) -> (Response, Option<R>) {
         let theme = Theme::get(ui.ctx());
         ensure_type_ramp(ui);
-        let metrics = Metrics::of(self.size);
+        let metrics = Metrics::of(self.size).at(crate::theme::density_of(ui));
         let enabled = ui.is_enabled();
         let label = self.text.text().to_owned();
 

@@ -199,8 +199,9 @@ fn show(
         TextStyle::Name(TypeRamp::Body1.name().into()),
     );
     let label_text = galley.text().to_string();
-    let height = box_px.max(galley.size().y);
-    let width = box_px + gap + galley.size().x;
+    let density = crate::theme::density_of(ui);
+    let height = density.height(box_px.max(galley.size().y));
+    let width = (box_px + gap + galley.size().x).max(density.min_target());
     let sense = if focusable { Sense::click() } else { Sense::CLICK };
     let (rect, response) = ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), sense);
     let activated = response.clicked() || (response.has_focus() && space_pressed(ui));

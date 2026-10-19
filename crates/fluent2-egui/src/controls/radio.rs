@@ -88,10 +88,14 @@ impl RadioGroup<'_> {
                 )
             })
             .collect();
-        let heights: Vec<f32> = galleys.iter().map(|galley| OUTER.max(galley.size().y)).collect();
+        let density = crate::theme::density_of(ui);
+        let heights: Vec<f32> = galleys
+            .iter()
+            .map(|galley| density.height(OUTER.max(galley.size().y)))
+            .collect();
         let widths: Vec<f32> = galleys
             .iter()
-            .map(|galley| OUTER + gap + galley.size().x)
+            .map(|galley| (OUTER + gap + galley.size().x).max(density.min_target()))
             .collect();
         let (width, height) = if horizontal {
             let width = widths.iter().sum::<f32>() + gap * (count.saturating_sub(1)) as f32;
