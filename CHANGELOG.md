@@ -6,6 +6,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ### Changed
 - CI: merge-queue support (`merge_group`), path-scoped PR checks (Windows leg in the queue and on `main` only), cancel-in-progress per ref, and a single `ci` gate job to require. See `docs/ci.md` (WI-1886).
+- Docs overhaul after the widget wave: README rewrite with a screenshot gallery; ARCHITECTURE module layout, fonts, density, testing and gates brought up to date; the office-chrome and data-views specs marked implemented; BACKLOG lists the Vogt port wave; the Vogt port gap analysis marks closed gaps with their PRs; NOTICE names the `rfd` and `pulldown-cmark` dependencies; ATTRIBUTION's icon count corrected to 65 (WI-1910).
 
 ### Added
 - README gallery images: `crates/gallery/tests/gallery_snapshots.rs` renders every gallery page (light and dark), a controls sheet and the editor sample (light, dark and high contrast) to `docs/images/gallery/` through egui_kittest and wgpu (gallery feature `snapshots`). `scripts/gallery-screenshots.sh` runs it in a pinned `rust:1.95-trixie` container with Mesa lavapipe; `--update` rewrites and optimises the images. The `gallery-screenshots` CI job runs the same check and fails when an image is stale (WI-1910).

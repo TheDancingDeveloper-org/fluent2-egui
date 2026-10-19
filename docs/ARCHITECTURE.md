@@ -16,7 +16,7 @@ Python or Node; their outputs are committed and nothing in the build or the CI g
 | `fluent2-tokens` | nothing | MIT OR Apache-2.0 | Generated Fluent 2 token data. No egui, no I/O at runtime. |
 | `fluent2-icons` | nothing | MIT | Generated subset of Fluent System Icons (SVG bytes plus a name enum). |
 | `fluent2-egui` | `egui`, `fluent2-tokens`, `fluent2-icons` | MIT OR Apache-2.0 | Theme installation, foundation, controls, surfaces, Office chrome, data views. |
-| `gallery` (later, `publish = false`) | `fluent2-egui`, `eframe` | MIT OR Apache-2.0 | Demo app, native and wasm. |
+| `gallery` (`publish = false`) | `fluent2-egui`, `eframe` | MIT OR Apache-2.0 | Demo app, native and wasm. |
 
 Nothing below `fluent2-egui` may depend on egui. Platform-specific code (Windows accent, Linux
 portal) lives in `fluent2-egui::platform`, behind `cfg` and an optional cargo feature, and
@@ -27,13 +27,15 @@ always has a non-platform fallback.
 ```
 src/
   lib.rs            re-exports; `prelude` module
-  theme/            Theme, ThemeKind {Light, Dark, HighContrast}, install(ctx, &Theme), Theme::get(ctx)
+  theme/            Theme, ThemeKind {Light, Dark, HighContrast}, install(ctx, &Theme), Theme::get(ctx); density.rs
   foundation/       icon.rs, text.rs (type ramp helpers), focus.rs, elevation.rs, motion.rs
-  controls/         one file per control: button.rs, split_button.rs, checkbox.rs, ...
-  surfaces/         dialog.rs, popover.rs, menu.rs, message_bar.rs, toast.rs, tab_list.rs, card.rs
-  office/           title_bar.rs, qat.rs, ribbon/ (mod.rs, tab.rs, group.rs, layout.rs), keytips.rs, backstage.rs, status_bar.rs, command_bar.rs
-  data/             data_grid/, tree_view.rs, list.rs, nav_view.rs
-  platform/         windows.rs, linux.rs, fallback.rs
+  controls/         one file per control: button.rs, split_button.rs, checkbox.rs, pager.rs, sparkline.rs, ...
+  surfaces/         dialog.rs, popover.rs, tooltip.rs, menu.rs, message_bar.rs, toast.rs, tab_list.rs, card.rs,
+                    tab_strip.rs, command_palette.rs, drawer.rs, bottom_sheet.rs, dock.rs (docking)
+  office/           title_bar.rs, window_edges.rs, qat.rs, ribbon/, keytips/, backstage.rs, status_bar.rs, command_bar.rs
+  data/             data_grid/, tree_view.rs, list.rs, rows.rs, nav_view.rs, split_view.rs, reorder.rs,
+                    terminal/ (terminal), diff/ (diff), markdown/ (markdown), code/ (highlight)
+  platform/         windows.rs, linux.rs, fallback.rs, file_dialog.rs (file-dialog)
 tests/              one file per component (see Testing)
 ```
 
@@ -74,27 +76,30 @@ one test file. Do not reorganise folders as part of a component item.
 
 - `Theme` is a plain struct built from `fluent2-tokens`:
   `Theme::light(brand: BrandRamp)`, `Theme::dark(brand)`, `Theme::high_contrast()`.
-  `BrandRamp::from_seed(Color32)` builds the 16-step ramp. The default ramp is Fluent's own
+  `fluent2_tokens::from_seed(Rgba)` builds the 16-step `BrandRamp`. The default ramp is Fluent's own
   brand ramp, not any Office product colour.
 - `theme::install(ctx, &theme)` writes egui `Visuals` and `Spacing` and stores the `Theme` in
-  `ctx.data`. `Theme::get(ctx)` reads it back, falling back to `Theme::light(default)`.
+  `ctx.data`. `Theme::get(ctx)` reads it back, falling back to `Theme::default()` (light, Fluent brand).
+- `Theme::with_density(Density)` picks Compact, Medium (default) or Touch sizing. Spec:
+  `docs/specs/density.md`.
 - Field names mirror Fluent token names in snake_case (`colorNeutralForeground1` becomes
   `color.neutral_foreground_1`), so a token can be found in Fluent's documentation by name.
 
 ## Fonts
 
-On Windows, load "Segoe UI Variable" (then "Segoe UI") from the OS at runtime. Elsewhere use an
-open fallback chosen in a dedicated item. **Never commit or embed a Microsoft font file.**
+On Windows, load "Segoe UI Variable" (then "Segoe UI") from the OS at runtime. Elsewhere, and on
+Windows without Segoe UI, use the bundled Inter (OFL-1.1, the default `bundled-font` feature;
+WI-1588). **Never commit or embed a Microsoft font file.**
 
 ## Testing
 
 - Each component has `tests/<component>.rs` using `egui_kittest` **without** the wgpu feature.
   Those tests find the widget through the AccessKit tree by role and label, and check:
   rendering without panic in light, dark and high contrast; click or keyboard activation;
-  disabled behaviour; focus-ring presence. Pattern: `tests/README.md` (added with the first
-  component).
-- Pixel snapshot tests (wgpu) sit behind the `snapshots` cargo feature and run in a separate
-  CI job.
+  disabled behaviour; focus-ring presence. Pattern: `crates/fluent2-egui/tests/README.md`.
+- Pixel snapshot tests (wgpu) sit behind a `snapshots` cargo feature and are off in
+  `cargo test --workspace`. `fluent2-egui`'s `tests/font_snapshots.rs` renders the font review
+  images in `docs/screenshots/wi-1588/`.
 - Generators (`xtask` or `scripts/`) have their own tests that the generated output is
   reproducible: running the generator twice gives byte-identical files.
 
@@ -139,7 +144,10 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo test -p fluent2-egui --features serde
 cargo check -p fluent2-egui --target wasm32-unknown-unknown
+RUSTDOCFLAGS=-D warnings cargo doc --no-deps --workspace
 ```
+
+CI scopes these by path on a pull request; see `docs/ci.md`.
 
 ## Versioning
 
