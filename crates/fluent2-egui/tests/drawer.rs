@@ -326,6 +326,21 @@ fn full_motion_slides_in_from_the_edge() {
     let settled = surface_rect(&harness);
     assert!(settled.left() > 0.0, "settles at the edge, got {settled:?}");
 
+    // Close and reopen: the second opening slides in again.
+    probe.borrow_mut().open = false;
+    harness.run();
+    probe.borrow_mut().open = true;
+    harness.step();
+    harness.step();
+    let reopened = surface_rect(&harness);
+    assert!(
+        reopened.left() < -1.0,
+        "reopening slides in again, got {reopened:?}"
+    );
+    harness.run_steps(30);
+    let settled = surface_rect(&harness);
+    assert!(settled.left() > 0.0, "settles again, got {settled:?}");
+
     let probe = open_probe();
     probe.borrow_mut().open = false;
     let mut harness = harness_sheet(probe.clone(), false);

@@ -368,8 +368,8 @@ pub(crate) fn show_overlay<R>(
 fn slide_progress(ctx: &Context, id: Id, opening: bool) -> f32 {
     let slide = id.with("slide");
     if opening {
-        // Seed the clock at 0 so the run starts off-screen instead of at the target.
-        let _ = motion::animate(ctx, slide, 0.0, Duration::Gentle, Curve::DecelerateMid);
+        // Every opening starts a fresh run off-screen, not where the last one ended.
+        motion::reset(ctx, slide, 0.0);
     }
     motion::animate(ctx, slide, 1.0, Duration::Gentle, Curve::DecelerateMid).clamp(0.0, 1.0)
 }
