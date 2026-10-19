@@ -25,7 +25,7 @@ imara-diff = { version = "0.2", optional = true, default-features = false }
 rfd = { version = "0.17", optional = true, default-features = false, features = ["xdg-portal"] }
 pulldown-cmark = { version = "0.13.4", default-features = false, optional = true }
 # Syntax highlighting for CodeView (MIT). Pure-Rust regex engine so it builds for wasm.
-syntect = { version = "5.3", optional = true, default-features = false, features = ["default-syntaxes", "regex-fancy", "parsing"] }
+syntect = { version = "5.3", optional = true, default-features = false, features = ["default-syntaxes", "regex-fancy", "parsing", "yaml-load"] }
 
 [features]
 default = ["bundled-font"]

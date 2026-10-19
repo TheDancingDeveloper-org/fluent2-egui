@@ -35,6 +35,8 @@ pub struct CodePos {
 struct Prepared {
     key: u64,
     lines: Vec<String>,
+    /// `lines` joined, for the screen reader; built once per highlight.
+    value: String,
     spans: Vec<Vec<TokenSpan>>,
     max_cols: usize,
 }
@@ -54,18 +56,23 @@ pub struct CodeState {
 }
 
 impl CodeState {
-    /// Highlight `text` as `language` unless the last call had the same input.
-    fn prepare(&mut self, language: &str, text: &str) {
-        let key = hashed(&(language, text));
+    /// Highlight `text` as `language` unless the last call had the same input. With a
+    /// `revision` the key is `(language, revision, len)` and the text is not hashed.
+    fn prepare(&mut self, language: &str, text: &str, revision: Option<u64>) {
+        let key = match revision {
+            Some(rev) => hashed(&(language, rev, text.len())),
+            None => hashed(&(language, text)),
+        };
         if self.prepared.as_ref().is_none_or(|p| p.key != key) {
             let lines: Vec<String> = split_lines(text).map(expand_tabs).collect();
-            let joined = lines.join("\n");
-            let spans = highlight(language, &joined);
+            let value = lines.join("\n");
+            let spans = highlight(language, &value);
             let max_cols = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
             self.selection = None;
             self.prepared = Some(Prepared {
                 key,
                 lines,
+                value,
                 spans,
                 max_cols,
             });
@@ -138,6 +145,7 @@ pub struct CodeView {
     font: Option<FontId>,
     label: String,
     line_numbers: bool,
+    revision: Option<u64>,
 }
 
 impl CodeView {
@@ -149,7 +157,18 @@ impl CodeView {
             font: None,
             label: "Code".into(),
             line_numbers: true,
+            revision: None,
         }
+    }
+
+    /// A number the app changes whenever the text changes (an edit counter or a buffer
+    /// generation). With it, the view re-highlights when the revision or the length changes and
+    /// never hashes the text. Without it, the text is hashed each frame to detect changes,
+    /// which costs O(length).
+    #[must_use]
+    pub fn revision(mut self, revision: u64) -> Self {
+        self.revision = Some(revision);
+        self
     }
 
     /// Language name or file extension (`rust`, `py`, `ts`, `json`, `yaml`, `diff`). Unknown or
@@ -193,7 +212,7 @@ impl CodeView {
         let pad = spacing_horizontal::S;
         let id = ui.make_persistent_id(self.id_salt);
 
-        state.prepare(&self.language, text);
+        state.prepare(&self.language, text, self.revision);
         let prepared = state.prepared.take().unwrap_or_default();
         let line_count = prepared.lines.len();
         let gutter = if self.line_numbers {
@@ -377,14 +396,14 @@ impl CodeView {
         let enabled = ui.is_enabled();
         let label = self.label.clone();
         response.widget_info(|| WidgetInfo::labeled(WidgetType::TextEdit, enabled, &label));
-        let value = prepared.lines.join("\n");
-        state.prepared = Some(prepared);
+        // The builder runs only while AccessKit is on; the value was joined at highlight time.
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::MultilineTextInput);
             node.set_read_only();
             node.set_label(self.label.clone());
-            node.set_value(value);
+            node.set_value(prepared.value.clone());
         });
+        state.prepared = Some(prepared);
 
         CodeResponse { response, copied }
     }

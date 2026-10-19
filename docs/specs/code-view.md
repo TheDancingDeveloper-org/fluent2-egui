@@ -18,9 +18,12 @@ it, and the result decided the choice:
 The grammars are C with no wasm libc. Pointing them at headers through `CFLAGS` would depend on
 registry paths and on each grammar's build script, and CI builds the gallery for wasm with
 trunk. **Decision (operator, 2026-10-19): syntect 5.3** with `default-syntaxes`, `parsing` and
-`regex-fancy`. That is pure Rust and needs no C toolchain. The bundled syntaxes cover Rust,
-Python, JSON, YAML and Diff. TypeScript uses the JavaScript syntax (`ts`, `tsx`, `typescript`
-and `jsx` are aliases), which covers ordinary code but not type-only syntax such as annotations.
+`regex-fancy` (and `yaml-load`, to load one extra definition). That is pure Rust and needs no C
+toolchain. The bundled syntaxes cover Rust, Python, JSON, YAML and Diff. TypeScript is not in
+syntect's set, so `syntaxes/TypeScript.sublime-syntax` is vendored: bat's conversion of
+Microsoft's TypeScript-Sublime-Plugin grammar (Apache-2.0; see NOTICE, ATTRIBUTION.md and
+`upstream.toml`). `ts`, `mts`, `cts` and `typescript` use it. `tsx` and `jsx` use the JavaScript
+syntax, which covers JSX but not type annotations.
 If grammars gain a wasm build later, a tree-sitter backend could sit behind the same
 `SyntaxToken` API.
 
@@ -45,6 +48,10 @@ If grammars gain a wasm build later, a tree-sitter backend could sit behind the 
 ## CodeView
 
 - Read-only. Editing is out of scope.
+- The highlight cache key: with `CodeView::revision(n)`, `(language, revision, length)`, so
+  the text is never hashed; without it, a hash of the language and text, which costs
+  O(length) per frame. The screen-reader value is joined once per highlight, and only cloned
+  into the AccessKit node while AccessKit is on.
 - Tabs expand to `TAB_WIDTH` (4) spaces before highlighting. Columns are counted in chars on a
   monospace grid.
 - A line-number gutter (`neutralForeground3`, `neutralStroke3` rule), on by default.

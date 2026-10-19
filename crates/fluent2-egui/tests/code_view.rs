@@ -61,14 +61,22 @@ fn python_keywords_strings_decorators() {
 }
 
 #[test]
-fn typescript_uses_the_javascript_syntax() {
+fn typescript_highlights_types_and_interfaces() {
     assert!(Highlighter::shared().supports("ts"));
     assert!(Highlighter::shared().supports("TypeScript"));
-    let r = runs("ts", "const x = 1;\nfunction g() { return \"s\"; }");
-    assert!(has(&r, 0, "const", SyntaxToken::Keyword), "{r:?}");
-    assert!(has(&r, 0, "1", SyntaxToken::Number), "{r:?}");
-    assert!(has(&r, 1, "g", SyntaxToken::Function), "{r:?}");
-    assert!(has(&r, 1, "\"s\"", SyntaxToken::String), "{r:?}");
+    let r = runs(
+        "ts",
+        "interface Item { id: string; count: number }\nconst x: Item = load(\"s\", 1); // c",
+    );
+    assert!(has(&r, 0, "interface", SyntaxToken::Keyword), "{r:?}");
+    assert!(has(&r, 0, "Item", SyntaxToken::Type), "{r:?}");
+    assert!(has(&r, 0, "string", SyntaxToken::Type), "{r:?}");
+    assert!(has(&r, 0, "number", SyntaxToken::Type), "{r:?}");
+    assert!(has(&r, 1, "const", SyntaxToken::Keyword), "{r:?}");
+    assert!(has(&r, 1, "Item", SyntaxToken::Type), "type annotation: {r:?}");
+    assert!(has(&r, 1, "load", SyntaxToken::Function), "{r:?}");
+    assert!(has(&r, 1, "1", SyntaxToken::Number), "{r:?}");
+    assert!(has(&r, 1, "// c", SyntaxToken::Comment), "{r:?}");
 }
 
 #[test]
@@ -354,5 +362,34 @@ fn new_text_rehighlights_and_drops_the_selection() {
     frame("{\"a\": 1}", &mut state);
     assert!(state.selection.is_some(), "same text keeps the selection");
     frame("[]", &mut state);
+    assert!(state.selection.is_none());
+}
+
+#[test]
+fn revision_keys_the_cache_without_hashing_the_text() {
+    let mut state = CodeState::default();
+    let ctx = egui::Context::default();
+    let frame = |text: &str, rev: u64, state: &mut CodeState| {
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            CodeView::new("c").revision(rev).show(ui, text, state);
+        });
+        out.textures_delta.clear();
+    };
+    let sel = Some((
+        Default::default(),
+        fluent2_egui::data::code::CodePos { line: 0, col: 1 },
+    ));
+    frame("abc", 1, &mut state);
+    state.selection = sel;
+    // Same revision and length: the cache stands, even though the text differs.
+    frame("xyz", 1, &mut state);
+    assert_eq!(state.selected_text().as_deref(), Some("a"));
+    // A new revision re-highlights.
+    frame("xyz", 2, &mut state);
+    assert!(state.selection.is_none());
+    state.selection = sel;
+    assert_eq!(state.selected_text().as_deref(), Some("x"));
+    // A length change re-highlights with the same revision.
+    frame("xyzw", 2, &mut state);
     assert!(state.selection.is_none());
 }

@@ -21,7 +21,7 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::{
     Color, ScopeSelectors, StyleModifier, Theme as SynTheme, ThemeItem, ThemeSettings,
 };
-use syntect::parsing::{SyntaxReference, SyntaxSet};
+use syntect::parsing::{SyntaxDefinition, SyntaxReference, SyntaxSet};
 
 use crate::theme::{Theme, ThemeKind, c};
 
@@ -139,9 +139,8 @@ impl std::fmt::Debug for Highlighter {
 }
 
 /// Language names that the bundled set lacks, mapped to the closest syntax it has.
-const ALIASES: [(&str, &str); 6] = [
-    ("typescript", "js"),
-    ("ts", "js"),
+const ALIASES: [(&str, &str); 5] = [
+    ("typescript", "ts"),
     ("tsx", "js"),
     ("jsx", "js"),
     ("yml", "yaml"),
@@ -187,7 +186,7 @@ impl Highlighter {
             scopes,
         };
         Self {
-            syntaxes: SyntaxSet::load_defaults_newlines(),
+            syntaxes: syntax_set(),
             theme,
         }
     }
@@ -247,6 +246,21 @@ impl Highlighter {
             })
             .collect()
     }
+}
+
+/// TypeScript, which syntect's bundled set lacks. Converted by bat from Microsoft's
+/// TypeScript-Sublime-Plugin grammar (Apache-2.0); see `syntaxes/` and NOTICE.
+const TYPESCRIPT: &str = include_str!("../../../syntaxes/TypeScript.sublime-syntax");
+
+/// The bundled syntaxes plus TypeScript. A TypeScript definition that fails to load is logged
+/// and skipped; `ts` then highlights as plain text.
+fn syntax_set() -> SyntaxSet {
+    let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
+    match SyntaxDefinition::load_from_str(TYPESCRIPT, true, Some("TypeScript")) {
+        Ok(def) => builder.add(def),
+        Err(e) => log::warn!("TypeScript syntax did not load: {e}"),
+    }
+    builder.build()
 }
 
 impl Default for Highlighter {
