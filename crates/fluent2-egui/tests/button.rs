@@ -3,6 +3,7 @@
 //! Widgets are found through the AccessKit tree by role and label.
 
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use egui::accesskit::Role;
 use egui_kittest::Harness;
@@ -248,4 +249,25 @@ fn two_unsalted_buttons_with_the_same_label_are_independent() {
     click_nth(&mut harness, 1);
     harness.run();
     assert_eq!(*hits.borrow(), (1, 1), "each Save should click once");
+}
+
+#[test]
+fn min_width_overrides_the_size_minimum_but_not_the_content() {
+    let widths = Rc::new(RefCell::new(Vec::new()));
+    let out = Rc::clone(&widths);
+    let mut harness = Harness::new_ui(move |ui| {
+        install_light(ui);
+        let mut w = out.borrow_mut();
+        w.clear();
+        w.push(ui.add(Button::new("7")).rect.width());
+        w.push(ui.add(Button::new("7").min_width(32.0)).rect.width());
+        w.push(ui.add(Button::new("A long label").min_width(0.0)).rect.width());
+        w.push(ui.add(Button::new("7").min_width(f32::NAN)).rect.width());
+    });
+    harness.run();
+    let w = widths.borrow();
+    assert!(w[0] >= 96.0, "default medium minimum: {}", w[0]);
+    assert!((w[1] - 32.0).abs() < 0.5, "overridden minimum: {}", w[1]);
+    assert!(w[2] > 60.0, "content still sets the width: {}", w[2]);
+    assert!(w[3] >= 96.0, "NaN falls back to the size minimum: {}", w[3]);
 }

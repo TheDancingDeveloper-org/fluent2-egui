@@ -12,6 +12,7 @@ mod drawer;
 mod file_dialog;
 mod icons;
 mod markdown;
+mod pager;
 mod reorder;
 mod ribbon;
 mod tab_strip;
@@ -29,6 +30,7 @@ pub use drawer::DrawerPage;
 pub use file_dialog::FileDialogPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
+pub use pager::PagerPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
 pub use tab_strip::TabStripPage;
@@ -54,6 +56,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(IconsPage::default()),
         Box::new(DataGridPage::default()),
         Box::new(VariableListPage::default()),
+        Box::new(PagerPage::default()),
         Box::new(BackstagePage::default()),
         Box::new(RibbonPage::default()),
         Box::new(TerminalPage::default()),
