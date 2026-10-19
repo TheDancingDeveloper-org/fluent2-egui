@@ -211,6 +211,39 @@ pub fn highlighted_with(
     job
 }
 
+/// Byte ranges for the `char` positions in `indices`, for [`highlighted`].
+///
+/// Fuzzy matchers (the command palette's scorer, nucleo) report matched `char` positions,
+/// while substring search reports byte ranges; this bridges the first to the second. Adjacent
+/// positions become one range. Positions past the end are dropped, and order and duplicates do
+/// not matter.
+///
+/// ```
+/// # use fluent2_egui::foundation::text::char_ranges;
+/// assert_eq!(char_ranges("é日x", &[0, 1, 9]), [0..5]);
+/// ```
+pub fn char_ranges(text: &str, indices: &[usize]) -> Vec<Range<usize>> {
+    let mut wanted = indices.to_vec();
+    wanted.sort_unstable();
+    wanted.dedup();
+    let mut ranges: Vec<Range<usize>> = Vec::new();
+    let mut next = wanted.iter().peekable();
+    for (index, (byte, ch)) in text.char_indices().enumerate() {
+        if next.peek().is_none() {
+            break;
+        }
+        if next.next_if(|&&want| want == index).is_none() {
+            continue;
+        }
+        let end = byte + ch.len_utf8();
+        match ranges.last_mut() {
+            Some(last) if last.end == byte => last.end = end,
+            _ => ranges.push(byte..end),
+        }
+    }
+    ranges
+}
+
 /// The non-empty, sorted, disjoint byte ranges of `text` to highlight, on `char` boundaries.
 fn highlight_runs(text: &str, ranges: &[Range<usize>]) -> Vec<Range<usize>> {
     let floor = |mut i: usize| {
@@ -483,6 +516,18 @@ mod tests {
             Color32::WHITE,
             Color32::RED,
         )
+    }
+
+    #[test]
+    fn char_positions_become_byte_ranges() {
+        let text = "é日🦀x";
+        assert_eq!(char_ranges(text, &[]), Vec::<Range<usize>>::new());
+        assert_eq!(char_ranges(text, &[1]), [2..5]);
+        assert_eq!(char_ranges(text, &[3, 0, 1, 1]), [0..5, 9..10]);
+        assert_eq!(char_ranges(text, &[2, 3, 99]), [5..10]);
+        assert_eq!(char_ranges("", &[0]), Vec::<Range<usize>>::new());
+        let job = job(text, &char_ranges(text, &[2]));
+        assert_eq!(sections(&job), [("é日", false), ("🦀", true), ("x", false)]);
     }
 
     #[test]
