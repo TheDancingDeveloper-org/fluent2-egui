@@ -2,7 +2,8 @@
 //!
 //! The List uses the shared viewport maths, selection and roving focus in `rows.rs` (D7), so its
 //! selection behaves as the DataGrid's does. Only the rows in view are laid out and passed to the
-//! row closure.
+//! row closure. With [`List::variable_height`] rows are measured and cached, and the viewport is
+//! anchored to its top row (§6.1).
 
 use egui::accesskit::Role;
 use egui::{
@@ -12,10 +13,13 @@ use egui::{
 
 use super::RowId;
 use super::data_grid::{CellCtx, Selection, SelectionMode};
-use crate::data::rows::{find_row, select_all, select_only, select_range, toggle, visible_rows};
+use crate::data::rows::{
+    HeightCache, MAX_MEASURED_HEIGHT, ScrollAnchor, anchor_at, anchored_scroll, find_row, row_offsets,
+    select_all, select_only, select_range, toggle, visible_rows, visible_rows_variable,
+};
 use crate::foundation::focus::paint_focus_ring;
 use crate::theme::{Theme, c};
-use fluent2_tokens::generated::global::{border_radius, spacing_horizontal};
+use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical};
 
 /// State of a List. Store it in the app and pass `&mut` to every `show`.
 ///
@@ -76,7 +80,64 @@ pub struct List<'a> {
     row_id: Option<Box<dyn Fn(usize) -> RowId + 'a>>,
     selection_mode: SelectionMode,
     row_height: Option<f32>,
+    estimate: Option<f32>,
     label: Option<String>,
+}
+
+/// Per-list memory of the variable-height mode (§6.1): measured heights and the scroll anchor.
+#[derive(Clone, Debug, Default)]
+struct VariableRows {
+    cache: HeightCache,
+    anchor: Option<ScrollAnchor>,
+    /// A keyboard move to reveal, kept until the rows around it stop changing height. It wins
+    /// over the anchor.
+    reveal: Option<RowId>,
+    /// Frames the reveal has left, so it can never hold the scroll position for long.
+    reveal_frames: u8,
+    last_scroll: f32,
+}
+
+/// Where rows sit: one height for all (D2), or measured prefix offsets (§6.1).
+enum Geometry {
+    Fixed(f32),
+    Variable(Vec<f32>),
+}
+
+impl Geometry {
+    fn top(&self, index: usize) -> f32 {
+        match self {
+            Self::Fixed(h) => index as f32 * h,
+            Self::Variable(offsets) => offsets.get(index).copied().unwrap_or(0.0),
+        }
+    }
+
+    fn height(&self, index: usize) -> f32 {
+        match self {
+            Self::Fixed(h) => *h,
+            Self::Variable(offsets) => offsets.get(index + 1).copied().unwrap_or(0.0) - self.top(index),
+        }
+    }
+
+    fn content_height(&self, row_count: usize) -> f32 {
+        match self {
+            Self::Fixed(h) => row_count as f32 * h,
+            Self::Variable(offsets) => offsets.last().copied().unwrap_or(0.0),
+        }
+    }
+
+    fn visible(&self, viewport: Rect, row_count: usize) -> std::ops::Range<usize> {
+        match self {
+            Self::Fixed(h) => visible_rows(viewport, 0.0, *h, row_count),
+            Self::Variable(offsets) => visible_rows_variable(viewport, offsets),
+        }
+    }
+}
+
+/// Most frames a keyboard reveal is repeated while the rows around it are measured.
+const REVEAL_FRAMES: u8 = 30;
+
+fn variable_id(id: Id) -> Id {
+    id.with("variable_rows")
 }
 
 impl<'a> List<'a> {
@@ -89,8 +150,26 @@ impl<'a> List<'a> {
             row_id: None,
             selection_mode: SelectionMode::Single,
             row_height: None,
+            estimate: None,
             label: None,
         }
+    }
+
+    /// Rows of different heights (§6.1). Each row is laid out top to bottom, measured when it is
+    /// shown and cached by its [`RowId`]; rows not measured yet count as `estimate` points. The
+    /// row at the top of the viewport stays put when rows above it change height or are
+    /// inserted. [`Self::row_height`] becomes the minimum height.
+    #[must_use]
+    pub fn variable_height(mut self, estimate: f32) -> Self {
+        self.estimate = Some(estimate);
+        self
+    }
+
+    /// Forget the measured heights of the variable-height list made with `id_salt`, for example
+    /// after the font or the content of many rows changed. Rows are measured again as shown.
+    pub fn forget_heights(ctx: &egui::Context, id_salt: impl std::hash::Hash) {
+        let id = variable_id(Id::new(hashed(&id_salt)));
+        ctx.data_mut(|data| data.get_temp_mut_or_default::<VariableRows>(id).cache.clear());
     }
 
     /// The id of row `index` (D3). The default is the index itself.
@@ -153,184 +232,257 @@ impl<'a> List<'a> {
             row_id,
             selection_mode: mode,
             label,
+            estimate,
             ..
         } = self;
         let ids_fn = |index: usize| row_id.as_ref().map_or(RowId(index as u64), |f| f(index));
         let ids: &dyn Fn(usize) -> RowId = &ids_fn;
 
-        let output = ScrollArea::vertical()
-            .id_salt(id)
-            .auto_shrink([false, false])
-            .show_viewport(ui, |ui, viewport| {
-                let (content, _) = ui.allocate_exact_size(
-                    Vec2::new(ui.available_width(), row_count as f32 * row_height),
-                    Sense::hover(),
-                );
-                let origin = content.min;
-                let width = content.width();
-                let clip = ui.clip_rect();
-                let list_response = ui.interact(clip, id, Sense::click());
-                let visible = visible_rows(viewport, 0.0, row_height, row_count);
-                let page = visible.len().saturating_sub(1).max(1);
-                let focused = list_response.has_focus();
+        // Variable-height mode: take the measurements out of memory for this frame.
+        let estimate = estimate.map(|e| {
+            if e.is_finite() {
+                e.clamp(row_height, MAX_MEASURED_HEIGHT)
+            } else {
+                row_height
+            }
+        });
+        let mut vars = estimate.map(|_| {
+            ui.ctx()
+                .data_mut(|data| data.remove_temp::<VariableRows>(variable_id(id)))
+                .unwrap_or_default()
+        });
+        let geometry = match (&vars, estimate) {
+            (Some(vars), Some(estimate)) => Geometry::Variable(row_offsets(row_count, &|row| {
+                vars.cache.get(ids(row), estimate).max(row_height)
+            })),
+            _ => Geometry::Fixed(row_height),
+        };
+        let mut scroll = ScrollArea::vertical().id_salt(id).auto_shrink([false, false]);
+        if let (Some(vars), Geometry::Variable(offsets)) = (&vars, &geometry)
+            && vars.reveal.is_none()
+            && let Some(anchor) = vars.anchor
+            && let Some(y) = anchored_scroll(anchor, offsets, ids)
+            && (y - vars.last_scroll).abs() > 0.5
+        {
+            // Rows above the viewport changed height: keep the anchored row where it was.
+            scroll = scroll.vertical_scroll_offset(y);
+        }
 
-                let mut reports = Reports::default();
-                let mut moved = false;
-                let before = state.selection.clone();
+        let output = scroll.show_viewport(ui, |ui, viewport| {
+            let (content, _) = ui.allocate_exact_size(
+                Vec2::new(ui.available_width(), geometry.content_height(row_count)),
+                Sense::hover(),
+            );
+            let origin = content.min;
+            let width = content.width();
+            let clip = ui.clip_rect();
+            let list_response = ui.interact(clip, id, Sense::click());
+            let visible = geometry.visible(viewport, row_count);
+            let mut heights_changed = false;
+            let page = visible.len().saturating_sub(1).max(1);
+            let focused = list_response.has_focus();
 
-                if focused {
-                    // Arrow keys move focus in the list, not to a neighbouring widget.
-                    let lock = EventFilter {
-                        tab: false,
-                        horizontal_arrows: true,
-                        vertical_arrows: true,
-                        escape: false,
-                    };
-                    ui.memory_mut(|memory| memory.set_focus_lock_filter(id, lock));
-                    for (key, modifiers) in pressed_keys(ui) {
-                        let out = handle_key(state, mode, row_count, ids, key, modifiers, page);
-                        moved |= out.moved;
-                        if out.activate || out.context_menu {
-                            let current = state
-                                .focus
-                                .and_then(|f| find_row(state.focus_hint, row_count, ids, f));
-                            if let Some(index) = current {
-                                let ctx = cell_ctx(state, index, ids(index), focused, mode);
-                                if out.activate {
-                                    reports.activated = Some(ctx);
-                                }
-                                if out.context_menu {
-                                    reports.context_menu = Some(ctx);
-                                }
+            let mut reports = Reports::default();
+            let mut moved = false;
+            let before = state.selection.clone();
+
+            if focused {
+                // Arrow keys move focus in the list, not to a neighbouring widget.
+                let lock = EventFilter {
+                    tab: false,
+                    horizontal_arrows: true,
+                    vertical_arrows: true,
+                    escape: false,
+                };
+                ui.memory_mut(|memory| memory.set_focus_lock_filter(id, lock));
+                for (key, modifiers) in pressed_keys(ui) {
+                    let out = handle_key(state, mode, row_count, ids, key, modifiers, page);
+                    moved |= out.moved;
+                    if out.activate || out.context_menu {
+                        let current = state
+                            .focus
+                            .and_then(|f| find_row(state.focus_hint, row_count, ids, f));
+                        if let Some(index) = current {
+                            let ctx = cell_ctx(state, index, ids(index), focused, mode);
+                            if out.activate {
+                                reports.activated = Some(ctx);
+                            }
+                            if out.context_menu {
+                                reports.context_menu = Some(ctx);
                             }
                         }
                     }
                 }
-                let focus_index = state
-                    .focus
-                    .and_then(|f| find_row(state.focus_hint, row_count, ids, f));
-                if moved && let Some(index) = focus_index {
-                    // Keyboard moves bring the focused row into view (§3.3).
-                    let top = origin.y + index as f32 * row_height;
-                    ui.scroll_to_rect(
-                        Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, row_height)),
-                        None,
-                    );
+            }
+            let focus_index = state
+                .focus
+                .and_then(|f| find_row(state.focus_hint, row_count, ids, f));
+            if moved && let Some(vars) = vars.as_mut() {
+                vars.reveal = state.focus;
+                vars.reveal_frames = REVEAL_FRAMES;
+            }
+            let pending = vars.as_ref().and_then(|v| v.reveal);
+            let reveal_index = pending.and_then(|r| find_row(state.focus_hint, row_count, ids, r));
+            if let Some(index) = reveal_index.or(focus_index.filter(|_| moved)) {
+                // Keyboard moves bring the focused row into view (§3.3). Measured rows repeat
+                // this until their heights settle.
+                let top = origin.y + geometry.top(index);
+                ui.scroll_to_rect(
+                    Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, geometry.height(index))),
+                    None,
+                );
+            }
+
+            let mut clicked = false;
+            // The focused row, for the list's active descendant (see TreeView).
+            let mut active_row = None;
+            for index in visible.clone() {
+                let top = origin.y + geometry.top(index);
+                let row_rect =
+                    Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, geometry.height(index)));
+                let row_id = ids(index);
+                // The row's own response goes first, so the content drawn after it takes
+                // clicks in its own rects.
+                let hit = ui.interact(row_rect.intersect(clip), id.with(("row", row_id)), Sense::CLICK);
+                if focus_index == Some(index) {
+                    active_row = Some(hit.id.accesskit_id());
+                }
+                if hit.clicked() {
+                    clicked = true;
+                    let modifiers = ui.input(|input| input.modifiers);
+                    reports.selection_changed |= click(state, mode, row_count, ids, index, modifiers);
+                }
+                if hit.secondary_clicked() {
+                    clicked = true;
+                    reports.context_menu = Some(cell_ctx(state, index, row_id, focused, mode));
                 }
 
-                let mut clicked = false;
-                // The focused row, for the list's active descendant (see TreeView).
-                let mut active_row = None;
-                for index in visible.clone() {
-                    let top = origin.y + index as f32 * row_height;
-                    let row_rect =
-                        Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, row_height));
-                    let row_id = ids(index);
-                    // The row's own response goes first, so the content drawn after it takes
-                    // clicks in its own rects.
-                    let hit = ui.interact(row_rect.intersect(clip), id.with(("row", row_id)), Sense::CLICK);
-                    if focus_index == Some(index) {
-                        active_row = Some(hit.id.accesskit_id());
-                    }
-                    if hit.clicked() {
-                        clicked = true;
-                        let modifiers = ui.input(|input| input.modifiers);
-                        reports.selection_changed |= click(state, mode, row_count, ids, index, modifiers);
-                    }
-                    if hit.secondary_clicked() {
-                        clicked = true;
-                        reports.context_menu = Some(cell_ctx(state, index, row_id, focused, mode));
-                    }
-
-                    let selected = state.selection.selected.contains(&row_id);
-                    // High contrast fills these rows with the highlight colour, so row text takes
-                    // the matching foreground.
-                    let fill = if selected {
-                        Some((fill_selected, ink_selected))
-                    } else if hit.is_pointer_button_down_on() {
-                        Some((fill_pressed, ink_pressed))
-                    } else if hit.hovered() {
-                        Some((fill_hover, ink_hover))
-                    } else {
-                        None
-                    };
-                    if let Some((fill, _)) = fill {
-                        ui.painter().rect_filled(row_rect, ring_radius, fill);
-                    }
-                    hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
-                    ui.ctx().accesskit_node_builder(hit.id, |node| {
-                        if mode == SelectionMode::None {
-                            node.set_role(Role::ListItem);
-                        } else {
-                            node.set_role(Role::ListBoxOption);
-                            node.set_selected(selected);
-                        }
-                        node.set_position_in_set(index + 1);
-                        node.set_size_of_set(row_count);
-                    });
-
-                    // Hang the row's content under its option node, so it is read as the row.
-                    let mut child = ui.new_child(
-                        UiBuilder::new()
-                            .max_rect(row_rect.shrink2(Vec2::new(spacing_horizontal::S, 0.0)))
-                            .layout(Layout::left_to_right(Align::Center))
-                            .accessibility_parent(hit.id),
-                    );
-                    child.set_clip_rect(row_rect.intersect(clip));
-                    // A selectable label would take the click meant for the row (§3).
-                    child.style_mut().interaction.selectable_labels = false;
-                    if let Some((_, ink)) = fill {
-                        child.visuals_mut().override_text_color = Some(ink);
-                    }
-                    row(
-                        CellCtx {
-                            row: index,
-                            row_id,
-                            column: "",
-                            column_index: 0,
-                            selected,
-                            focused: focused && focus_index == Some(index),
-                        },
-                        &mut child,
-                    );
+                let selected = state.selection.selected.contains(&row_id);
+                // High contrast fills these rows with the highlight colour, so row text takes
+                // the matching foreground.
+                let fill = if selected {
+                    Some((fill_selected, ink_selected))
+                } else if hit.is_pointer_button_down_on() {
+                    Some((fill_pressed, ink_pressed))
+                } else if hit.hovered() {
+                    Some((fill_hover, ink_hover))
+                } else {
+                    None
+                };
+                if let Some((fill, _)) = fill {
+                    ui.painter().rect_filled(row_rect, ring_radius, fill);
                 }
-
-                if focused && let Some(index) = focus_index {
-                    let top = origin.y + index as f32 * row_height;
-                    let rect = Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, row_height));
-                    paint_focus_ring(ui, rect.shrink(2.0), ring_radius);
-                }
-                if clicked {
-                    list_response.request_focus();
-                }
-
-                let enabled = ui.is_enabled();
-                list_response.widget_info(|| match &label {
-                    Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
-                    None => WidgetInfo::new(WidgetType::Other),
-                });
-                ui.ctx().accesskit_node_builder(list_response.id, |node| {
+                hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
+                ui.ctx().accesskit_node_builder(hit.id, |node| {
                     if mode == SelectionMode::None {
-                        node.set_role(Role::List);
+                        node.set_role(Role::ListItem);
                     } else {
-                        node.set_role(Role::ListBox);
+                        node.set_role(Role::ListBoxOption);
+                        node.set_selected(selected);
                     }
-                    if let Some(label) = &label {
-                        node.set_label(label.as_str());
-                    }
-                    if mode == SelectionMode::Multi {
-                        node.set_multiselectable();
-                    }
-                    if let Some(row) = active_row {
-                        node.set_active_descendant(row);
-                    }
+                    node.set_position_in_set(index + 1);
+                    node.set_size_of_set(row_count);
                 });
 
-                reports.selection_changed |= state.selection != before;
-                (list_response, reports)
+                // Hang the row's content under its option node, so it is read as the row.
+                let builder = if vars.is_some() {
+                    // Measured rows lay out top to bottom with no height limit.
+                    let inner = Rect::from_min_size(
+                        row_rect.min + Vec2::new(spacing_horizontal::S, spacing_vertical::S_NUDGE),
+                        Vec2::new(
+                            (width - 2.0 * spacing_horizontal::S).max(1.0),
+                            MAX_MEASURED_HEIGHT,
+                        ),
+                    );
+                    UiBuilder::new()
+                        .max_rect(inner)
+                        .layout(Layout::top_down(Align::Min))
+                } else {
+                    UiBuilder::new()
+                        .max_rect(row_rect.shrink2(Vec2::new(spacing_horizontal::S, 0.0)))
+                        .layout(Layout::left_to_right(Align::Center))
+                };
+                let mut child = ui.new_child(builder.accessibility_parent(hit.id));
+                child.set_clip_rect(row_rect.intersect(clip));
+                // A selectable label would take the click meant for the row (§3).
+                child.style_mut().interaction.selectable_labels = false;
+                if let Some((_, ink)) = fill {
+                    child.visuals_mut().override_text_color = Some(ink);
+                }
+                row(
+                    CellCtx {
+                        row: index,
+                        row_id,
+                        column: "",
+                        column_index: 0,
+                        selected,
+                        focused: focused && focus_index == Some(index),
+                    },
+                    &mut child,
+                );
+                if let Some(vars) = vars.as_mut() {
+                    let measured = child.min_rect().height() + 2.0 * spacing_vertical::S_NUDGE;
+                    heights_changed |= vars.cache.set(row_id, measured.max(row_height));
+                }
+            }
+            if let (Some(vars), Geometry::Variable(offsets)) = (vars.as_mut(), &geometry) {
+                vars.anchor = anchor_at(offsets, viewport.min.y, ids);
+                // In view: wholly, or from its top for a row taller than the viewport.
+                let revealed = reveal_index.is_none_or(|index| {
+                    let top = geometry.top(index);
+                    let bottom = (top + geometry.height(index)).min(top + viewport.height());
+                    top >= viewport.min.y - 0.5 && bottom <= viewport.max.y + 0.5
+                });
+                vars.reveal_frames = vars.reveal_frames.saturating_sub(1);
+                if (revealed && !heights_changed && !moved) || vars.reveal_frames == 0 {
+                    vars.reveal = None;
+                }
+                vars.last_scroll = viewport.min.y;
+                if heights_changed {
+                    ui.ctx().request_repaint();
+                }
+            }
+
+            if focused && let Some(index) = focus_index {
+                let top = origin.y + geometry.top(index);
+                let rect =
+                    Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, geometry.height(index)));
+                paint_focus_ring(ui, rect.shrink(2.0), ring_radius);
+            }
+            if clicked {
+                list_response.request_focus();
+            }
+
+            let enabled = ui.is_enabled();
+            list_response.widget_info(|| match &label {
+                Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
+                None => WidgetInfo::new(WidgetType::Other),
+            });
+            ui.ctx().accesskit_node_builder(list_response.id, |node| {
+                if mode == SelectionMode::None {
+                    node.set_role(Role::List);
+                } else {
+                    node.set_role(Role::ListBox);
+                }
+                if let Some(label) = &label {
+                    node.set_label(label.as_str());
+                }
+                if mode == SelectionMode::Multi {
+                    node.set_multiselectable();
+                }
+                if let Some(row) = active_row {
+                    node.set_active_descendant(row);
+                }
             });
 
+            reports.selection_changed |= state.selection != before;
+            (list_response, reports)
+        });
+
         let (response, reports) = output.inner;
+        if let Some(vars) = vars {
+            ui.ctx().data_mut(|data| data.insert_temp(variable_id(id), vars));
+        }
         ListResponse {
             response,
             selection_changed: reports.selection_changed,
