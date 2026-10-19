@@ -607,16 +607,10 @@ impl<'a> CommandPalette<'a> {
                     let content_height: f32 = rows
                         .iter()
                         .filter_map(|found| self.commands.get(found.index))
-                        .map(|command| {
-                            if command.subtitle.is_some() {
-                                ROW_HEIGHT_TWO_LINES
-                            } else {
-                                ROW_HEIGHT
-                            }
-                        })
+                        .map(|command| row_height(&theme, command))
                         .sum::<f32>()
                         + headers.iter().flatten().count() as f32 * header_height;
-                    let list_height = content_height.clamp(ROW_HEIGHT, LIST_MAX_HEIGHT);
+                    let list_height = content_height.clamp(theme.density.row(ROW_HEIGHT), LIST_MAX_HEIGHT);
                     let mut clicked = None;
                     let list = egui::ScrollArea::vertical()
                         .max_height(list_height)
@@ -719,6 +713,16 @@ impl<'a> CommandPalette<'a> {
     }
 }
 
+/// A result row's height at the theme's density (`docs/specs/density.md`).
+fn row_height(theme: &Theme, command: &PaletteCommand) -> f32 {
+    let base = if command.subtitle.is_some() {
+        ROW_HEIGHT_TWO_LINES
+    } else {
+        ROW_HEIGHT
+    };
+    theme.density.row(base)
+}
+
 /// Paint one row and report it to AccessKit as a list box option.
 fn paint_row(
     ui: &mut Ui,
@@ -728,11 +732,7 @@ fn paint_row(
     found: &PaletteMatch,
     selected: bool,
 ) -> egui::Response {
-    let height = if command.subtitle.is_some() {
-        ROW_HEIGHT_TWO_LINES
-    } else {
-        ROW_HEIGHT
-    };
+    let height = row_height(theme, command);
     let width = ui.available_width().max(1.0);
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let sense = if command.disabled {

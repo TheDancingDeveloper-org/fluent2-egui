@@ -55,7 +55,16 @@ fn measure(density: Density) -> Vec<(&'static str, Rect)> {
                 "search box",
                 ui.add(SearchBox::new(&mut query).desired_width(200.0)).rect,
             ));
+            let spin_id = ui.next_auto_id();
             rects.push(("spin button", ui.add(SpinButton::new(&mut value)).rect));
+            // Each stepper is its own hit target (DN3), not just the whole control.
+            for (name, part) in [("spin up", "up"), ("spin down", "down")] {
+                let rect = ui
+                    .ctx()
+                    .read_response(spin_id.with(part))
+                    .map_or(Rect::NOTHING, |r| r.rect);
+                rects.push((name, rect));
+            }
             rects.push(("checkbox", ui.add(Checkbox::new(&mut state, "Remember")).rect));
             rects.push(("bare checkbox", ui.add(Checkbox::new(&mut state, "")).rect));
             rects.push((
@@ -124,7 +133,7 @@ fn compact_steps_medium_controls_down_to_24() {
 #[test]
 fn touch_makes_every_target_at_least_44() {
     let t = measure(Density::Touch);
-    assert_eq!(t.len(), 16);
+    assert_eq!(t.len(), 18);
     for (name, rect) in &t {
         assert!(rect.height() >= TOUCH_TARGET, "{name} is {} tall", rect.height());
         assert!(rect.width() >= TOUCH_TARGET, "{name} is {} wide", rect.width());
@@ -174,5 +183,40 @@ fn install_sets_spacing_and_interact_size() {
         assert_eq!(spacing.item_spacing, density.item_spacing(), "{density:?}");
         assert_eq!(spacing.interact_size.y, density.height(32.0), "{density:?}");
         assert_eq!(Theme::get(&ctx).density, density);
+    }
+}
+
+#[test]
+fn command_palette_rows_follow_density() {
+    use egui::accesskit::Role;
+    use egui_kittest::kittest::Queryable;
+    use fluent2_egui::surfaces::{CommandPalette, PaletteCommand};
+
+    let commands = vec![
+        PaletteCommand::new("file.open", "Open file"),
+        PaletteCommand::new("view.zoom", "Zoom in").subtitle("Make text larger"),
+    ];
+    for (density, one_line, two_lines) in [
+        (Density::Compact, 24.0, 36.0),
+        (Density::Medium, 32.0, 44.0),
+        (Density::Touch, TOUCH_TARGET, TOUCH_TARGET),
+    ] {
+        let commands = commands.clone();
+        let mut harness = Harness::builder()
+            .with_size(Vec2::new(800.0, 600.0))
+            .build_ui(move |ui| {
+                install(ui.ctx(), &Theme::default().with_density(density));
+                let mut open = true;
+                let _ = CommandPalette::new("palette", &commands).show(ui.ctx(), &mut open);
+            });
+        harness.run();
+        let row = |label: &str| {
+            harness
+                .get_by_role_and_label(Role::ListBoxOption, label)
+                .rect()
+                .height()
+        };
+        assert_eq!(row("Open file"), one_line, "{density:?}");
+        assert_eq!(row("Zoom in"), two_lines, "{density:?}");
     }
 }
