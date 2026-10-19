@@ -123,6 +123,9 @@ impl Widget for Combobox<'_> {
         let enter = enabled
             && had_focus
             && ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+        // Reserved before the text and chevron paint so the frame fill lands beneath them
+        // (WI-1913).
+        let background = ui.painter().add(egui::Shape::Noop);
         let mut response = ui.put(
             text_rect,
             TextEdit::singleline(self.text)
@@ -220,9 +223,8 @@ impl Widget for Combobox<'_> {
             ui,
             rect,
             &theme,
-            enabled,
-            focused,
-            response.hovered() || chevron_response.hovered(),
+            background,
+            (enabled, focused, response.hovered() || chevron_response.hovered()),
         );
         if focus_visible(ui, &response) {
             paint_focus_ring(

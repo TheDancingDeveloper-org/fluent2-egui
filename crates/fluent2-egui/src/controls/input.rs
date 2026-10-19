@@ -303,6 +303,9 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
         }
         single
     };
+    // The frame fill goes under the text: reserve its slot before the TextEdit paints
+    // (WI-1913), and fill it in `paint_frame` once focus and hover are known.
+    let background = ui.painter().add(egui::Shape::Noop);
     let mut response = ui.put(text_rect, edit);
 
     paint_frame(
@@ -315,6 +318,7 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
             hovered: response.hovered() && enabled,
             enabled,
             accent_rect: response.rect,
+            background,
         },
     );
 
@@ -402,6 +406,8 @@ struct FramePaint {
     hovered: bool,
     enabled: bool,
     accent_rect: Rect,
+    /// The slot reserved before the text was painted, so the fill lands beneath it.
+    background: egui::layers::ShapeIdx,
 }
 
 fn paint_frame(ui: &Ui, rect: Rect, theme: &Theme, paint: FramePaint) {
@@ -426,8 +432,10 @@ fn paint_frame(ui: &Ui, rect: Rect, theme: &Theme, paint: FramePaint) {
     } else {
         Stroke::NONE
     };
-    ui.painter()
-        .add(RectShape::new(rect, radius, fill, rest, StrokeKind::Inside));
+    ui.painter().set(
+        paint.background,
+        RectShape::new(rect, radius, fill, rest, StrokeKind::Inside),
+    );
 
     let target = if paint.focused { 1.0 } else { 0.0 };
     let t = animate(

@@ -7,6 +7,9 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ### Added
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
+### Fixed
+- Input, SearchBox, Textarea, SpinButton and Combobox painted their opaque frame fill after the text on the same layer, hiding the typed text, the placeholder and the Combobox chevron. Each field now reserves the fill's slot before its text paints. The gallery's controls images are regenerated (WI-1913).
+
 ## [0.2.0] - 2026-10-19
 
 Minor release: 0.1.0 was prepared but never tagged or published, and a large additive widget wave has landed since (TabStrip, docking, DiffView, CodeView, MarkdownView, TerminalView, CommandPalette, Drawer, Pager, charts, density). Pre-1.0, new public API takes a minor bump.

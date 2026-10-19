@@ -191,6 +191,8 @@ impl Widget for SpinButton<'_> {
             commit(&mut buffer, current - step);
         }
 
+        // Reserved before the text paints so the field fill lands beneath it (WI-1913).
+        let background = ui.painter().add(egui::Shape::Noop);
         let text_response = ui
             .scope_builder(egui::UiBuilder::new().max_rect(field).id_salt("edit"), |ui| {
                 ui.spacing_mut().text_edit_width = field.width() - 8.0;
@@ -259,6 +261,7 @@ impl Widget for SpinButton<'_> {
                 enabled,
                 focused: response.has_focus(),
                 suffix,
+                background,
             },
         );
         ui.data_mut(|data| data.insert_temp(buffer_id, buffer));
@@ -294,6 +297,7 @@ fn commit_text(buffer: &mut Buffer, decimals: u8, min: f64, max: f64, value: &mu
 }
 
 struct Paint {
+    background: egui::layers::ShapeIdx,
     field: egui::Rect,
     up: egui::Rect,
     down: egui::Rect,
@@ -310,6 +314,7 @@ fn paint(ui: &Ui, theme: &Theme, parts: &Paint) {
         enabled,
         focused,
         suffix,
+        background,
     } = parts;
     let (field, up, down, enabled, focused) = (*field, *up, *down, *enabled, *focused);
     let color = &theme.color;
@@ -328,12 +333,15 @@ fn paint(ui: &Ui, theme: &Theme, parts: &Paint) {
             color.neutral_stroke_disabled
         }),
     );
-    painter.rect(
-        field.union(up.union(down)),
-        radius,
-        fill,
-        stroke,
-        StrokeKind::Inside,
+    painter.set(
+        *background,
+        egui::epaint::RectShape::new(
+            field.union(up.union(down)),
+            radius,
+            fill,
+            stroke,
+            StrokeKind::Inside,
+        ),
     );
     let divider = Stroke::new(1.0, theme::c(color.neutral_stroke_accessible));
     // Stacked: one rule left of the column and one between. Side by side (Touch): a rule left
