@@ -82,6 +82,7 @@ pub struct Button<'a> {
     size: ButtonSize,
     shape: Shape,
     id_salt: Option<Id>,
+    min_width: Option<f32>,
     _lifetime: std::marker::PhantomData<&'a ()>,
 }
 
@@ -97,6 +98,7 @@ impl<'a> Button<'a> {
             size: ButtonSize::Medium,
             shape: Shape::Rounded,
             id_salt: None,
+            min_width: None,
             _lifetime: std::marker::PhantomData,
         }
     }
@@ -112,6 +114,7 @@ impl<'a> Button<'a> {
             size: ButtonSize::Medium,
             shape: Shape::Rounded,
             id_salt: None,
+            min_width: None,
             _lifetime: std::marker::PhantomData,
         }
     }
@@ -159,6 +162,14 @@ impl<'a> Button<'a> {
         self.id_salt = Some(Id::new(salt));
         self
     }
+
+    /// Override the size's minimum width (64 or 96 pt for text buttons), for compact buttons
+    /// such as Pager's page numbers. The height and the content width are kept.
+    #[must_use]
+    pub fn min_width(mut self, width: f32) -> Self {
+        self.min_width = Some(width);
+        self
+    }
 }
 
 impl Widget for Button<'_> {
@@ -187,10 +198,10 @@ impl Widget for Button<'_> {
             .unwrap_or(0.0);
         let text_width = natural.min(content_budget);
         let content = text_width + icon_px + gap;
-        let min_width = if self.text.is_none() {
-            metrics.min_height
-        } else {
-            metrics.min_width
+        let min_width = match self.min_width {
+            Some(width) if width.is_finite() => width.max(0.0),
+            _ if self.text.is_none() => metrics.min_height,
+            _ => metrics.min_width,
         };
         let width = (content + metrics.h_padding * 2.0).max(min_width);
         let desired = Vec2::new(finite(width), metrics.min_height);
