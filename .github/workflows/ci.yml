@@ -48,7 +48,7 @@ jobs:
           while IFS= read -r f; do
             case "$f" in
               .github/workflows/*|Cargo.toml|Cargo.lock|rustfmt.toml) rust=true gallery=true ;;
-              crates/gallery/*|gallery/*) rust=true gallery=true ;;
+              crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh) rust=true gallery=true ;;
               crates/*|xtask/*) rust=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
@@ -134,11 +134,33 @@ jobs:
       - run: trunk build index.html --release
         working-directory: crates/gallery
 
+  # The README gallery images (WI-1910): re-render every page in the pinned image the
+  # script uses, and fail when a committed PNG differs. The rendered set is uploaded so a
+  # stale image can be replaced without Docker. See scripts/gallery-screenshots.sh.
+  gallery-screenshots:
+    needs: changes
+    if: needs.changes.outputs.gallery == 'true'
+    runs-on: ubuntu-latest
+    container: rust:1.95-trixie
+    env:
+      GALLERY_SHOTS_IN_CONTAINER: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: gallery-screenshots
+      - run: scripts/gallery-screenshots.sh
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gallery-screenshots
+          path: docs/images/gallery/
+
   # The one context to require: passes when every job passed or was skipped
   # by path scope, fails on any failure or cancellation.
   ci:
     if: always()
-    needs: [changes, fmt, test, wasm, doc, msrv, gallery-wasm]
+    needs: [changes, fmt, test, wasm, doc, msrv, gallery-wasm, gallery-screenshots]
     runs-on: ubuntu-latest
     steps:
       - env:

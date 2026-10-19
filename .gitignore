@@ -4,3 +4,8 @@
 
 # trunk output
 crates/gallery/dist/
+
+# kittest leaves these beside a snapshot that differs
+docs/images/gallery/*.new.png
+docs/images/gallery/*.diff.png
+docs/images/gallery/*.old.png
