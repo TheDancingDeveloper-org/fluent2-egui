@@ -184,7 +184,7 @@ impl<'a> Qat<'a> {
                 let response = ui.add(button).fluent_tooltip(item.tooltip);
                 first = first.or(Some(response.id));
                 if ui.is_enabled() {
-                    keytips::register(
+                    keytips::register_for(
                         ui.ctx(),
                         KeyTipCandidate {
                             target: item.key,
@@ -194,6 +194,7 @@ impl<'a> Qat<'a> {
                             label: item.label.to_owned(),
                         },
                         response.rect,
+                        response.id,
                     );
                 }
                 // A KeyTip runs the item, as a click does (§6.3).

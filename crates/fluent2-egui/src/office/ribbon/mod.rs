@@ -281,6 +281,7 @@ impl<'a> Ribbon<'a> {
 
         let mut list_response = None;
         let mut file_response = None;
+        let mut tab_list_id: Option<Id> = None;
         ui.vertical(|ui| {
             if !headers.is_empty() {
                 let (row, _) =
@@ -300,6 +301,8 @@ impl<'a> Ribbon<'a> {
                 if let Some(file) = &file_tab {
                     file_response = Some(file_tab_button(ui, file, file_width, &theme));
                 }
+                // TabList names its tab nodes from this id; KeyTips set their access keys.
+                tab_list_id = Some(ui.make_persistent_id(Id::new(id)));
                 let mut list = TabList::new(id, &mut selected);
                 for label in &label_refs {
                     list = list.tab(*label);
@@ -329,7 +332,12 @@ impl<'a> Ribbon<'a> {
         // A tab's badge sits under its label, so each tab registers its slot in the strip.
         let mut left = strip_response.rect.left();
         let enabled = ui.is_enabled();
-        for ((key, label), (keytip, width)) in keys.iter().zip(&labels).zip(tab_keytips.iter().zip(&widths)) {
+        for (index, ((key, label), (keytip, width))) in keys
+            .iter()
+            .zip(&labels)
+            .zip(tab_keytips.iter().zip(&widths))
+            .enumerate()
+        {
             let rect = Rect::from_min_size(
                 Pos2::new(left, strip_response.rect.top()),
                 Vec2::new(*width, strip_response.rect.height()),
@@ -338,20 +346,20 @@ impl<'a> Ribbon<'a> {
             if !enabled {
                 continue;
             }
-            keytips::register(
-                ui.ctx(),
-                KeyTipCandidate {
-                    target: key,
-                    level: KeyTipLevel::Root,
-                    kind: TargetKind::Tab,
-                    requested: *keytip,
-                    label: label.clone(),
-                },
-                rect,
-            );
+            let candidate = KeyTipCandidate {
+                target: key,
+                level: KeyTipLevel::Root,
+                kind: TargetKind::Tab,
+                requested: *keytip,
+                label: label.clone(),
+            };
+            match tab_list_id {
+                Some(list) => keytips::register_for(ui.ctx(), candidate, rect, list.with(("tab", index))),
+                None => keytips::register(ui.ctx(), candidate, rect),
+            }
         }
         if let (true, Some(file), Some(file_tab)) = (enabled, &file_response, &file_tab) {
-            keytips::register(
+            keytips::register_for(
                 ui.ctx(),
                 KeyTipCandidate {
                     target: file_tab.key,
@@ -361,6 +369,7 @@ impl<'a> Ribbon<'a> {
                     label: file_tab.label.clone(),
                 },
                 file.rect,
+                file.id,
             );
         }
 

@@ -184,7 +184,7 @@ What Orca announces at the PR head:
 | Title bar / QAT | "Save, button", "Undo", "Redo", "Customize", "Search, entry", "Minimize", "Maximize", "Close" | ok |
 | Ribbon | "File, button", "Home, page tab", "Paste, button", … "Font, combo box", "Size, combo box", "Bold, toggle button not pressed", "More, button", "Font dialog, button" | ok |
 | F6 regions | Save → Close → Select all → document entry → Zoom out | ok |
-| KeyTips (Alt) | nothing | **gap** (WI-1849) |
+| KeyTips (Alt) | nothing | fixed in tests (WI-1849): ribbon tabs, controls, the File tab and QAT items carry their key sequence as the AccessKit access key ("Alt, H, V"), and a polite live region says "KeyTips on" and "KeyTips off"; not re-walked with Orca |
 | Backstage | Space on File: "frame", focus lost | fixed (WI-1850): focus moves to the selected entry on open, covered by `a11y_keyboard.rs`; not re-walked with Orca |
 | Status bar | "100%, button", "Zoom in", "Zoom, slider, 100, 25 percent", "Zoom out" | ok |
 

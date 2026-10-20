@@ -443,3 +443,65 @@ fn badges_render_in_light_dark_and_high_contrast() {
         assert!(shown_key(&harness, "paste").is_some());
     }
 }
+
+/// The access key AccessKit carries on the node with `role` and `label`.
+fn access_key(harness: &Harness<'static>, role: Role, label: &str) -> Option<String> {
+    use egui_kittest::kittest::NodeT;
+    harness
+        .get_by_role_and_label(role, label)
+        .accesskit_node()
+        .data()
+        .access_key()
+        .map(str::to_owned)
+}
+
+#[test]
+fn ribbon_targets_carry_their_full_key_sequence_as_access_key() {
+    // WI-1849: screen readers read the KeyTip of a control from its AccessKit access key.
+    let shared = shared();
+    let harness = harness(shared);
+    assert_eq!(access_key(&harness, Role::Tab, "Home").as_deref(), Some("Alt, H"));
+    assert_eq!(
+        access_key(&harness, Role::Button, "Paste").as_deref(),
+        Some("Alt, H, V")
+    );
+    assert_eq!(
+        access_key(&harness, Role::Button, "File").as_deref(),
+        Some("Alt, F")
+    );
+    assert_eq!(
+        access_key(&harness, Role::Button, "Save").as_deref(),
+        Some("Alt, 1")
+    );
+}
+
+#[test]
+fn entering_and_leaving_keytips_is_announced_politely() {
+    use egui_kittest::kittest::NodeT;
+    let shared = shared();
+    let mut harness = harness(shared);
+    let live = |harness: &Harness<'static>| {
+        harness.query_by_role(Role::Status).map(|node| {
+            let node = node.accesskit_node();
+            (node.data().live(), node.label().unwrap_or_default())
+        })
+    };
+    assert_eq!(
+        live(&harness),
+        None,
+        "no live region before KeyTips are first used"
+    );
+    alt(&mut harness);
+    harness.run();
+    let Some((politeness, text)) = live(&harness) else {
+        panic!("no live region while KeyTips are on");
+    };
+    assert_eq!(politeness, Some(egui::accesskit::Live::Polite));
+    assert!(text.starts_with("KeyTips on"), "{text:?}");
+    press(&mut harness, Key::Escape);
+    harness.run();
+    let Some((_, text)) = live(&harness) else {
+        panic!("the live region went away");
+    };
+    assert_eq!(text, "KeyTips off.");
+}
