@@ -6,7 +6,7 @@
 use fluent2_egui::controls::{
     Appearance, Badge, Button, ButtonSize, CheckState, Checkbox, Combobox, CompoundButton, Divider, Dropdown,
     Field, Input, Link, MenuButton, ProgressBar, RadioGroup, SearchBox, Slider, SpinButton, Spinner,
-    SplitButton, Switch, Textarea, ToggleButton, ValidationState,
+    SplitButton, Switch, TagPicker, TagSuggestion, Textarea, ToggleButton, ValidationState,
 };
 use fluent2_egui::surfaces::MenuItem;
 use fluent2_icons::Icon;
@@ -29,6 +29,9 @@ pub struct ControlsPage {
     colour: Option<usize>,
     font: String,
     status: String,
+    recipients: Vec<String>,
+    recipient_query: String,
+    suggestions: Vec<TagSuggestion>,
 }
 
 impl Default for ControlsPage {
@@ -49,6 +52,9 @@ impl Default for ControlsPage {
             colour: Some(0),
             font: "Calibri".to_owned(),
             status: "Nothing clicked yet".to_owned(),
+            recipients: vec!["ada@example.com".to_owned(), "not an address".to_owned()],
+            recipient_query: String::new(),
+            suggestions: Vec::new(),
         }
     }
 }
@@ -149,6 +155,20 @@ impl Page for ControlsPage {
                 .show(ui, |ui| {
                     ui.add(Input::new(&mut self.email).label("Email"));
                 });
+            Field::new("To")
+                .hint("Type a name, or paste addresses separated by , or ;")
+                .show(ui, |ui| {
+                    let valid = |tag: &str| tag.contains('@');
+                    let out = TagPicker::new("controls_to", &mut self.recipients, &mut self.recipient_query)
+                        .suggestions(&self.suggestions)
+                        .validate(&valid)
+                        .placeholder("Add people")
+                        .show(ui);
+                    if out.query_changed {
+                        // A real app would fetch these; the gallery filters a fixed list.
+                        self.suggestions = contacts(&self.recipient_query);
+                    }
+                });
             Field::new("Search").show(ui, |ui| {
                 ui.add(
                     SearchBox::new(&mut self.query)
@@ -195,6 +215,26 @@ impl Page for ControlsPage {
             ui.add(ProgressBar::new(None));
         });
     }
+}
+
+/// The gallery's stand-in for a contacts lookup.
+fn contacts(query: &str) -> Vec<TagSuggestion> {
+    const PEOPLE: [(&str, &str); 5] = [
+        ("Ada Lovelace", "ada@example.com"),
+        ("Alan Turing", "alan@example.com"),
+        ("Grace Hopper", "grace@example.com"),
+        ("Edsger Dijkstra", "edsger@example.com"),
+        ("Barbara Liskov", "barbara@example.com"),
+    ];
+    let query = query.trim().to_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+    PEOPLE
+        .iter()
+        .filter(|(name, address)| name.to_lowercase().contains(&query) || address.contains(&query))
+        .map(|(name, address)| TagSuggestion::new(*address).label(*name))
+        .collect()
 }
 
 #[cfg(test)]
