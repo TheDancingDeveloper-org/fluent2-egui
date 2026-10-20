@@ -123,6 +123,9 @@ fn pairs() -> Vec<Pair> {
         pair!("TabList", "selected indicator", NonText, compound_brand_stroke on neutral_background_1),
         pair!("Card", "text on filled-alternative", Text, neutral_foreground_1 on neutral_background_2),
         pair!("Card", "border", NonText, neutral_stroke_1 on neutral_background_1),
+        // WI-1932: avatar initials and icon.
+        pair!("Avatar", "neutral initials", Text, neutral_foreground_3 on neutral_background_6),
+        pair!("Avatar", "brand initials", Text, neutral_foreground_on_brand on brand_background),
         // WI-1845: an interactive card's content takes the foreground for its fill.
         pair!("Card", "content, hover", Text, neutral_foreground_1_hover on neutral_background_1_hover),
         pair!("Card", "content, pressed", Text, neutral_foreground_1_pressed on neutral_background_1_pressed),
@@ -365,4 +368,128 @@ fn print_table() {
             cell("hc"),
         );
     }
+}
+
+#[test]
+fn avatar_palette_initials_pass_aa() {
+    // WI-1932: the 30 colourful avatar pairs, foreground 2 on background 2, in light and dark.
+    type Pick = fn(&AliasColors) -> (Rgba, Rgba);
+    let palette: [(&str, Pick); 30] = [
+        ("dark_red", |c| {
+            (c.palette_dark_red_foreground_2, c.palette_dark_red_background_2)
+        }),
+        ("cranberry", |c| {
+            (c.palette_cranberry_foreground_2, c.palette_cranberry_background_2)
+        }),
+        ("red", |c| {
+            (c.palette_red_foreground_2, c.palette_red_background_2)
+        }),
+        ("pumpkin", |c| {
+            (c.palette_pumpkin_foreground_2, c.palette_pumpkin_background_2)
+        }),
+        ("peach", |c| {
+            (c.palette_peach_foreground_2, c.palette_peach_background_2)
+        }),
+        ("marigold", |c| {
+            (c.palette_marigold_foreground_2, c.palette_marigold_background_2)
+        }),
+        ("gold", |c| {
+            (c.palette_gold_foreground_2, c.palette_gold_background_2)
+        }),
+        ("brass", |c| {
+            (c.palette_brass_foreground_2, c.palette_brass_background_2)
+        }),
+        ("brown", |c| {
+            (c.palette_brown_foreground_2, c.palette_brown_background_2)
+        }),
+        ("forest", |c| {
+            (c.palette_forest_foreground_2, c.palette_forest_background_2)
+        }),
+        ("seafoam", |c| {
+            (c.palette_seafoam_foreground_2, c.palette_seafoam_background_2)
+        }),
+        ("dark_green", |c| {
+            (
+                c.palette_dark_green_foreground_2,
+                c.palette_dark_green_background_2,
+            )
+        }),
+        ("light_teal", |c| {
+            (
+                c.palette_light_teal_foreground_2,
+                c.palette_light_teal_background_2,
+            )
+        }),
+        ("teal", |c| {
+            (c.palette_teal_foreground_2, c.palette_teal_background_2)
+        }),
+        ("steel", |c| {
+            (c.palette_steel_foreground_2, c.palette_steel_background_2)
+        }),
+        ("blue", |c| {
+            (c.palette_blue_foreground_2, c.palette_blue_background_2)
+        }),
+        ("royal_blue", |c| {
+            (
+                c.palette_royal_blue_foreground_2,
+                c.palette_royal_blue_background_2,
+            )
+        }),
+        ("cornflower", |c| {
+            (
+                c.palette_cornflower_foreground_2,
+                c.palette_cornflower_background_2,
+            )
+        }),
+        ("navy", |c| {
+            (c.palette_navy_foreground_2, c.palette_navy_background_2)
+        }),
+        ("lavender", |c| {
+            (c.palette_lavender_foreground_2, c.palette_lavender_background_2)
+        }),
+        ("purple", |c| {
+            (c.palette_purple_foreground_2, c.palette_purple_background_2)
+        }),
+        ("grape", |c| {
+            (c.palette_grape_foreground_2, c.palette_grape_background_2)
+        }),
+        ("lilac", |c| {
+            (c.palette_lilac_foreground_2, c.palette_lilac_background_2)
+        }),
+        ("pink", |c| {
+            (c.palette_pink_foreground_2, c.palette_pink_background_2)
+        }),
+        ("magenta", |c| {
+            (c.palette_magenta_foreground_2, c.palette_magenta_background_2)
+        }),
+        ("plum", |c| {
+            (c.palette_plum_foreground_2, c.palette_plum_background_2)
+        }),
+        ("beige", |c| {
+            (c.palette_beige_foreground_2, c.palette_beige_background_2)
+        }),
+        ("mink", |c| {
+            (c.palette_mink_foreground_2, c.palette_mink_background_2)
+        }),
+        ("platinum", |c| {
+            (c.palette_platinum_foreground_2, c.palette_platinum_background_2)
+        }),
+        ("anchor", |c| {
+            (c.palette_anchor_foreground_2, c.palette_anchor_background_2)
+        }),
+    ];
+    let mut failures = Vec::new();
+    for (theme, colors) in themes().into_iter().filter(|(name, _)| *name != "hc") {
+        for (name, pick) in palette {
+            let (fg, bg) = pick(&colors);
+            let measured = ratio(fg, bg);
+            if measured < 4.5 {
+                failures.push(format!("{theme} {name}: {measured:.2}"));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "avatar palette pairs below 4.5:1: {failures:#?}"
+    );
 }

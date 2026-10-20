@@ -3,6 +3,7 @@
 //! Later items add a page by adding one file in `crates/gallery/src/pages/` and one line in
 //! [`pages`] below. Nothing else in the gallery needs to change.
 
+mod avatars;
 mod backstage;
 mod charts;
 mod code_view;
@@ -25,6 +26,7 @@ mod tokens;
 mod typography;
 mod variable_list;
 
+pub use avatars::AvatarsPage;
 pub use backstage::BackstagePage;
 pub use charts::ChartsPage;
 pub use code_view::CodeViewPage;
@@ -64,6 +66,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(IconsPage::default()),
         Box::new(ControlsPage::default()),
         Box::new(SurfacesPage::default()),
+        Box::new(AvatarsPage),
         Box::new(DataGridPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(PagerPage::default()),

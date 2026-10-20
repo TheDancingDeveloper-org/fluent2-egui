@@ -70,6 +70,8 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | TabList | selected indicator | non-text 3 | `compound_brand_stroke` | `neutral_background_1` | 5.38 | 5.18 | 14.37 |
 | Card | text on filled-alternative | text 4.5 | `neutral_foreground_1` | `neutral_background_2` | 14.87 | 16.48 | 21.00 |
 | Card | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| Avatar | neutral initials | text 4.5 | `neutral_foreground_3` | `neutral_background_6` | 4.96 | 5.63 | 21.00 |
+| Avatar | brand initials | text 4.5 | `neutral_foreground_on_brand` | `brand_background` | 5.38 | 6.66 | 21.00 |
 | Card | content, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_1_hover` | 14.24 | 10.86 | 14.37 |
 | Card | content, pressed | text 4.5 | `neutral_foreground_1_pressed` | `neutral_background_1_pressed` | 11.76 | 16.48 | 14.37 |
 | Card | content, selected | text 4.5 | `neutral_foreground_1_selected` | `neutral_background_1_selected` | 13.02 | 11.73 | 14.37 |
