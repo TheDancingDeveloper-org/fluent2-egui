@@ -693,6 +693,10 @@ These widths are the same on the first frame, because they come from text layout
 
 - Alt, pressed and released with no other key in between, activates KeyTips at the root level.
 - F10 does the same and also toggles KeyTips off when already active.
+- While KeyTips are active, a letter, digit, Escape or Backspace typed with Alt still held is
+  read as the plain key, so the user can keep Alt down through the sequence (Alt, H, V). Alt's
+  release then does not toggle KeyTips. With Ctrl, Shift or Command also held, the key is a
+  shortcut and does not step KeyTips (WI-1927).
 - Badges are small rounded rectangles (`ChromeMetrics::keytip_badge`, 16 × 16 pt for one
   letter, grown to fit two letters) placed at the top-left of the target's rectangle, offset
   2 pt. Tab badges go under the tab label.
