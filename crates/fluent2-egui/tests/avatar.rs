@@ -88,3 +88,28 @@ fn every_variant_renders_in_every_theme() {
         let _ = harness.get_by_label("Analyst");
     }
 }
+
+#[test]
+fn image_avatar_has_an_edge_in_high_contrast() {
+    // The picture is not distinct from the page in high contrast, so it gets the same edge as
+    // the initials avatar.
+    let theme = Theme::high_contrast();
+    let edge = fluent2_egui::theme::c(theme.color.neutral_stroke_accessible);
+    let ctx = egui::Context::default();
+    install(&ctx, &theme);
+    let mut found = false;
+    for _ in 0..2 {
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.add(
+                Avatar::new("Ada Lovelace")
+                    .size(48.0)
+                    .image(egui::TextureId::Managed(0)),
+            );
+        });
+        found = output.shapes.iter().any(|clipped| {
+            matches!(&clipped.shape, egui::Shape::Rect(rect) if rect.stroke.color == edge && rect.stroke.width > 0.0)
+        });
+        output.textures_delta.clear();
+    }
+    assert!(found, "the image avatar has a high-contrast edge");
+}

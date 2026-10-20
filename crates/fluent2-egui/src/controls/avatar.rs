@@ -185,15 +185,6 @@ impl Avatar {
                 .paint_at(ui, rect);
         } else {
             painter.rect_filled(rect, radius, fill);
-            // High contrast: an edge, as the fills are not distinct from the page there.
-            if theme.kind == ThemeKind::HighContrast {
-                painter.rect_stroke(
-                    rect,
-                    radius,
-                    Stroke::new(1.0, c(theme.color.neutral_stroke_accessible)),
-                    StrokeKind::Inside,
-                );
-            }
             let text = self.initials.clone().unwrap_or_else(|| initials(&self.name));
             if text.is_empty() {
                 let icon = if self.size <= 28.0 {
@@ -226,6 +217,16 @@ impl Avatar {
                 );
                 painter.galley(rect.center() - galley.size() / 2.0, galley, ink);
             }
+        }
+        // High contrast: an edge, as neither the fills nor a picture are distinct from the page
+        // there.
+        if theme.kind == ThemeKind::HighContrast {
+            painter.rect_stroke(
+                rect,
+                radius,
+                Stroke::new(1.0, c(theme.color.neutral_stroke_accessible)),
+                StrokeKind::Inside,
+            );
         }
         if let Some(presence) = self.presence {
             paint_presence(&painter, &theme, rect, self.size, presence);
@@ -467,9 +468,39 @@ impl Persona {
 /// gives one letter; no usable word gives an empty string.
 #[must_use]
 pub fn initials(name: &str) -> String {
+    let words = initial_letters(name, true);
+    // An unclosed bracket ("Ada (Lovelace") would hide every word after it; read the name
+    // without bracket skipping instead, ignoring the brackets themselves.
+    let words = if words.is_none() {
+        initial_letters(name, false).unwrap_or_default()
+    } else {
+        words.unwrap_or_default()
+    };
+    let picked: Vec<char> = match words.as_slice() {
+        [] => Vec::new(),
+        [only] => vec![*only],
+        [first, .., last] => vec![*first, *last],
+    };
+    picked.into_iter().flat_map(char::to_uppercase).collect()
+}
+
+/// The first letter of each word. With `skip_brackets`, words inside brackets are skipped and
+/// an unbalanced bracket returns `None`; without it, brackets around a word are stripped.
+fn initial_letters(name: &str, skip_brackets: bool) -> Option<Vec<char>> {
     let mut depth = 0_i32;
     let mut words = Vec::new();
     for word in name.split_whitespace() {
+        if !skip_brackets {
+            if let Some(first) = word
+                .trim_start_matches(['(', '[', '{'])
+                .chars()
+                .next()
+                .filter(|ch| ch.is_alphanumeric())
+            {
+                words.push(first);
+            }
+            continue;
+        }
         let opens = word.starts_with(['(', '[', '{']);
         if opens {
             depth += 1;
@@ -480,15 +511,10 @@ pub fn initials(name: &str) -> String {
             words.push(first);
         }
         if word.ends_with([')', ']', '}']) {
-            depth = (depth - 1).max(0);
+            depth -= 1;
         }
     }
-    let picked: Vec<char> = match words.as_slice() {
-        [] => Vec::new(),
-        [only] => vec![*only],
-        [first, .., last] => vec![*first, *last],
-    };
-    picked.into_iter().flat_map(char::to_uppercase).collect()
+    (depth == 0).then_some(words)
 }
 
 /// The palette index (0..30) [`AvatarColor::Colorful`] uses for `name`: FNV-1a over its
@@ -707,6 +733,10 @@ mod tests {
         assert_eq!(initials("  "), "");
         assert_eq!(initials("-- !!"), "");
         assert_eq!(initials("Émile Zola"), "ÉZ");
+        // An unclosed bracket does not drop the words after it.
+        assert_eq!(initials("Ada (Lovelace"), "AL");
+        assert_eq!(initials("(Ada Lovelace"), "AL");
+        assert_eq!(initials("Grace Hopper)"), "GH");
     }
 
     #[test]
