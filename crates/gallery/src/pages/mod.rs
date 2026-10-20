@@ -7,6 +7,7 @@ mod backstage;
 mod charts;
 mod code_view;
 mod command_palette;
+pub(crate) mod controls;
 mod data_grid;
 mod diff;
 mod docking;
@@ -17,6 +18,7 @@ mod markdown;
 mod pager;
 mod reorder;
 mod ribbon;
+mod surfaces;
 mod tab_strip;
 mod terminal;
 mod tokens;
@@ -27,6 +29,7 @@ pub use backstage::BackstagePage;
 pub use charts::ChartsPage;
 pub use code_view::CodeViewPage;
 pub use command_palette::CommandPalettePage;
+pub use controls::ControlsPage;
 pub use data_grid::DataGridPage;
 pub use diff::DiffPage;
 pub use docking::DockingPage;
@@ -37,6 +40,7 @@ pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
+pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
@@ -58,6 +62,8 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TokensPage),
         Box::new(TypographyPage),
         Box::new(IconsPage::default()),
+        Box::new(ControlsPage::default()),
+        Box::new(SurfacesPage::default()),
         Box::new(DataGridPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(PagerPage::default()),
