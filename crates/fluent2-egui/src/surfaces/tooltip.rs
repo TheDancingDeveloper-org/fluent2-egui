@@ -76,6 +76,14 @@ impl FluentTooltip {
         let text = self.text.clone();
         let tone = self.tone;
         let response = self.response.clone();
+        // Screen readers read the tooltip as the widget's description, on focus and without
+        // hover, as Fluent web does with aria-describedby (WI-1931). An icon-only button whose
+        // label is the tooltip text gets no duplicate.
+        response.ctx.accesskit_node_builder(response.id, |node| {
+            if let Some(description) = tooltip_description(node.label(), &text) {
+                node.set_description(description);
+            }
+        });
         let show_for_focus = keyboard_focus(&response);
         let hover_text = text.clone();
         response.clone().on_hover_ui(move |ui| {
@@ -121,6 +129,25 @@ impl TooltipExt for Response {
         tooltip.show();
         self
     }
+}
+
+/// The part of a tooltip that adds to the widget's name: `None` when it only repeats the label,
+/// and without a leading line that repeats it (ribbon tooltips are "Label\nShortcut").
+fn tooltip_description(label: Option<&str>, text: &str) -> Option<String> {
+    let text = text.trim();
+    let rest = match label.map(str::trim) {
+        Some(label) if !label.is_empty() => {
+            if text == label {
+                return None;
+            }
+            text.strip_prefix(label)
+                .and_then(|rest| rest.strip_prefix('\n'))
+                .unwrap_or(text)
+        }
+        _ => text,
+    };
+    let rest = rest.trim();
+    (!rest.is_empty()).then(|| rest.to_owned())
 }
 
 fn keyboard_focus(response: &Response) -> bool {
@@ -228,4 +255,24 @@ fn first_shadow(theme: &Theme) -> egui::Shadow {
             })
         })
         .unwrap_or(egui::Shadow::NONE)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tooltip_description;
+
+    #[test]
+    fn description_skips_what_the_label_already_says() {
+        assert_eq!(tooltip_description(Some("Save"), "Save"), None);
+        assert_eq!(
+            tooltip_description(Some("Paste"), "Paste\nCtrl+V"),
+            Some("Ctrl+V".to_owned())
+        );
+        assert_eq!(
+            tooltip_description(Some("Save"), "Saves the document"),
+            Some("Saves the document".to_owned())
+        );
+        assert_eq!(tooltip_description(None, "Help"), Some("Help".to_owned()));
+        assert_eq!(tooltip_description(Some("Help"), "  "), None);
+    }
 }

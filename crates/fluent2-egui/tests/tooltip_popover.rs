@@ -122,3 +122,68 @@ fn popover_closes_on_click_outside() {
     }));
     assert!(still.is_err(), "a click outside should close the popover");
 }
+
+/// The AccessKit description of the node with `role` and `label`.
+fn description(harness: &Harness<'_>, role: Role, label: &str) -> Option<String> {
+    use egui_kittest::kittest::NodeT;
+    harness
+        .get_by_role_and_label(role, label)
+        .accesskit_node()
+        .description()
+}
+
+#[test]
+fn tooltip_text_is_the_widgets_description_without_hover() {
+    // WI-1931: screen readers read the tooltip on focus, as Fluent's aria-describedby does.
+    let mut harness = Harness::new_ui(|ui| {
+        install(ui.ctx(), &Theme::default());
+        let _ = ui
+            .add(fluent2_egui::controls::Button::new("Save"))
+            .fluent_tooltip("Saves the document");
+        let _ = ui
+            .add(fluent2_egui::controls::Button::icon_only(
+                fluent2_egui::IconName::Settings,
+                "Settings",
+            ))
+            .fluent_tooltip("Settings");
+    });
+    harness.run();
+    assert_eq!(
+        description(&harness, Role::Button, "Save").as_deref(),
+        Some("Saves the document")
+    );
+    assert_eq!(
+        description(&harness, Role::Button, "Settings"),
+        None,
+        "a tooltip that repeats the label adds no description"
+    );
+}
+
+#[test]
+fn ribbon_button_description_is_its_shortcut() {
+    use fluent2_egui::IconName;
+    use fluent2_egui::office::ribbon::{
+        GroupBuilder, Ribbon, RibbonLarge, RibbonState, RibbonTab, TabBuilder,
+    };
+    let mut state = RibbonState::default();
+    let mut harness = egui_kittest::Harness::builder()
+        .with_size(egui::vec2(1000.0, 300.0))
+        .build_ui(move |ui| {
+            install(ui.ctx(), &Theme::default());
+            let _ = Ribbon::new("main")
+                .tab(RibbonTab::new("home", "Home", |tab: &mut TabBuilder<'_>| {
+                    tab.group("clipboard", "Clipboard", |group: &mut GroupBuilder<'_>| {
+                        group.add(
+                            RibbonLarge::new("paste", IconName::ClipboardPaste, "Paste").shortcut("Ctrl+V"),
+                        );
+                    });
+                }))
+                .show(ui, &mut state);
+        });
+    harness.run();
+    harness.run();
+    assert_eq!(
+        description(&harness, Role::Button, "Paste").as_deref(),
+        Some("Ctrl+V")
+    );
+}
