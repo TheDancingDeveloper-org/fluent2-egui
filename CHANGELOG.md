@@ -5,6 +5,7 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- Gallery: a "Basic controls" page (every button kind, link, checkbox including mixed, radio group, switch, slider, spin button, input, search box, textarea, dropdown, combobox, fields with hint and validation, badges, spinner, progress bars, dividers) and a "Surfaces" page (modal, non-modal, alert and tall dialogs; popover; context menu; tooltips; a toast and a message bar for each intent; cards; transparent and subtle tab lists). Every control on them has an accessible name, so they double as screen-reader walk pages, and both appear in the README gallery images. Found by the 2026-10-20 audit (WI-1930).
 - KeyTips for screen readers: each ribbon tab, ribbon control, the File tab and each QAT item carries its full KeyTip sequence as its AccessKit access key ("Alt, H, V"). A polite live region (`keytips::live_region_id()`) says "KeyTips on" and "KeyTips off". `keytips::register_for` registers a target with the widget it runs, so app-registered targets get the access key too (WI-1849).
 - `RadioGroup::label` and `Slider::label` set the accessible name (not drawn). Inside a `Field`, SpinButton, RadioGroup and Slider without a label of their own take the Field's label. The Slider still defaults to "Slider" outside a Field. `tests/a11y_keyboard.rs` now checks that every Tab stop has a name (WI-1843).
 - `Dialog::description` sets a plain-text accessible description on the dialog node (WI-1850).
