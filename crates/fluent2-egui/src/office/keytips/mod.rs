@@ -258,7 +258,25 @@ fn begin_pass(ctx: &Context) {
                 modifiers,
                 ..
             } => {
-                if modifiers.alt || kt.alt_down {
+                // With KeyTips on, a key typed while Alt is still held continues the sequence,
+                // as in Office (WI-1927, after gridcraft 4ed93c3b). Alt's release then does not
+                // toggle KeyTips off. Ctrl, Shift or Command with it still make it a shortcut.
+                let alt_held = modifiers.alt || kt.alt_down;
+                let other = modifiers.ctrl || modifiers.shift || modifiers.command;
+                if active && alt_held && !other {
+                    kt.alt_tainted = true;
+                    let input = match key {
+                        Key::Escape => Some(KeyTipInput::Escape),
+                        Key::Backspace => Some(KeyTipInput::Backspace),
+                        _ => key_char(*key).map(KeyTipInput::Char),
+                    };
+                    if let Some(input) = input {
+                        apply(ctx, &mut kt, input);
+                        consumed[index] = true;
+                    }
+                    continue;
+                }
+                if alt_held {
                     // Alt is a modifier here (Alt+F): its release must not toggle KeyTips.
                     if !kt.alt_down {
                         kt.alt_down = true;

@@ -505,3 +505,51 @@ fn entering_and_leaving_keytips_is_announced_politely() {
     };
     assert_eq!(text, "KeyTips off.");
 }
+
+#[test]
+fn letters_typed_with_alt_still_held_continue_the_sequence() {
+    // WI-1927 (after gridcraft 4ed93c3b): once KeyTips are on, holding Alt while typing still
+    // walks the sequence, and releasing Alt afterwards does not turn KeyTips off.
+    let shared = shared();
+    let mut harness = harness(shared);
+    alt(&mut harness);
+    assert_eq!(state(&harness), KeyTipState::Root);
+
+    harness.event(Event::ModifiersChanged(Modifiers::ALT));
+    harness.key_press_modifiers(Modifiers::ALT, Key::H);
+    harness.run();
+    assert_eq!(
+        state(&harness),
+        KeyTipState::Tab { tab: "home" },
+        "Alt+H opened Home's KeyTips"
+    );
+    harness.event(Event::ModifiersChanged(Modifiers::NONE));
+    harness.run();
+    assert_eq!(
+        state(&harness),
+        KeyTipState::Tab { tab: "home" },
+        "releasing Alt did not leave KeyTips"
+    );
+
+    harness.event(Event::ModifiersChanged(Modifiers::ALT));
+    harness.key_press_modifiers(Modifiers::ALT, Key::V);
+    harness.run();
+    harness.event(Event::ModifiersChanged(Modifiers::NONE));
+    harness.run();
+    assert!(clicked(shared, "paste"), "Alt+V ran Paste");
+    assert_eq!(state(&harness), KeyTipState::Idle);
+}
+
+#[test]
+fn ctrl_alt_keys_do_not_step_keytips() {
+    let shared = shared();
+    let mut harness = harness(shared);
+    alt(&mut harness);
+    harness.key_press_modifiers(Modifiers::ALT | Modifiers::CTRL, Key::H);
+    harness.run();
+    assert_eq!(
+        state(&harness),
+        KeyTipState::Root,
+        "Ctrl+Alt+H is a shortcut, not a KeyTip"
+    );
+}
