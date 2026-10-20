@@ -18,6 +18,7 @@ const SUPPORTING: &[&str] = &[
     "BadgeColor",
     "BadgeSize",
     "ButtonSize",
+    "FileCardResponse",
     "TagPickerResponse",
     "TagSuggestion",
     "CheckState",

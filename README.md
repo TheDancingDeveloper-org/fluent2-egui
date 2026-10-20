@@ -92,6 +92,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `TagPicker` | TagPicker | | Basic controls |
 | `Field` | Field (and Label) | | Basic controls |
 | `Badge` | Badge, CounterBadge | | Basic controls |
+| `FileCard` | Attachment (file card) | | Surfaces |
 | `ProgressBar` | ProgressBar | | Basic controls |
 | `Spinner` | Spinner | | Basic controls |
 | `Divider` | Divider | | Basic controls |
