@@ -52,6 +52,17 @@ watch = ["pulldown-cmark/src/lib.rs", "pulldown-cmark/Cargo.toml"]
 notes = "Cargo dependency of fluent2-egui behind the `markdown` feature (crates.io pulldown-cmark 0.13.4, tag v0.13.4, default features off). Zed's crates/markdown and markdown_preview are GPL-3.0: design reference only, no code copied."
 
 [[source]]
+name = "html5gum"
+repo = "untitaker/html5gum"
+branch = "main"
+rev = "d182efa7a6e315a4f38518697ba9addf3e8fc266"
+reviewed = "2026-10-20"
+licence = "MIT"
+role = "dependency"
+watch = ["src/lib.rs", "src/emitters/default.rs", "Cargo.toml"]
+notes = "Cargo dependency of fluent2-egui behind the `html` feature (crates.io html5gum 0.8.4, tag 0.8.4, default features off: no dependencies, forbid(unsafe_code)). fluent-gpui's RichDocument::from_html_fragment_lossy (email-rs GPUI client) was the design reference for the block model; no code copied."
+
+[[source]]
 name = "egui_commonmark"
 repo = "lampsitter/egui_commonmark"
 branch = "master"

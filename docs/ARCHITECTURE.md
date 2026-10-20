@@ -124,6 +124,10 @@ default build stays a Fluent library with no extra dependencies.
 - `markdown`: `data::markdown` (`Document`, parsed with `pulldown-cmark`, and `MarkdownView`).
   The app owns link handling through a `LinkPolicy` and may plug a syntax highlighter into
   code blocks. The gallery turns it on; `tests/markdown.rs` is `#![cfg(feature = "markdown")]`.
+- `html`: `data::html` (`HtmlDocument`, a lossy block model parsed with `html5gum`, and
+  `HtmlView`). It renders a sanitised HTML subset for mail. Links and images go through app
+  policies, and nothing is fetched or executed. Spec: `docs/specs/html-view.md`. The gallery
+  turns it on; `tests/html.rs` is `#![cfg(feature = "html")]`.
 - `highlight`: `data::code` (the shared highlighter `highlight`/`Highlighter`, which maps
   source to `SyntaxToken` runs, `syntax_color`, which maps those to Fluent palette tokens, and
   `CodeView`, a read-only view with line numbers, selection and copy). It is built on `syntect`

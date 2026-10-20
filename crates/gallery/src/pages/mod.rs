@@ -13,6 +13,7 @@ mod diff;
 mod docking;
 mod drawer;
 mod file_dialog;
+mod html_view;
 mod icons;
 mod markdown;
 mod pager;
@@ -35,6 +36,7 @@ pub use diff::DiffPage;
 pub use docking::DockingPage;
 pub use drawer::DrawerPage;
 pub use file_dialog::FileDialogPage;
+pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
@@ -79,6 +81,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(ChartsPage::default()),
         Box::new(DockingPage::default()),
         Box::new(ReorderPage::default()),
+        Box::new(HtmlPage::default()),
         Box::new(MarkdownPage::default()),
     ]
 }
