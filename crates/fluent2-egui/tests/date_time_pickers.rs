@@ -223,3 +223,43 @@ fn renders_in_every_theme() {
         harness.run_steps(2);
     }
 }
+
+#[test]
+fn time_picker_keeps_typed_text_until_it_is_committed() {
+    // WI-1943 review: the field used to be reparsed and reformatted on every keystroke, so
+    // "14:30" could not be typed.
+    let mut harness = pickers();
+    harness.run_steps(2);
+    harness.get_by_role_and_label(Role::ComboBox, "HH:MM").focus();
+    harness.run_steps(2);
+    for ch in ["1", "4"] {
+        harness.event(Event::Text(ch.to_owned()));
+        harness.run_steps(1);
+    }
+    let field = harness.get_by_role_and_label(Role::ComboBox, "HH:MM");
+    assert_eq!(
+        field.accesskit_node().value().as_deref(),
+        Some("14"),
+        "no reformat while typing"
+    );
+    assert_eq!(harness.state().time, None, "nothing is committed while typing");
+    for ch in [":", "3", "0"] {
+        harness.event(Event::Text(ch.to_owned()));
+        harness.run_steps(1);
+    }
+    harness.key_press(Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(harness.state().time, TimeOfDay::new(14, 30));
+
+    // A 12-hour entry is kept as typed until Enter too.
+    harness.get_by_role_and_label(Role::ComboBox, "HH:MM").focus();
+    harness.run_steps(2);
+    harness.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    harness.run_steps(1);
+    harness.event(Event::Text("9pm".to_owned()));
+    harness.run_steps(1);
+    assert_eq!(harness.state().time, TimeOfDay::new(14, 30));
+    harness.key_press(Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(harness.state().time, TimeOfDay::new(21, 0));
+}

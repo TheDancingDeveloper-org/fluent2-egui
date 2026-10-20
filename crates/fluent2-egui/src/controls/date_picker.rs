@@ -436,13 +436,17 @@ impl<'a> TimePicker<'a> {
     pub fn show(self, ui: &mut Ui) -> PickerResponse {
         let id = ui.make_persistent_id(self.id_salt);
         let text_id = id.with("text");
-        let edit_id = ui.make_persistent_id(id.with("combobox"));
-        let focused_before = ui.memory(|m| m.had_focus_last_frame(edit_id));
+        let editing_id = id.with("editing");
+        // While the field has focus, the typed text is kept as typed; it is parsed only when
+        // committed (WI-1943 review: reformatting every keystroke made "14:30" untypable).
+        let editing = ui.ctx().data(|d| d.get_temp::<bool>(editing_id)).unwrap_or(false);
         let mut text = ui
             .ctx()
             .data(|d| d.get_temp::<String>(text_id))
-            .filter(|_| focused_before)
+            .filter(|_| editing)
             .unwrap_or_else(|| self.value.map(|t| t.format(self.twelve_hour)).unwrap_or_default());
+        // Read before the Combobox, which consumes Enter.
+        let enter = editing && ui.input(|i| i.key_pressed(egui::Key::Enter));
         let options: Vec<String> = self
             .options()
             .iter()
@@ -457,7 +461,10 @@ impl<'a> TimePicker<'a> {
         );
         let mut changed = false;
         let mut invalid = false;
-        if response.changed() || response.lost_focus() {
+        // Commit on Enter, on leaving the field, or when the text is exactly a listed time (a
+        // pick from the list). Other edits stay as typed.
+        let picked = response.changed() && options.contains(&text);
+        if enter || response.lost_focus() || picked {
             let trimmed = text.trim();
             if trimmed.is_empty() {
                 changed = self.value.take().is_some();
@@ -469,7 +476,11 @@ impl<'a> TimePicker<'a> {
                 invalid = true;
             }
         }
-        ui.ctx().data_mut(|d| d.insert_temp(text_id, text));
+        let still_editing = response.has_focus() && !response.lost_focus();
+        ui.ctx().data_mut(|d| {
+            d.insert_temp(text_id, text);
+            d.insert_temp(editing_id, still_editing);
+        });
         PickerResponse {
             response,
             changed,

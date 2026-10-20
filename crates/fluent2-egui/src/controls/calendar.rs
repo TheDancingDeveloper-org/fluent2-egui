@@ -34,11 +34,11 @@ impl CalendarDate {
     /// The date, or `None` if it does not exist (30 February, month 13).
     #[must_use]
     pub fn new(year: i32, month: u8, day: u8) -> Option<Self> {
-        ((1..=12).contains(&month) && day >= 1 && day <= days_in_month(year, month)).then_some(Self {
-            year,
-            month,
-            day,
-        })
+        ((MIN_YEAR..=MAX_YEAR).contains(&year)
+            && (1..=12).contains(&month)
+            && day >= 1
+            && day <= days_in_month(year, month))
+        .then_some(Self { year, month, day })
     }
 
     /// The year.
@@ -72,10 +72,22 @@ impl CalendarDate {
         era * 146_097 + doe - 719_468
     }
 
-    /// The date `days` after 1970-01-01. Years are clamped to ±262 143 (chrono's range).
+    /// The date `days` after 1970-01-01, clamped to [`MIN_YEAR`]–[`MAX_YEAR`].
     #[must_use]
     pub fn from_days_since_epoch(days: i64) -> Self {
-        let days = days.clamp(-95_000_000, 95_000_000);
+        let first = Self {
+            year: MIN_YEAR,
+            month: 1,
+            day: 1,
+        }
+        .days_since_epoch();
+        let last = Self {
+            year: MAX_YEAR,
+            month: 12,
+            day: 31,
+        }
+        .days_since_epoch();
+        let days = days.clamp(first, last);
         let z = days + 719_468;
         let era = z.div_euclid(146_097);
         let doe = z - era * 146_097;
@@ -98,8 +110,11 @@ impl CalendarDate {
     /// 28 or 29 Feb).
     #[must_use]
     pub fn add_months(self, months: i32) -> Self {
-        let total = self.year.saturating_mul(12) + i32::from(self.month) - 1 + months;
-        let year = total.div_euclid(12);
+        // In i64, so no input overflows; the year is then clamped to the supported range.
+        let total = i64::from(self.year) * 12 + i64::from(self.month) - 1 + i64::from(months);
+        let year = total
+            .div_euclid(12)
+            .clamp(i64::from(MIN_YEAR), i64::from(MAX_YEAR)) as i32;
         let month = (total.rem_euclid(12) + 1) as u8;
         let day = self.day.min(days_in_month(year, month));
         Self { year, month, day }
@@ -139,6 +154,11 @@ impl CalendarDate {
         Self::new(c.parse().ok()?, month.parse().ok()?, day.parse().ok()?)
     }
 }
+
+/// The earliest year dates are clamped to (chrono's lower bound).
+pub const MIN_YEAR: i32 = -262_143;
+/// The latest year dates are clamped to (chrono's upper bound).
+pub const MAX_YEAR: i32 = 262_142;
 
 /// Days in `month` (1–12) of `year`.
 #[must_use]
@@ -753,6 +773,21 @@ mod tests {
         for days in [-1_000_000, -1, 0, 59, 11_016, 20_746, 3_000_000] {
             assert_eq!(CalendarDate::from_days_since_epoch(days).days_since_epoch(), days);
         }
+    }
+
+    #[test]
+    fn arithmetic_never_overflows() {
+        // WI-1943 review: large month counts used to overflow i32 and panic.
+        let date = d(2026, 10, 20);
+        assert_eq!(date.add_months(i32::MAX).year(), MAX_YEAR);
+        assert_eq!(date.add_months(i32::MIN).year(), MIN_YEAR);
+        assert_eq!(date.add_days(i64::MAX).year(), MAX_YEAR);
+        assert_eq!(date.add_days(i64::MIN).year(), MIN_YEAR);
+        let last = d(MAX_YEAR, 12, 31);
+        assert_eq!(last.add_days(1), last, "the last date clamps");
+        assert_eq!(d(MIN_YEAR, 1, 1).add_months(-1).year(), MIN_YEAR);
+        assert!(CalendarDate::new(MAX_YEAR + 1, 1, 1).is_none());
+        assert_eq!(CalendarDate::from_days_since_epoch(last.days_since_epoch()), last);
     }
 
     #[test]

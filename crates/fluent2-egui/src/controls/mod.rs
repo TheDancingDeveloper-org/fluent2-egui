@@ -37,7 +37,8 @@ pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
 pub(crate) use button::ensure_type_ramp;
 pub use button::{Appearance, Button, ButtonSize, Shape};
 pub use calendar::{
-    Calendar, CalendarDate, CalendarResponse, CalendarStrings, DayContent, TimeOfDay, days_in_month,
+    Calendar, CalendarDate, CalendarResponse, CalendarStrings, DayContent, MAX_YEAR, MIN_YEAR, TimeOfDay,
+    days_in_month,
 };
 pub use checkbox::{CheckState, Checkbox};
 pub use combobox::Combobox;
