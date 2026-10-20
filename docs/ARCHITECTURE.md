@@ -116,7 +116,10 @@ default build stays a Fluent library with no extra dependencies.
 - `file-dialog`: `platform::file_dialog::FileDialog`, async open and save dialogs through `rfd`
   (MIT) on native and wasm. The dialog future runs on a worker thread (native) or the browser
   event loop (wasm), and the app polls the outcome each frame; nothing blocks. The gallery
-  turns it on.
+  turns it on. `platform::file_drop::FileDropZone` (same feature) takes files dragged in from
+  the OS: it shows a Fluent overlay while files hover, and reads drops from egui's
+  `dropped_files` on a worker thread (native) or with the browser's async read (wasm, where
+  eframe passes the `DataTransfer` files), returning `PickedFile`s on a later frame. Files over `max_bytes` (default 50 MiB) are refused before reading, and each drop is read by one zone, one file at a time.
 - `docking`: `surfaces::DockTree`, `DockArea` and `SideDock` (`docs/specs/data-views.md`
   §9.1): a pane split tree with a TabStrip per pane and collapsible side docks. No extra
   dependencies. The gallery turns it on, with `serde`, so `tests/dock.rs` and the tree's serde

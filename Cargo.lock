@@ -1235,6 +1235,7 @@ dependencies = [
  "unicode-width",
  "vte",
  "wasm-bindgen-futures",
+ "web-sys",
  "windows",
  "zbus",
 ]

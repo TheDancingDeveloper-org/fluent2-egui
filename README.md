@@ -149,6 +149,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `TitleBar`, `office::status_bar::StatusBar` | title bar and status bar | | — (`examples/editor.rs`, `examples/chrome.rs`) |
 | `office::command_bar::CommandBar` | command bar | | — |
 | `platform::file_dialog::FileDialog` | async open and save dialogs | `file-dialog` | File dialog |
+| `platform::file_drop::FileDropZone` | drop target for files from the OS, read off the UI thread | `file-dialog` | File dialog |
 
 ### Not yet provided
 
