@@ -59,6 +59,8 @@ use crate::theme::{Theme, c};
 struct Registered {
     candidate: KeyTipCandidate,
     rect: Rect,
+    /// The widget the KeyTip runs, which carries the access key for screen readers.
+    widget: Option<Id>,
     popup: Option<Id>,
 }
 
@@ -80,6 +82,8 @@ struct Controller {
     action: KeyTipAction,
     /// Targets whose badge was painted at the end of the last pass.
     shown: Vec<KeyTipTarget>,
+    /// KeyTips have been on at least once, so the live region exists and says on or off.
+    announced: bool,
     report: KeyTipsReport,
 }
 
@@ -94,6 +98,7 @@ impl Default for Controller {
             frame: Vec::new(),
             action: KeyTipAction::None,
             shown: Vec::new(),
+            announced: false,
             report: KeyTipsReport::default(),
         }
     }
@@ -143,16 +148,30 @@ pub fn install(ctx: &Context) {
 ///
 /// See the module example.
 pub fn register(ctx: &Context, candidate: KeyTipCandidate, rect: Rect) {
-    register_with_popup(ctx, candidate, rect, None);
+    register_with_popup(ctx, candidate, rect, None, None);
+}
+
+/// [`register`], naming the widget the KeyTip runs. That widget's AccessKit node gets the
+/// target's full key sequence as its access key ("Alt, H, B"), so screen readers can say it
+/// (WI-1849). The ribbon and QAT register this way.
+pub fn register_for(ctx: &Context, candidate: KeyTipCandidate, rect: Rect, widget: Id) {
+    register_with_popup(ctx, candidate, rect, Some(widget), None);
 }
 
 /// Register a target that opens the egui popup `popup` (a menu or gallery control). Leaving
 /// the popup level with Escape or Backspace closes it.
-pub(crate) fn register_with_popup(ctx: &Context, candidate: KeyTipCandidate, rect: Rect, popup: Option<Id>) {
+pub(crate) fn register_with_popup(
+    ctx: &Context,
+    candidate: KeyTipCandidate,
+    rect: Rect,
+    widget: Option<Id>,
+    popup: Option<Id>,
+) {
     with_controller(ctx, |kt| {
         kt.frame.push(Registered {
             candidate,
             rect: sanitize(rect),
+            widget,
             popup,
         });
     });
@@ -372,6 +391,8 @@ fn end_pass(ctx: &Context) {
             .collect(),
         None => Vec::new(),
     };
+    expose_access_keys(ctx, &kt.targets, &frame);
+    announce(ctx, &mut kt);
     if !kt.shown.is_empty() {
         let prefix = match &kt.state {
             KeyTipState::Prefix { first, .. } => Some(*first),
@@ -380,6 +401,66 @@ fn end_pass(ctx: &Context) {
         paint_badges(ctx, &kt.shown, &frame, prefix);
     }
     with_controller(ctx, |slot| *slot = kt);
+}
+
+/// Set each registered widget's AccessKit access key to its target's full key sequence (WI-1849).
+fn expose_access_keys(ctx: &Context, targets: &KeyTipTargets, frame: &[Registered]) {
+    for reg in frame {
+        let Some(widget) = reg.widget else {
+            continue;
+        };
+        let Some(keys) = key_sequence(targets, reg.candidate.level, reg.candidate.target) else {
+            continue;
+        };
+        ctx.accesskit_node_builder(widget, |node| {
+            node.set_access_key(format!("Alt, {}", keys.join(", ")));
+        });
+    }
+}
+
+/// The keys typed from Root to reach `target` at `level`: the tab's key, then the popup
+/// control's, then the target's own. `None` when a key on the path is unassigned.
+pub(crate) fn key_sequence(targets: &KeyTipTargets, level: KeyTipLevel, target: &str) -> Option<Vec<String>> {
+    let own = targets
+        .iter()
+        .find(|t| t.level == level && t.target == target)?
+        .key
+        .clone();
+    let mut keys = match level {
+        KeyTipLevel::Root => Vec::new(),
+        KeyTipLevel::Tab(tab) => key_sequence(targets, KeyTipLevel::Root, tab)?,
+        KeyTipLevel::Popup(control) => {
+            let parent = targets.iter().find(|t| t.target == control)?;
+            key_sequence(targets, parent.level, control)?
+        }
+    };
+    keys.push(own);
+    Some(keys)
+}
+
+/// The id of the polite live region that says when KeyTips turn on and off.
+pub fn live_region_id() -> Id {
+    Id::new("fluent2_keytips_live")
+}
+
+/// Keep a polite live region saying whether KeyTips are on (WI-1849). It appears the first time
+/// KeyTips turn on, so an app that never uses them has no extra node.
+fn announce(ctx: &Context, kt: &mut Controller) {
+    let on = kt.state != KeyTipState::Idle;
+    kt.announced |= on;
+    if !kt.announced {
+        return;
+    }
+    let text = if on {
+        "KeyTips on. Type a key, or press Escape to leave."
+    } else {
+        "KeyTips off."
+    };
+    ctx.accesskit_node_builder(live_region_id(), |node| {
+        node.set_role(egui::accesskit::Role::Status);
+        node.set_live(egui::accesskit::Live::Polite);
+        node.set_label(text);
+    });
 }
 
 /// The level whose badges a state shows, and the typed first letter for a prefix state.

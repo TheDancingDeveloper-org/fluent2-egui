@@ -79,7 +79,7 @@ pub(super) fn register(
     key: &'static str,
     keytip: Option<&'static str>,
     label: &str,
-    rect: Rect,
+    (rect, widget): (Rect, Option<Id>),
     popup: Option<Id>,
 ) {
     let Some(tab) = tab else {
@@ -103,6 +103,7 @@ pub(super) fn register(
             label: label.to_owned(),
         },
         rect,
+        widget,
         popup,
     );
 }
@@ -184,7 +185,15 @@ impl<'a> RibbonLarge<'a> {
             ScalingStep::Small => paint_small(ui, self.icon, &self.label, false),
         };
         let response = response.fluent_tooltip(tip);
-        register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            (response.rect, Some(response.id)),
+            None,
+        );
         report_click(out, self.key, response.clicked() || invoked(ui, self.key));
     }
 
@@ -237,7 +246,15 @@ impl<'a> RibbonSmall<'a> {
         let tip = tooltip(&self.label, self.shortcut.as_deref());
         let response = paint_small(ui, self.icon, &self.label, step != ScalingStep::Small);
         let response = response.fluent_tooltip(tip);
-        register(ui, tab, self.key, self.keytip, &self.label, response.rect, None);
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            (response.rect, Some(response.id)),
+            None,
+        );
         report_click(out, self.key, response.clicked() || invoked(ui, self.key));
     }
 
@@ -430,7 +447,7 @@ impl<'a> RibbonToggle<'a> {
             self.key,
             self.keytip,
             &self.label,
-            response.inner.rect,
+            (response.inner.rect, Some(response.inner.id)),
             None,
         );
         report_change(out, self.key, *self.value != before);
@@ -526,7 +543,15 @@ impl<'a> RibbonSplit<'a> {
             ui.ctx().request_repaint();
         }
         let rect = response.main.rect.union(response.menu.rect);
-        register(ui, tab, self.key, self.keytip, &self.label, rect, Some(popup));
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &self.label,
+            (rect, Some(response.main.id)),
+            Some(popup),
+        );
         let main = response
             .main
             .fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
@@ -626,7 +651,7 @@ impl<'a> RibbonMenu<'a> {
             self.key,
             self.keytip,
             &self.label,
-            response.rect,
+            (response.rect, Some(response.id)),
             Some(popup),
         );
         let response = response.fluent_tooltip(tooltip(&self.label, self.shortcut.as_deref()));
@@ -715,7 +740,7 @@ impl<'a> RibbonCheckbox<'a> {
             self.key,
             self.keytip,
             &self.label,
-            response.inner.rect,
+            (response.inner.rect, Some(response.inner.id)),
             None,
         );
         report_change(out, self.key, *self.value != before);
@@ -790,7 +815,7 @@ impl<'a> RibbonDropdown<'a> {
             self.key,
             self.keytip,
             &self.label,
-            response.inner.rect,
+            (response.inner.rect, Some(response.inner.id)),
             None,
         );
         if let Some(index) = current {
@@ -848,7 +873,7 @@ impl<'a> RibbonCombobox<'a> {
             self.key,
             self.keytip,
             &self.label,
-            response.inner.rect,
+            (response.inner.rect, Some(response.inner.id)),
             None,
         );
         report_change(out, self.key, *self.text != before);
@@ -942,7 +967,15 @@ impl<'a> RibbonCustom<'a> {
         if invoked(ui, self.key) {
             response.request_focus();
         }
-        register(ui, tab, self.key, self.keytip, self.key, response.rect, None);
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            self.key,
+            (response.rect, Some(response.id)),
+            None,
+        );
         out.custom.push((self.key, response));
     }
 }

@@ -488,7 +488,15 @@ impl RibbonDialogLauncher {
                 .id_salt(self.key),
         );
         let label = format!("{group_label} dialog");
-        register(ui, tab, self.key, self.keytip, &label, response.rect, None);
+        register(
+            ui,
+            tab,
+            self.key,
+            self.keytip,
+            &label,
+            (response.rect, Some(response.id)),
+            None,
+        );
         if response.clicked() || (ui.is_enabled() && keytips::invoked(ui.ctx(), self.key)) {
             out.events.push(RibbonEvent {
                 key: self.key,
