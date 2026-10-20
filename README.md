@@ -65,6 +65,93 @@ fn ribbon(ui: &mut egui::Ui, state: &mut RibbonState) {
 
 `cargo run -p gallery --example editor` runs a sample editor with the full Office chrome.
 
+## Components
+
+What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `cargo run -p gallery`. `tests/readme_index.rs` fails when a public widget is missing from these tables.
+
+### `controls`
+
+| type | Fluent 2 | feature | gallery |
+|---|---|---|---|
+| `Button` | Button | | Basic controls |
+| `ToggleButton` | ToggleButton | | Basic controls |
+| `CompoundButton` | CompoundButton | | Basic controls |
+| `SplitButton` | SplitButton | | Basic controls |
+| `MenuButton` | MenuButton | | Basic controls |
+| `Link` | Link | | Basic controls |
+| `Checkbox` | Checkbox | | Basic controls |
+| `RadioGroup` | RadioGroup | | Basic controls |
+| `Switch` | Switch | | Basic controls |
+| `Slider` | Slider | | Basic controls |
+| `SpinButton` | SpinButton | | Basic controls |
+| `Input` | Input | | Basic controls |
+| `SearchBox` | SearchBox | | Basic controls |
+| `Textarea` | Textarea | | Basic controls |
+| `Dropdown` | Dropdown | | Basic controls |
+| `Combobox` | Combobox | | Basic controls |
+| `Field` | Field (and Label) | | Basic controls |
+| `Badge` | Badge, CounterBadge | | Basic controls |
+| `ProgressBar` | ProgressBar | | Basic controls |
+| `Spinner` | Spinner | | Basic controls |
+| `Divider` | Divider | | Basic controls |
+| `Pager` | egui-only (pagination) | | Pager |
+| `Sparkline`, `MiniBars` | egui-only (charts) | | Charts |
+
+### `surfaces`
+
+| type | Fluent 2 | feature | gallery |
+|---|---|---|---|
+| `Dialog` | Dialog | | Surfaces |
+| `Drawer`, `BottomSheet` | Drawer (overlay and inline) | | Drawer |
+| `Popover` | Popover | | Surfaces |
+| `FluentTooltip` (`TooltipExt::fluent_tooltip`) | Tooltip | | Surfaces |
+| `MenuItem`, `context_menu`, `submenu` | Menu | | Surfaces |
+| `Toaster` | Toast | | Surfaces |
+| `MessageBar` | MessageBar | | Surfaces |
+| `Card`, `CardHeader` | Card | | Surfaces |
+| `TabList` | TabList | | Surfaces |
+| `TabStrip` | egui-only (document tabs) | | Tab strip |
+| `CommandPalette` | egui-only (command palette) | | Command palette |
+| `DockArea`, `DockTree`, `SideDock` | egui-only (docking) | `docking` | Docking |
+
+### `data`
+
+| type | Fluent 2 | feature | gallery |
+|---|---|---|---|
+| `DataGrid` | DataGrid, Table | | DataGrid |
+| `list::List` | List | | List rows |
+| `tree_view::TreeView` | Tree | | — (`examples/a11y_walk.rs`) |
+| `NavigationView` | Nav | | — |
+| `SplitView` | egui-only (split panes) | | — |
+| `Reorder` | egui-only (drag reorder) | | Reorder |
+| `code::CodeView` | egui-only (code view) | `highlight` | Code view |
+| `diff::DiffView` | egui-only (diff) | `diff` | Diff |
+| `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
+| `terminal::TerminalView` | egui-only (terminal) | `terminal` | Terminal |
+
+### `office` (Office chrome) and `platform`
+
+| type | what | feature | gallery |
+|---|---|---|---|
+| `office::ribbon::Ribbon` | ribbon with groups, galleries and adaptive scaling | | Ribbon |
+| `office::backstage::Backstage` | File page | | Backstage |
+| `office::qat::Qat` | quick access toolbar | | Ribbon |
+| `office::keytips` | KeyTips and F6 region cycling | | Ribbon |
+| `TitleBar`, `office::status_bar::StatusBar` | title bar and status bar | | — (`examples/editor.rs`, `examples/chrome.rs`) |
+| `office::command_bar::CommandBar` | command bar | | — |
+| `platform::file_dialog::FileDialog` | async open and save dialogs | `file-dialog` | File dialog |
+
+### Not yet provided
+
+| Fluent 2 | status |
+|---|---|
+| Avatar, AvatarGroup, Persona | WI-1932, PR #83 |
+| Tag, InteractionTag, TagGroup | WI-1934 |
+| Skeleton | WI-1935 |
+| Breadcrumb | WI-1936 |
+| Accordion | WI-1937 |
+| Toolbar, Rating, InfoLabel, Image, Select, SwatchPicker, Carousel, TagPicker, TeachingPopover | not planned yet |
+
 ## Crates
 
 | crate | purpose |
