@@ -25,6 +25,7 @@ imara-diff = { version = "0.2", optional = true, default-features = false }
 rfd = { version = "0.17", optional = true, default-features = false, features = ["xdg-portal"] }
 pulldown-cmark = { version = "0.13.4", default-features = false, optional = true }
 html5gum = { version = "0.8.4", default-features = false, optional = true }
+chrono = { version = "0.4", default-features = false, optional = true }
 # Syntax highlighting for CodeView (MIT). Pure-Rust regex engine so it builds for wasm.
 syntect = { version = "5.3", optional = true, default-features = false, features = ["default-syntaxes", "regex-fancy", "parsing", "yaml-load"] }
 
@@ -59,6 +60,9 @@ markdown = ["dep:pulldown-cmark"]
 # links and images through app policies, a few inline styles) tokenised by `html5gum`. Built for
 # HTML mail. Not a Fluent component, so off by default.
 html = ["dep:html5gum"]
+# `From` conversions between the calendar types (`CalendarDate`, `TimeOfDay`) and `chrono`'s
+# `NaiveDate` and `NaiveTime`.
+chrono = ["dep:chrono"]
 # Pixel snapshots through a wgpu adapter. Off in `cargo test`; see tests/font_snapshots.rs.
 # Also turns on egui's default fonts, so the egui-default option has its Ubuntu-Light face.
 snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot", "egui/default_fonts"]
