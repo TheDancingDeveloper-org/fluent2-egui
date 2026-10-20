@@ -10,6 +10,7 @@ mod code_view;
 mod command_palette;
 pub(crate) mod controls;
 mod data_grid;
+mod date_time;
 mod diff;
 mod docking;
 mod drawer;
@@ -34,6 +35,7 @@ pub use code_view::CodeViewPage;
 pub use command_palette::CommandPalettePage;
 pub use controls::ControlsPage;
 pub use data_grid::DataGridPage;
+pub use date_time::DateTimePage;
 pub use diff::DiffPage;
 pub use docking::DockingPage;
 pub use drawer::DrawerPage;
@@ -69,6 +71,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(ControlsPage::default()),
         Box::new(SurfacesPage::default()),
         Box::new(AvatarsPage),
+        Box::new(DateTimePage::default()),
         Box::new(DataGridPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(PagerPage::default()),

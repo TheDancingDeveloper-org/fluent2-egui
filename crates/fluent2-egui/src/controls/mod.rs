@@ -3,9 +3,11 @@
 mod avatar;
 mod badge;
 pub(crate) mod button;
+mod calendar;
 mod checkbox;
 mod combobox;
 mod compound_button;
+mod date_picker;
 mod divider;
 mod dropdown;
 mod field;
@@ -34,9 +36,13 @@ pub use avatar::{
 pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
 pub(crate) use button::ensure_type_ramp;
 pub use button::{Appearance, Button, ButtonSize, Shape};
+pub use calendar::{
+    Calendar, CalendarDate, CalendarResponse, CalendarStrings, DayContent, TimeOfDay, days_in_month,
+};
 pub use checkbox::{CheckState, Checkbox};
 pub use combobox::Combobox;
 pub use compound_button::CompoundButton;
+pub use date_picker::{DatePicker, PickerResponse, TimePicker};
 pub use divider::Divider;
 pub use dropdown::Dropdown;
 pub use field::{Field, ValidationState};
