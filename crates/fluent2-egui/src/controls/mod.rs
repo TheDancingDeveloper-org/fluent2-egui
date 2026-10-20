@@ -1,5 +1,6 @@
 //! Fluent controls. One file per control; see `docs/ARCHITECTURE.md`.
 
+mod avatar;
 mod badge;
 pub(crate) mod button;
 mod checkbox;
@@ -25,6 +26,10 @@ mod switch;
 mod textarea;
 mod toggle_button;
 
+pub use avatar::{
+    AVATAR_SIZES, Avatar, AvatarColor, AvatarGroup, AvatarGroupLayout, AvatarShape, Persona, Presence,
+    initials, palette_index,
+};
 pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
 pub(crate) use button::ensure_type_ramp;
 pub use button::{Appearance, Button, ButtonSize, Shape};
