@@ -7,6 +7,8 @@ pub mod code;
 pub mod data_grid;
 #[cfg(feature = "diff")]
 pub mod diff;
+#[cfg(feature = "html")]
+pub mod html;
 pub mod list;
 #[cfg(feature = "markdown")]
 pub mod markdown;

@@ -1213,6 +1213,7 @@ dependencies = [
  "egui_kittest",
  "fluent2-icons",
  "fluent2-tokens",
+ "html5gum",
  "imara-diff",
  "log",
  "pollster 0.4.0",
@@ -1605,6 +1606,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "html5gum"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "428502d3ec1742c35e015871aef742bc4722a9acfcb616b8ff79b519922e1c36"
 
 [[package]]
 name = "http"

@@ -130,6 +130,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `code::CodeView` | egui-only (code view) | `highlight` | Code view |
 | `diff::DiffView` | egui-only (diff) | `diff` | Diff |
 | `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
+| `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
 | `terminal::TerminalView` | egui-only (terminal) | `terminal` | Terminal |
 
 ### `office` (Office chrome) and `platform`
