@@ -102,6 +102,8 @@ pub struct TagPicker<'a> {
     tags: &'a mut Vec<String>,
     query: &'a mut String,
     suggestions: &'a [TagSuggestion],
+    /// The query the suggestions were fetched for, when the app says so.
+    suggestions_query: Option<String>,
     loading: bool,
     free_text: bool,
     validate: Option<Validator<'a>>,
@@ -122,6 +124,7 @@ impl<'a> TagPicker<'a> {
             tags,
             query,
             suggestions: &[],
+            suggestions_query: None,
             loading: false,
             free_text: true,
             validate: None,
@@ -131,10 +134,22 @@ impl<'a> TagPicker<'a> {
         }
     }
 
-    /// The suggestions for the current query, in order.
+    /// The suggestions for the current query, in order. For results that arrive later (a
+    /// fetch), prefer [`TagPicker::suggestions_for`], so a list for an older query is never
+    /// offered.
     #[must_use]
     pub fn suggestions(mut self, suggestions: &'a [TagSuggestion]) -> Self {
         self.suggestions = suggestions;
+        self
+    }
+
+    /// The suggestions fetched for `query`. They are offered only while the typed query still
+    /// matches it (ignoring case and surrounding spaces); until the current query's results
+    /// arrive, the list is hidden and Enter adds the typed text instead.
+    #[must_use]
+    pub fn suggestions_for(mut self, query: impl Into<String>, suggestions: &'a [TagSuggestion]) -> Self {
+        self.suggestions = suggestions;
+        self.suggestions_query = Some(query.into());
         self
     }
 
@@ -233,12 +248,10 @@ impl<'a> TagPicker<'a> {
         let mut open = ui
             .ctx()
             .data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
-        let count = self.suggestions.len();
         let mut active = ui
             .ctx()
             .data(|data| data.get_temp::<usize>(active_id))
-            .unwrap_or(0)
-            .min(count.saturating_sub(1));
+            .unwrap_or(0);
 
         let background = ui.painter().add(egui::Shape::Noop);
         let start = ui.cursor().min;
@@ -320,6 +333,18 @@ impl<'a> TagPicker<'a> {
             open = true;
             active = 0;
         }
+        // Suggestions are stale while loading, on the frame the query changed (they cannot be
+        // for it yet), or when they were fetched for another query: then none are offered, so
+        // Enter cannot add a result of an older query (WI-1941 review).
+        let stale = self.loading
+            || query_changed
+            || self
+                .suggestions_query
+                .as_deref()
+                .is_some_and(|q| !q.trim().eq_ignore_ascii_case(self.query.trim()));
+        let current: &[TagSuggestion] = if stale { &[] } else { self.suggestions };
+        let count = current.len();
+        active = active.min(count.saturating_sub(1));
 
         let focused = response.has_focus() && enabled;
         if focused {
@@ -346,7 +371,7 @@ impl<'a> TagPicker<'a> {
         }
         if enter {
             let picked = (open && count > 0)
-                .then(|| self.suggestions.get(active))
+                .then(|| current.get(active))
                 .flatten()
                 .map(|s| s.value.clone());
             if let Some(value) = picked {
@@ -385,10 +410,10 @@ impl<'a> TagPicker<'a> {
         });
 
         if open && enabled && focused && count > 0 {
-            let labels: Vec<String> = self.suggestions.iter().map(TagSuggestion::display).collect();
+            let labels: Vec<String> = current.iter().map(TagSuggestion::display).collect();
             let (picked, outside) = show_listbox(ui, id, rect, &labels, None, Some(active), &None);
             if let Some(index) = picked
-                && let Some(suggestion) = self.suggestions.get(index)
+                && let Some(suggestion) = current.get(index)
             {
                 add_tag(self.tags, &suggestion.value, &mut added);
                 self.query.clear();

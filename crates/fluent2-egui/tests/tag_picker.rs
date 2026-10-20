@@ -151,3 +151,81 @@ fn renders_in_every_theme_with_a_spinner_while_loading() {
         harness.run_steps(3);
     }
 }
+
+/// A fetch that answers only when the test delivers it.
+#[derive(Default)]
+struct Slow {
+    tags: Vec<String>,
+    query: String,
+    /// The query the current results are for, and the results.
+    results_for: String,
+    results: Vec<TagSuggestion>,
+    loading: bool,
+}
+
+fn slow_harness() -> Harness<'static, Slow> {
+    Harness::builder()
+        .with_size(egui::vec2(500.0, 300.0))
+        .build_ui_state(
+            |ui, state: &mut Slow| {
+                install(ui.ctx(), &Theme::default());
+                let out = TagPicker::new("to", &mut state.tags, &mut state.query)
+                    .label("To")
+                    .suggestions_for(state.results_for.clone(), &state.results)
+                    .loading(state.loading)
+                    .show(ui);
+                if out.query_changed {
+                    state.loading = true;
+                }
+            },
+            Slow::default(),
+        )
+}
+
+fn deliver(harness: &mut Harness<'static, Slow>) {
+    let state = harness.state_mut();
+    state.results_for = state.query.clone();
+    state.results = vec![TagSuggestion::new("ada@example.com").label("Ada Lovelace")];
+    state.loading = false;
+    harness.run_steps(2);
+}
+
+#[test]
+fn enter_never_adds_a_suggestion_for_an_older_query() {
+    let mut harness = slow_harness();
+    harness.run_steps(2);
+    harness.get_by_role_and_label(Role::ComboBox, "To").focus();
+    harness.run_steps(2);
+    harness.event(Event::Text("ad".to_owned()));
+    harness.run_steps(2);
+    deliver(&mut harness);
+    let _ = harness.get_by_label("Ada Lovelace <ada@example.com>");
+
+    // Typing more and pressing Enter before the new results arrive adds the typed text.
+    harness.event(Event::Text("am".to_owned()));
+    harness.key_press(Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(harness.state().tags, ["adam"]);
+
+    // Results for an old query are not offered even when the app forgets to set loading.
+    harness.state_mut().loading = false;
+    harness.event(Event::Text("x".to_owned()));
+    harness.run_steps(2);
+    harness.state_mut().loading = false;
+    harness.run_steps(2);
+    assert!(
+        harness.query_by_label("Ada Lovelace <ada@example.com>").is_none(),
+        "results for \"ad\" are hidden while the query is \"x\""
+    );
+    harness.key_press(Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(harness.state().tags, ["adam", "x"]);
+
+    // Once results for the current query arrive, Enter picks from them again.
+    harness.event(Event::Text("ad".to_owned()));
+    harness.run_steps(2);
+    deliver(&mut harness);
+    harness.key_press(Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(harness.state().tags, ["adam", "x", "ada@example.com"]);
+}
