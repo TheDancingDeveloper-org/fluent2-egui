@@ -1,7 +1,7 @@
 //! Surfaces: dialogs, menus, popovers, tooltips, toasts, message bars, cards and tab lists
 //! (WI-1930).
 
-use fluent2_egui::controls::{Button, Input};
+use fluent2_egui::controls::{Button, FileCard, Input, file_card_row};
 use fluent2_egui::surfaces::{
     Card, CardAppearance, CardHeader, Dialog, DialogKind, DialogResult, Intent, MenuItem, MessageBar,
     Popover, TabAppearance, TabList, Toast, ToastPosition, Toaster, TooltipExt, context_menu,
@@ -28,6 +28,7 @@ pub struct SurfacesPage {
     subtle_tab: usize,
     fields: Vec<String>,
     status: String,
+    attachments: Vec<(&'static str, &'static str, u64)>,
 }
 
 impl Default for SurfacesPage {
@@ -43,6 +44,12 @@ impl Default for SurfacesPage {
             subtle_tab: 1,
             fields: vec![String::new(); 24],
             status: "Nothing yet".to_owned(),
+            attachments: vec![
+                ("Q3 report.pdf", "application/pdf", 1_250_000),
+                ("Team photo.jpg", "image/jpeg", 3_400_000),
+                ("Budget 2027.xlsx", "", 48_000),
+                ("logs-2026-10-19.zip", "application/zip", 82_000_000),
+            ],
         }
     }
 }
@@ -123,6 +130,39 @@ impl Page for SurfacesPage {
             }
         });
         Toaster::show(ui.ctx(), ToastPosition::BottomEnd);
+
+        ui.add_space(8.0);
+        ui.strong("Attachments");
+        let mut removed = None;
+        file_card_row(ui, |ui| {
+            for (index, (name, mime, size)) in self.attachments.iter().enumerate() {
+                let mut card = FileCard::new(*name)
+                    .size(*size)
+                    .removable(true)
+                    .downloadable(true);
+                if !mime.is_empty() {
+                    card = card.mime(*mime);
+                }
+                let out = card.show(ui);
+                if out.remove {
+                    removed = Some(index);
+                }
+                if out.open {
+                    self.status = format!("Open {name}");
+                }
+                if out.download {
+                    self.status = format!("Download {name}");
+                }
+            }
+            FileCard::new("Uploading draft.docx")
+                .progress(Some(0.62))
+                .openable(false)
+                .show(ui);
+        });
+        if let Some(index) = removed {
+            let (name, _, _) = self.attachments.remove(index);
+            self.status = format!("Removed {name}");
+        }
 
         ui.add_space(8.0);
         ui.strong("Message bars");
