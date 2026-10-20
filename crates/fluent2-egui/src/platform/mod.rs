@@ -9,6 +9,8 @@ use crate::theme::Theme;
 
 #[cfg(feature = "file-dialog")]
 pub mod file_dialog;
+#[cfg(feature = "file-dialog")]
+pub mod file_drop;
 
 #[cfg(not(any(
     all(feature = "system-preferences", windows),

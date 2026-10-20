@@ -3,6 +3,7 @@
 
 use fluent2_egui::controls::{Appearance, Button};
 use fluent2_egui::platform::file_dialog::{FileDialog, FileDialogOutcome, FileFilter};
+use fluent2_egui::platform::file_drop::FileDropZone;
 
 use super::Page;
 
@@ -10,6 +11,7 @@ use super::Page;
 pub struct FileDialogPage {
     dialog: FileDialog,
     status: String,
+    dropped: Vec<String>,
 }
 
 impl Page for FileDialogPage {
@@ -53,6 +55,34 @@ impl Page for FileDialogPage {
             ui.label("Waiting for the dialog…");
         } else if !self.status.is_empty() {
             ui.label(&self.status);
+        }
+
+        ui.add_space(16.0);
+        ui.strong("Drop files");
+        ui.label("Drag files from the desktop onto the box. They are read off the UI thread.");
+        let out = FileDropZone::new("gallery_drop")
+            .label("Drop files here")
+            .show(ui, |ui| {
+                egui::Frame::new()
+                    .stroke(egui::Stroke::new(1.0, ui.visuals().weak_text_color()))
+                    .corner_radius(4.0)
+                    .inner_margin(12.0)
+                    .show(ui, |ui| {
+                        ui.set_min_size(egui::vec2(ui.available_width().min(480.0), 96.0));
+                        if self.dropped.is_empty() {
+                            ui.weak("Nothing dropped yet");
+                        }
+                        for line in &self.dropped {
+                            ui.label(line);
+                        }
+                    });
+            });
+        for file in out.received {
+            self.dropped
+                .push(format!("{} ({} bytes)", file.name, file.bytes.len()));
+        }
+        for (name, error) in out.failed {
+            self.dropped.push(format!("{name}: {error}"));
         }
     }
 }
