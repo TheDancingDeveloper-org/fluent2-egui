@@ -89,6 +89,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `Textarea` | Textarea | | Basic controls |
 | `Dropdown` | Dropdown | | Basic controls |
 | `Combobox` | Combobox | | Basic controls |
+| `TagPicker` | TagPicker | | Basic controls |
 | `Field` | Field (and Label) | | Basic controls |
 | `Badge` | Badge, CounterBadge | | Basic controls |
 | `ProgressBar` | ProgressBar | | Basic controls |
@@ -153,7 +154,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | Skeleton | WI-1935 |
 | Breadcrumb | WI-1936 |
 | Accordion | WI-1937 |
-| Toolbar, Rating, InfoLabel, Image, Select, SwatchPicker, Carousel, TagPicker, TeachingPopover | not planned yet |
+| Toolbar, Rating, InfoLabel, Image, Select, SwatchPicker, Carousel, TeachingPopover | not planned yet |
 
 ## Crates
 

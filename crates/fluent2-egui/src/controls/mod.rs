@@ -23,6 +23,7 @@ mod spin_button;
 mod spinner;
 pub(crate) mod split_button;
 mod switch;
+mod tag_picker;
 mod textarea;
 mod toggle_button;
 
@@ -53,5 +54,6 @@ pub use spin_button::SpinButton;
 pub use spinner::{Spinner, SpinnerSize};
 pub use split_button::{SplitButton, SplitButtonResponse};
 pub use switch::Switch;
+pub use tag_picker::{TagPicker, TagPickerResponse, TagSuggestion};
 pub use textarea::{Textarea, TextareaResize};
 pub use toggle_button::ToggleButton;
