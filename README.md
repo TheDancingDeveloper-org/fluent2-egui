@@ -96,6 +96,9 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `Divider` | Divider | | Basic controls |
 | `Pager` | egui-only (pagination) | | Pager |
 | `Sparkline`, `MiniBars` | egui-only (charts) | | Charts |
+| `Avatar` | Avatar | | Avatars |
+| `AvatarGroup` | AvatarGroup | | Avatars |
+| `Persona` | Persona | | Avatars |
 
 ### `surfaces`
 
@@ -145,7 +148,6 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 
 | Fluent 2 | status |
 |---|---|
-| Avatar, AvatarGroup, Persona | WI-1932, PR #83 |
 | Tag, InteractionTag, TagGroup | WI-1934 |
 | Skeleton | WI-1935 |
 | Breadcrumb | WI-1936 |

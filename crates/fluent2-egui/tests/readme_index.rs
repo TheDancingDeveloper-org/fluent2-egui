@@ -10,6 +10,10 @@ use std::collections::BTreeSet;
 const SUPPORTING: &[&str] = &[
     // controls
     "Appearance",
+    "AvatarColor",
+    "AvatarGroupLayout",
+    "AvatarShape",
+    "Presence",
     "BadgeAppearance",
     "BadgeColor",
     "BadgeSize",
