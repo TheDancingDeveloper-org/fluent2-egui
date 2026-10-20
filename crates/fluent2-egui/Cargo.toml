@@ -48,7 +48,7 @@ diff = ["dep:imara-diff", "dep:unicode-width"]
 highlight = ["dep:syntect"]
 # Async open and save dialogs through `rfd` (`platform::file_dialog`), polled from the frame.
 # Off by default; it pulls in the platform dialog bindings.
-file-dialog = ["dep:rfd", "dep:pollster", "dep:wasm-bindgen-futures"]
+file-dialog = ["dep:rfd", "dep:pollster", "dep:wasm-bindgen-futures", "dep:web-sys"]
 # Docking (`surfaces::DockTree`, `DockArea`, `SideDock`): a pane split tree with a TabStrip per
 # pane, tab drag between panes and collapsible side docks. Not a Fluent component, so off by
 # default. No extra dependencies. See docs/specs/data-views.md §9.
@@ -79,6 +79,8 @@ pollster = { version = "0.4", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4", optional = true }
+# FileDropZone reads a dropped file's size before reading it (already in the tree through egui).
+web-sys = { version = "0.3", optional = true, features = ["Blob", "File"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", optional = true, features = ["UI_ViewManagement"] }

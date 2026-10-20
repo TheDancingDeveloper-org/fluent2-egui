@@ -177,3 +177,136 @@ fn overlay_renders_in_every_theme() {
         harness.run_steps(2);
     }
 }
+
+/// A dropped file that counts how often its bytes are read.
+#[derive(Debug)]
+struct CountingFile {
+    path: PathBuf,
+    size: usize,
+    reads: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl egui::DroppedFile for CountingFile {
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn bytes(&self) -> Result<Vec<u8>, String> {
+        self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(vec![0; self.size])
+    }
+}
+
+fn capped_harness(max: u64) -> Harness<'static, Seen> {
+    Harness::builder()
+        .with_size(egui::vec2(400.0, 400.0))
+        .build_ui_state(
+            move |ui, seen: &mut Seen| {
+                install(ui.ctx(), &Theme::default());
+                let out = FileDropZone::new("capped")
+                    .window_wide(true)
+                    .max_bytes(max)
+                    .show(ui, |ui| {
+                        ui.label("zone");
+                    });
+                record(seen, out);
+            },
+            Seen::default(),
+        )
+}
+
+#[test]
+fn files_over_the_limit_are_refused_before_reading() {
+    // A real file on disk over the limit: its size comes from metadata and it is never read.
+    let dir = std::env::temp_dir().join(format!("fluent2-file-drop-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let big = dir.join("big.bin");
+    let _ = std::fs::write(&big, vec![7u8; 4096]);
+    let reads = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+    let mut harness = capped_harness(1024);
+    harness.run_steps(2);
+    harness.input_mut().dropped_files.push(Arc::new(CountingFile {
+        path: big.clone(),
+        size: 4096,
+        reads: reads.clone(),
+    }));
+    // No metadata (no file at the path): checked on the bytes read instead.
+    harness.input_mut().dropped_files.push(Arc::new(CountingFile {
+        path: PathBuf::from("/nonexistent/also-big.bin"),
+        size: 2048,
+        reads: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+    }));
+    harness
+        .input_mut()
+        .dropped_files
+        .push(fake("small.txt", Ok(b"ok")));
+    harness.run_steps(1);
+    wait_for_reads(&mut harness, 3);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let seen = harness.state();
+    assert_eq!(
+        reads.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "the big file was never read"
+    );
+    let failed: Vec<&str> = seen.failed.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(failed, ["big.bin", "also-big.bin"]);
+    assert_eq!(seen.failed[0].1, "4.0 KiB is larger than the 1.0 KiB limit");
+    assert_eq!(seen.received.len(), 1);
+    assert_eq!(seen.received[0].0, "small.txt");
+}
+
+#[test]
+fn a_drop_is_read_by_one_zone_only() {
+    // Two zones and no pointer seen yet: both would take the drop, but only the first does.
+    let first = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let second = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (a, b) = (first.clone(), second.clone());
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(400.0, 400.0))
+        .build_ui(move |ui| {
+            install(ui.ctx(), &Theme::default());
+            let out = FileDropZone::new("one").show(ui, |ui| {
+                ui.set_min_size(egui::vec2(380.0, 100.0));
+            });
+            a.fetch_add(out.dropped.len(), std::sync::atomic::Ordering::SeqCst);
+            let out = FileDropZone::new("two").show(ui, |ui| {
+                ui.set_min_size(egui::vec2(380.0, 100.0));
+            });
+            b.fetch_add(out.dropped.len(), std::sync::atomic::Ordering::SeqCst);
+        });
+    harness.run_steps(2);
+    harness.input_mut().dropped_files.push(fake("a.txt", Ok(b"a")));
+    harness.run_steps(1);
+    assert_eq!(first.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert_eq!(second.load(std::sync::atomic::Ordering::SeqCst), 0);
+}
+
+#[test]
+fn the_zone_under_the_pointer_beats_a_later_window_wide_zone() {
+    let specific = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let wide = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (a, b) = (specific.clone(), wide.clone());
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(400.0, 400.0))
+        .build_ui(move |ui| {
+            install(ui.ctx(), &Theme::default());
+            let out = FileDropZone::new("attachments").show(ui, |ui| {
+                ui.set_min_size(egui::vec2(380.0, 100.0));
+            });
+            a.fetch_add(out.dropped.len(), std::sync::atomic::Ordering::SeqCst);
+            let out = FileDropZone::new("window").window_wide(true).show(ui, |ui| {
+                ui.set_min_size(egui::vec2(380.0, 100.0));
+            });
+            b.fetch_add(out.dropped.len(), std::sync::atomic::Ordering::SeqCst);
+        });
+    harness.run_steps(2);
+    harness.event(egui::Event::PointerMoved(egui::pos2(100.0, 40.0)));
+    harness.run_steps(1);
+    harness.input_mut().dropped_files.push(fake("a.txt", Ok(b"a")));
+    harness.run_steps(1);
+    assert_eq!(specific.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert_eq!(wide.load(std::sync::atomic::Ordering::SeqCst), 0);
+}

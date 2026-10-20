@@ -14,6 +14,13 @@
 //!
 //! egui does not report where a drop lands, so a zone takes a drop when the pointer was last
 //! seen inside it (or was never seen), or always with [`FileDropZone::window_wide`].
+//!
+//! Each drop is taken by one zone only: the first zone shown that frame that would take it,
+//! so show specific zones before a window-wide one. Files larger than
+//! [`FileDropZone::max_bytes`] (default [`DEFAULT_MAX_BYTES`], 50 MiB) are not read: their size
+//! is checked first (file metadata on native, the browser `File`'s size on wasm) and they come
+//! back in [`FileDropResponse::failed`]. A drop's files are read one after another by a single
+//! worker, so a large drop cannot start many reads at once.
 
 use std::sync::{Arc, Mutex};
 
@@ -40,6 +47,9 @@ pub struct FileDropResponse {
 
 type Results = Arc<Mutex<Vec<Result<PickedFile, (String, String)>>>>;
 
+/// The default largest file a zone reads: 50 MiB.
+pub const DEFAULT_MAX_BYTES: u64 = 50 * 1024 * 1024;
+
 /// A drop target. See the module docs.
 ///
 /// ```
@@ -57,6 +67,7 @@ pub struct FileDropZone {
     id: Id,
     label: String,
     window_wide: bool,
+    max_bytes: u64,
 }
 
 impl FileDropZone {
@@ -66,6 +77,7 @@ impl FileDropZone {
             id: Id::new(id_salt),
             label: "Drop files here".to_owned(),
             window_wide: false,
+            max_bytes: DEFAULT_MAX_BYTES,
         }
     }
 
@@ -80,6 +92,14 @@ impl FileDropZone {
     #[must_use]
     pub fn window_wide(mut self, window_wide: bool) -> Self {
         self.window_wide = window_wide;
+        self
+    }
+
+    /// The largest file read, in bytes. Larger files are reported in
+    /// [`FileDropResponse::failed`] without being read. The default is [`DEFAULT_MAX_BYTES`].
+    #[must_use]
+    pub fn max_bytes(mut self, max: u64) -> Self {
+        self.max_bytes = max;
         self
     }
 
@@ -111,21 +131,20 @@ impl FileDropZone {
             ui.ctx().request_repaint();
         }
 
-        // Start reading dropped files. The input keeps them only for this frame.
+        // Start reading dropped files. The input keeps them only for this frame, and only one
+        // zone takes each drop: the first targeted zone shown this frame claims it.
         let dropped = if targeted {
             ui.input(|i| i.raw.dropped_files.clone())
         } else {
             Vec::new()
         };
-        if !dropped.is_empty() {
+        if !dropped.is_empty() && claim(ui.ctx()) {
             let results: Results = ui.ctx().data_mut(|d| {
                 d.get_temp_mut_or_insert_with(results_id, Results::default)
                     .clone()
             });
-            for file in dropped {
-                out.dropped.push(file_name(file.path()));
-                read(ui.ctx().clone(), file, results.clone());
-            }
+            out.dropped = dropped.iter().map(|file| file_name(file.path())).collect();
+            read_all(ui.ctx().clone(), dropped, self.max_bytes, results);
         }
 
         // Collect what finished.
@@ -151,52 +170,118 @@ fn file_name(path: &std::path::Path) -> String {
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
 }
 
+/// Claim this frame's drop for the calling zone. False when another zone already took it.
+fn claim(ctx: &egui::Context) -> bool {
+    let key = Id::new("fluent2_file_drop_claim");
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data_mut(|d| {
+        if d.get_temp::<u64>(key) == Some(pass) {
+            false
+        } else {
+            d.insert_temp(key, pass);
+            true
+        }
+    })
+}
+
+fn too_large(name: &str, size: u64, max: u64) -> (String, String) {
+    (
+        name.to_owned(),
+        format!(
+            "{} is larger than the {} limit",
+            readable_size(size),
+            readable_size(max)
+        ),
+    )
+}
+
+/// "512 B", "4.0 KiB", "50.0 MiB", "1.5 GiB".
+fn readable_size(bytes: u64) -> String {
+    const UNITS: [&str; 3] = ["KiB", "MiB", "GiB"];
+    if bytes < 1024 {
+        return format!("{bytes} B");
+    }
+    let mut value = bytes as f64 / 1024.0;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    format!("{value:.1} {}", UNITS[unit])
+}
+
+/// Read one file, refusing it when it is larger than `max`: checked from the file's metadata
+/// before reading where there is a path, and on the bytes read otherwise.
 #[cfg(not(target_arch = "wasm32"))]
-fn read(ctx: egui::Context, file: egui::DroppedFileHandle, results: Results) {
+fn read_one(file: &egui::DroppedFileHandle, max: u64) -> Result<PickedFile, (String, String)> {
     let name = file_name(file.path());
-    let worker_name = name.clone();
+    let path = file.path().to_path_buf();
+    if let Ok(meta) = std::fs::metadata(&path)
+        && meta.len() > max
+    {
+        return Err(too_large(&name, meta.len(), max));
+    }
+    let bytes = file.bytes().map_err(|err| (name.clone(), err))?;
+    if bytes.len() as u64 > max {
+        return Err(too_large(&name, bytes.len() as u64, max));
+    }
+    Ok(PickedFile {
+        name,
+        path: (!path.as_os_str().is_empty()).then_some(path),
+        bytes,
+    })
+}
+
+/// Read a drop's files one after another on one worker thread.
+#[cfg(not(target_arch = "wasm32"))]
+fn read_all(ctx: egui::Context, files: Vec<egui::DroppedFileHandle>, max: u64, results: Results) {
+    let names: Vec<String> = files.iter().map(|f| file_name(f.path())).collect();
     let failure_results = results.clone();
     let spawned = std::thread::Builder::new()
         .name("fluent2-file-drop".into())
         .spawn(move || {
-            let path = file.path().to_path_buf();
-            let result = file
-                .bytes()
-                .map(|bytes| PickedFile {
-                    name: worker_name.clone(),
-                    path: (!path.as_os_str().is_empty()).then_some(path),
-                    bytes,
-                })
-                .map_err(|err| (worker_name, err));
-            if let Ok(mut done) = results.lock() {
-                done.push(result);
+            for file in &files {
+                let result = read_one(file, max);
+                if let Ok(mut done) = results.lock() {
+                    done.push(result);
+                }
+                ctx.request_repaint();
             }
-            ctx.request_repaint();
         });
     if let Err(err) = spawned
         && let Ok(mut done) = failure_results.lock()
     {
-        done.push(Err((name, format!("could not start a reader: {err}"))));
+        for name in names {
+            done.push(Err((name, format!("could not start a reader: {err}"))));
+        }
     }
 }
 
+/// Read a drop's files one after another in one browser task, checking each `File`'s size
+/// before reading it.
 #[cfg(target_arch = "wasm32")]
-fn read(ctx: egui::Context, file: egui::DroppedFileHandle, results: Results) {
+fn read_all(ctx: egui::Context, files: Vec<egui::DroppedFileHandle>, max: u64, results: Results) {
     wasm_bindgen_futures::spawn_local(async move {
-        let name = file_name(file.path());
-        let result = file
-            .bytes_async()
-            .await
-            .map(|bytes| PickedFile {
-                name: name.clone(),
-                path: None,
-                bytes,
-            })
-            .map_err(|err| (name, err));
-        if let Ok(mut done) = results.lock() {
-            done.push(result);
+        for file in &files {
+            let name = file_name(file.path());
+            let size = file.web_file().map(|f| f.size() as u64);
+            let result = match size {
+                Some(size) if size > max => Err(too_large(&name, size, max)),
+                _ => match file.bytes_async().await {
+                    Ok(bytes) if bytes.len() as u64 > max => Err(too_large(&name, bytes.len() as u64, max)),
+                    Ok(bytes) => Ok(PickedFile {
+                        name: name.clone(),
+                        path: None,
+                        bytes,
+                    }),
+                    Err(err) => Err((name, err)),
+                },
+            };
+            if let Ok(mut done) = results.lock() {
+                done.push(result);
+            }
+            ctx.request_repaint();
         }
-        ctx.request_repaint();
     });
 }
 
