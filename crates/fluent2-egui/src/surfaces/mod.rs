@@ -1,5 +1,6 @@
 //! Fluent surfaces. One file per surface; see `docs/ARCHITECTURE.md`.
 
+mod accordion;
 mod bottom_sheet;
 mod card;
 mod command_palette;
@@ -15,6 +16,7 @@ mod tab_strip;
 mod toast;
 mod tooltip;
 
+pub use accordion::{Accordion, AccordionItem, AccordionResponse, AccordionSize, ExpandIconPosition};
 pub use bottom_sheet::BottomSheet;
 #[rustfmt::skip]
 pub use card::{

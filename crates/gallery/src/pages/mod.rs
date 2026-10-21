@@ -3,6 +3,7 @@
 //! Later items add a page by adding one file in `crates/gallery/src/pages/` and one line in
 //! [`pages`] below. Nothing else in the gallery needs to change.
 
+mod accordion;
 mod avatars;
 mod backstage;
 mod breadcrumb;
@@ -30,6 +31,7 @@ mod tokens;
 mod typography;
 mod variable_list;
 
+pub use accordion::AccordionPage;
 pub use avatars::AvatarsPage;
 pub use backstage::BackstagePage;
 pub use breadcrumb::BreadcrumbPage;
@@ -72,6 +74,7 @@ pub trait Page {
 /// touch different lines, and the test below keeps the order from drifting.
 pub fn pages() -> Vec<Box<dyn Page>> {
     vec![
+        Box::new(AccordionPage::default()),
         Box::new(AvatarsPage),
         Box::new(BackstagePage::default()),
         Box::new(ControlsPage::default()),
