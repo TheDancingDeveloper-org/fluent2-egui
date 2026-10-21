@@ -4,9 +4,10 @@
 //! the page doubles as a screen-reader walk (WI-1846, WI-1851).
 
 use fluent2_egui::controls::{
-    Appearance, Badge, Button, ButtonSize, CheckState, Checkbox, Combobox, CompoundButton, Divider, Dropdown,
-    Field, Input, Link, MenuButton, ProgressBar, RadioGroup, SearchBox, Slider, SpinButton, Spinner,
-    SplitButton, Switch, TagPicker, TagSuggestion, Textarea, ToggleButton, ValidationState,
+    Appearance, Avatar, Badge, Button, ButtonSize, CheckState, Checkbox, Combobox, CompoundButton, Divider,
+    Dropdown, Field, Input, InteractionTag, Link, MenuButton, ProgressBar, RadioGroup, SearchBox, Slider,
+    SpinButton, Spinner, SplitButton, Switch, Tag, TagAppearance, TagGroup, TagPicker, TagSize,
+    TagSuggestion, Textarea, ToggleButton, ValidationState,
 };
 use fluent2_egui::surfaces::MenuItem;
 use fluent2_icons::Icon;
@@ -32,6 +33,7 @@ pub struct ControlsPage {
     recipients: Vec<String>,
     recipient_query: String,
     suggestions: Vec<TagSuggestion>,
+    filters: Vec<String>,
 }
 
 impl Default for ControlsPage {
@@ -55,6 +57,12 @@ impl Default for ControlsPage {
             recipients: vec!["ada@example.com".to_owned(), "not an address".to_owned()],
             recipient_query: String::new(),
             suggestions: Vec::new(),
+            filters: vec![
+                "Bug".to_owned(),
+                "Docs".to_owned(),
+                "UI".to_owned(),
+                "Release".to_owned(),
+            ],
         }
     }
 }
@@ -120,6 +128,58 @@ impl Page for ControlsPage {
             });
             ui.add(Link::new("Learn more about buttons"));
         });
+
+        ui.add_space(8.0);
+        ui.add(Divider::horizontal().text("Tags"));
+        ui.horizontal_wrapped(|ui| {
+            for appearance in [
+                TagAppearance::Filled,
+                TagAppearance::Outline,
+                TagAppearance::Brand,
+            ] {
+                for size in [TagSize::ExtraSmall, TagSize::Small, TagSize::Medium] {
+                    ui.add(
+                        Tag::new(format!("{appearance:?}"))
+                            .appearance(appearance)
+                            .size(size),
+                    );
+                }
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.add(Tag::new("Calendar").icon(Icon::Calendar));
+            ui.add(
+                Tag::new("Ada Lovelace")
+                    .avatar(Avatar::new("Ada Lovelace"))
+                    .secondary("Owner"),
+            );
+            let open = InteractionTag::new(Tag::new("Status: open").dismissible(true))
+                .selected(true)
+                .show(ui);
+            if open.clicked {
+                self.status = "Status filter".to_owned();
+            }
+            if open.dismissed {
+                self.status = "Status filter removed".to_owned();
+            }
+        });
+        let tags = self.filters.iter().map(|f| Tag::new(f.clone())).collect();
+        let out = TagGroup::new("controls_filters", tags)
+            .label("Filters")
+            .interactive(true)
+            .dismissible(true)
+            .size(TagSize::Small)
+            .show(ui);
+        if let Some(index) = out.clicked
+            && let Some(name) = self.filters.get(index)
+        {
+            self.status = format!("{name} filter");
+        }
+        if let Some(index) = out.dismissed
+            && index < self.filters.len()
+        {
+            self.filters.remove(index);
+        }
 
         ui.add_space(8.0);
         ui.add(Divider::horizontal().text("Selection"));
