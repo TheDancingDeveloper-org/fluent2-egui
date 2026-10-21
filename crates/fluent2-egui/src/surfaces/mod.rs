@@ -16,20 +16,91 @@ mod toast;
 mod tooltip;
 
 pub use bottom_sheet::BottomSheet;
-pub use card::{Card, CardAppearance, CardHeader};
-pub use command_palette::{CommandPalette, PaletteCommand, PaletteMatch, rank};
-pub use dialog::{CloseReason, Dialog, DialogActions, DialogKind, DialogResult};
-#[cfg(feature = "docking")]
-pub use dock::{
-    DockArea, DockEdge, DockNode, DockResponse, DockSide, DockTree, DockViewer, DropTarget, Pane, PaneId,
-    SideDock, SideDockResponse, SideDockState,
+#[rustfmt::skip]
+pub use card::{
+    Card,
+    CardAppearance,
+    CardHeader,
 };
-pub use drawer::{CLOSE_LABEL, Drawer, DrawerPosition, DrawerSize};
-pub use menu::{MenuItem, context_menu, divider, group_header, menu_frame, submenu};
-pub use message_bar::{Intent, MessageBar, MessageBarResponse};
+#[rustfmt::skip]
+pub use command_palette::{
+    CommandPalette,
+    PaletteCommand,
+    PaletteMatch,
+    rank,
+};
+#[rustfmt::skip]
+pub use dialog::{
+    CloseReason,
+    Dialog,
+    DialogActions,
+    DialogKind,
+    DialogResult,
+};
+#[cfg(feature = "docking")]
+#[rustfmt::skip]
+pub use dock::{
+    DockArea,
+    DockEdge,
+    DockNode,
+    DockResponse,
+    DockSide,
+    DockTree,
+    DockViewer,
+    DropTarget,
+    Pane,
+    PaneId,
+    SideDock,
+    SideDockResponse,
+    SideDockState,
+};
+#[rustfmt::skip]
+pub use drawer::{
+    CLOSE_LABEL,
+    Drawer,
+    DrawerPosition,
+    DrawerSize,
+};
+#[rustfmt::skip]
+pub use menu::{
+    MenuItem,
+    context_menu,
+    divider,
+    group_header,
+    menu_frame,
+    submenu,
+};
+#[rustfmt::skip]
+pub use message_bar::{
+    Intent,
+    MessageBar,
+    MessageBarResponse,
+};
 pub use popover::Popover;
-pub use tab_list::{TabAppearance, TabList, TabSize};
+#[rustfmt::skip]
+pub use tab_list::{
+    TabAppearance,
+    TabList,
+    TabSize,
+};
 pub(crate) use tab_list::{paint_indicator, tab_widths};
-pub use tab_strip::{StripTab, TabMove, TabStrip, TabStripResponse};
-pub use toast::{Toast, ToastId, ToastPosition, Toaster};
-pub use tooltip::{FluentTooltip, TooltipExt, TooltipTone};
+#[rustfmt::skip]
+pub use tab_strip::{
+    StripTab,
+    TabMove,
+    TabStrip,
+    TabStripResponse,
+};
+#[rustfmt::skip]
+pub use toast::{
+    Toast,
+    ToastId,
+    ToastPosition,
+    Toaster,
+};
+#[rustfmt::skip]
+pub use tooltip::{
+    FluentTooltip,
+    TooltipExt,
+    TooltipTone,
+};

@@ -67,94 +67,94 @@ fn ribbon(ui: &mut egui::Ui, state: &mut RibbonState) {
 
 ## Components
 
-What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `cargo run -p gallery`. `tests/readme_index.rs` fails when a public widget is missing from these tables.
+What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type name and kept one per line: add a new row in sorted position so two PRs adding components do not conflict. "Gallery" is the page in `cargo run -p gallery`. `tests/readme_index.rs` fails when a public widget is missing from these tables.
 
 ### `controls`
 
 | type | Fluent 2 | feature | gallery |
 |---|---|---|---|
-| `Button` | Button | | Basic controls |
-| `ToggleButton` | ToggleButton | | Basic controls |
-| `CompoundButton` | CompoundButton | | Basic controls |
-| `SplitButton` | SplitButton | | Basic controls |
-| `MenuButton` | MenuButton | | Basic controls |
-| `Link` | Link | | Basic controls |
-| `Checkbox` | Checkbox | | Basic controls |
-| `RadioGroup` | RadioGroup | | Basic controls |
-| `Switch` | Switch | | Basic controls |
-| `Slider` | Slider | | Basic controls |
-| `SpinButton` | SpinButton | | Basic controls |
-| `Input` | Input | | Basic controls |
-| `SearchBox` | SearchBox | | Basic controls |
-| `Textarea` | Textarea | | Basic controls |
-| `Dropdown` | Dropdown | | Basic controls |
-| `Combobox` | Combobox | | Basic controls |
-| `TagPicker` | TagPicker | | Basic controls |
-| `Tag` | Tag | | Basic controls |
-| `InteractionTag` | InteractionTag | | Basic controls |
-| `TagGroup` | TagGroup | | Basic controls |
-| `DatePicker` | DatePicker | | Date and time |
-| `Calendar` | Calendar | | Date and time |
-| `TimePicker` | TimePicker | | Date and time |
-| `Field` | Field (and Label) | | Basic controls |
-| `Badge` | Badge, CounterBadge | | Basic controls |
-| `FileCard` | Attachment (file card) | | Surfaces |
-| `ProgressBar` | ProgressBar | | Basic controls |
-| `Spinner` | Spinner | | Basic controls |
-| `Skeleton`, `SkeletonItem` | Skeleton (SkeletonItem) | | Skeleton |
-| `Divider` | Divider | | Basic controls |
-| `Breadcrumb` (`BreadcrumbSize`, `BreadcrumbDivider`, `BreadcrumbItemStyle`, `BreadcrumbResponse`) | Breadcrumb | | Breadcrumb |
-| `Pager` | egui-only (pagination) | | Pager |
-| `Sparkline`, `MiniBars` | egui-only (charts) | | Charts |
 | `Avatar` | Avatar | | Avatars |
 | `AvatarGroup` | AvatarGroup | | Avatars |
+| `Badge` | Badge, CounterBadge | | Basic controls |
+| `Breadcrumb` (`BreadcrumbSize`, `BreadcrumbDivider`, `BreadcrumbItemStyle`, `BreadcrumbResponse`) | Breadcrumb | | Breadcrumb |
+| `Button` | Button | | Basic controls |
+| `Calendar` | Calendar | | Date and time |
+| `Checkbox` | Checkbox | | Basic controls |
+| `Combobox` | Combobox | | Basic controls |
+| `CompoundButton` | CompoundButton | | Basic controls |
+| `DatePicker` | DatePicker | | Date and time |
+| `Divider` | Divider | | Basic controls |
+| `Dropdown` | Dropdown | | Basic controls |
+| `Field` | Field (and Label) | | Basic controls |
+| `FileCard` | Attachment (file card) | | Surfaces |
+| `Input` | Input | | Basic controls |
+| `InteractionTag` | InteractionTag | | Basic controls |
+| `Link` | Link | | Basic controls |
+| `MenuButton` | MenuButton | | Basic controls |
+| `Pager` | egui-only (pagination) | | Pager |
 | `Persona` | Persona | | Avatars |
+| `ProgressBar` | ProgressBar | | Basic controls |
+| `RadioGroup` | RadioGroup | | Basic controls |
+| `SearchBox` | SearchBox | | Basic controls |
+| `Skeleton`, `SkeletonItem` | Skeleton (SkeletonItem) | | Skeleton |
+| `Slider` | Slider | | Basic controls |
+| `Sparkline`, `MiniBars` | egui-only (charts) | | Charts |
+| `SpinButton` | SpinButton | | Basic controls |
+| `Spinner` | Spinner | | Basic controls |
+| `SplitButton` | SplitButton | | Basic controls |
+| `Switch` | Switch | | Basic controls |
+| `Tag` | Tag | | Basic controls |
+| `TagGroup` | TagGroup | | Basic controls |
+| `TagPicker` | TagPicker | | Basic controls |
+| `Textarea` | Textarea | | Basic controls |
+| `TimePicker` | TimePicker | | Date and time |
+| `ToggleButton` | ToggleButton | | Basic controls |
 
 ### `surfaces`
 
 | type | Fluent 2 | feature | gallery |
 |---|---|---|---|
+| `Card`, `CardHeader` | Card | | Surfaces |
+| `CommandPalette` | egui-only (command palette) | | Command palette |
 | `Dialog` | Dialog | | Surfaces |
+| `DockArea`, `DockTree`, `SideDock` | egui-only (docking) | `docking` | Docking |
 | `Drawer`, `BottomSheet` | Drawer (overlay and inline) | | Drawer |
-| `Popover` | Popover | | Surfaces |
 | `FluentTooltip` (`TooltipExt::fluent_tooltip`) | Tooltip | | Surfaces |
 | `MenuItem`, `context_menu`, `submenu` | Menu | | Surfaces |
-| `Toaster` | Toast | | Surfaces |
 | `MessageBar` | MessageBar | | Surfaces |
-| `Card`, `CardHeader` | Card | | Surfaces |
+| `Popover` | Popover | | Surfaces |
 | `TabList` | TabList | | Surfaces |
 | `TabStrip` | egui-only (document tabs) | | Tab strip |
-| `CommandPalette` | egui-only (command palette) | | Command palette |
-| `DockArea`, `DockTree`, `SideDock` | egui-only (docking) | `docking` | Docking |
+| `Toaster` | Toast | | Surfaces |
 
 ### `data`
 
 | type | Fluent 2 | feature | gallery |
 |---|---|---|---|
-| `DataGrid` | DataGrid, Table | | DataGrid |
-| `list::List` | List | | List rows |
-| `tree_view::TreeView` | Tree | | — (`examples/a11y_walk.rs`) |
-| `NavigationView` | Nav | | — |
-| `SplitView` | egui-only (split panes) | | — |
-| `Reorder` | egui-only (drag reorder) | | Reorder |
 | `code::CodeView` | egui-only (code view) | `highlight` | Code view |
+| `DataGrid` | DataGrid, Table | | DataGrid |
 | `diff::DiffView` | egui-only (diff) | `diff` | Diff |
-| `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
 | `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
+| `list::List` | List | | List rows |
+| `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
+| `NavigationView` | Nav | | — |
+| `Reorder` | egui-only (drag reorder) | | Reorder |
+| `SplitView` | egui-only (split panes) | | — |
 | `terminal::TerminalView` | egui-only (terminal) | `terminal` | Terminal |
+| `tree_view::TreeView` | Tree | | — (`examples/a11y_walk.rs`) |
 
 ### `office` (Office chrome) and `platform`
 
 | type | what | feature | gallery |
 |---|---|---|---|
-| `office::ribbon::Ribbon` | ribbon with groups, galleries and adaptive scaling | | Ribbon |
 | `office::backstage::Backstage` | File page | | Backstage |
-| `office::qat::Qat` | quick access toolbar | | Ribbon |
-| `office::keytips` | KeyTips and F6 region cycling | | Ribbon |
-| `TitleBar`, `office::status_bar::StatusBar` | title bar and status bar | | — (`examples/editor.rs`, `examples/chrome.rs`) |
 | `office::command_bar::CommandBar` | command bar | | — |
+| `office::keytips` | KeyTips and F6 region cycling | | Ribbon |
+| `office::qat::Qat` | quick access toolbar | | Ribbon |
+| `office::ribbon::Ribbon` | ribbon with groups, galleries and adaptive scaling | | Ribbon |
 | `platform::file_dialog::FileDialog` | async open and save dialogs | `file-dialog` | File dialog |
 | `platform::file_drop::FileDropZone` | drop target for files from the OS, read off the UI thread | `file-dialog` | File dialog |
+| `TitleBar`, `office::status_bar::StatusBar` | title bar and status bar | | — (`examples/editor.rs`, `examples/chrome.rs`) |
 
 ### Not yet provided
 
@@ -179,8 +179,8 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 
 ## CI
 
-Pull requests run only the checks their diff touches. `main`, and the merge queue once it is
-enabled, run the full suite on Linux and Windows. The single required check is `ci`. See
+Pull requests scope their jobs to the packages the diff touches. `main` and the merge queue run
+the full suite on Linux and Windows. The single required check is `ci`. See
 [`docs/ci.md`](docs/ci.md).
 
 ## Upstream sources

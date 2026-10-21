@@ -29,14 +29,43 @@ use crate::foundation::text::TypeRamp;
 use crate::surfaces::{TabList, TabSize, TooltipExt, tab_widths};
 use crate::theme::{Theme, c};
 
+#[rustfmt::skip]
 pub use controls::{
-    RibbonCheckbox, RibbonCombobox, RibbonControl, RibbonCustom, RibbonDialogLauncher, RibbonDropdown,
-    RibbonLarge, RibbonMenu, RibbonSmall, RibbonSplit, RibbonToggle,
+    RibbonCheckbox,
+    RibbonCombobox,
+    RibbonControl,
+    RibbonCustom,
+    RibbonDialogLauncher,
+    RibbonDropdown,
+    RibbonLarge,
+    RibbonMenu,
+    RibbonSmall,
+    RibbonSplit,
+    RibbonToggle,
 };
-pub use gallery::{Gallery, GalleryItemState, GalleryResponse, GalleryTileSize};
+#[rustfmt::skip]
+pub use gallery::{
+    Gallery,
+    GalleryItemState,
+    GalleryResponse,
+    GalleryTileSize,
+};
 pub use group::GroupBuilder;
-pub use layout::{GroupMeasure, LayoutMetrics, Plan, ScalingStep, ScalingSteps, plan};
-pub use tab::{ContextualAccent, RibbonTab, TabBuilder};
+#[rustfmt::skip]
+pub use layout::{
+    GroupMeasure,
+    LayoutMetrics,
+    Plan,
+    ScalingStep,
+    ScalingSteps,
+    plan,
+};
+#[rustfmt::skip]
+pub use tab::{
+    ContextualAccent,
+    RibbonTab,
+    TabBuilder,
+};
 
 use group::{Group, paint_body};
 

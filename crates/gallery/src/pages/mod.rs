@@ -67,33 +67,49 @@ pub trait Page {
 }
 
 /// The pages this gallery ships with.
+///
+/// Keep this list sorted by [`Page::name`]: entries are one per line so two PRs adding a page
+/// touch different lines, and the test below keeps the order from drifting.
 pub fn pages() -> Vec<Box<dyn Page>> {
     vec![
-        Box::new(TokensPage),
-        Box::new(TypographyPage),
-        Box::new(IconsPage::default()),
-        Box::new(ControlsPage::default()),
-        Box::new(SurfacesPage::default()),
         Box::new(AvatarsPage),
-        Box::new(DateTimePage::default()),
-        Box::new(DataGridPage::default()),
-        Box::new(VariableListPage::default()),
-        Box::new(PagerPage::default()),
-        Box::new(BreadcrumbPage::default()),
         Box::new(BackstagePage::default()),
-        Box::new(RibbonPage::default()),
-        Box::new(TerminalPage::default()),
-        Box::new(DiffPage::default()),
+        Box::new(ControlsPage::default()),
+        Box::new(BreadcrumbPage::default()),
+        Box::new(ChartsPage::default()),
         Box::new(CodeViewPage::default()),
         Box::new(CommandPalettePage::default()),
-        Box::new(TabStripPage::default()),
-        Box::new(FileDialogPage::default()),
-        Box::new(DrawerPage::default()),
-        Box::new(ChartsPage::default()),
+        Box::new(DataGridPage::default()),
+        Box::new(DateTimePage::default()),
+        Box::new(DiffPage::default()),
         Box::new(DockingPage::default()),
-        Box::new(ReorderPage::default()),
+        Box::new(DrawerPage::default()),
+        Box::new(FileDialogPage::default()),
         Box::new(HtmlPage::default()),
+        Box::new(IconsPage::default()),
+        Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
+        Box::new(PagerPage::default()),
+        Box::new(ReorderPage::default()),
+        Box::new(RibbonPage::default()),
         Box::new(SkeletonPage),
+        Box::new(SurfacesPage::default()),
+        Box::new(TabStripPage::default()),
+        Box::new(TerminalPage::default()),
+        Box::new(TokensPage),
+        Box::new(TypographyPage),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pages;
+
+    #[test]
+    fn pages_are_sorted_by_name() {
+        let names: Vec<_> = pages().iter().map(|page| page.name()).collect();
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        assert_eq!(names, sorted, "gallery pages must be sorted by name");
+    }
 }

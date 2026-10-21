@@ -33,44 +33,150 @@ mod tag_picker;
 mod textarea;
 mod toggle_button;
 
+#[rustfmt::skip]
 pub use avatar::{
-    AVATAR_SIZES, Avatar, AvatarColor, AvatarGroup, AvatarGroupLayout, AvatarShape, Persona, Presence,
-    initials, palette_index,
+    AVATAR_SIZES,
+    Avatar,
+    AvatarColor,
+    AvatarGroup,
+    AvatarGroupLayout,
+    AvatarShape,
+    Persona,
+    Presence,
+    initials,
+    palette_index,
 };
-pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
+#[rustfmt::skip]
+pub use badge::{
+    Badge,
+    BadgeAppearance,
+    BadgeColor,
+    BadgeSize,
+};
+#[rustfmt::skip]
 pub use breadcrumb::{
-    Breadcrumb, BreadcrumbDivider, BreadcrumbItemStyle, BreadcrumbResponse, BreadcrumbSize,
+    Breadcrumb,
+    BreadcrumbDivider,
+    BreadcrumbItemStyle,
+    BreadcrumbResponse,
+    BreadcrumbSize,
 };
 pub(crate) use button::ensure_type_ramp;
-pub use button::{Appearance, Button, ButtonSize, Shape};
+#[rustfmt::skip]
+pub use button::{
+    Appearance,
+    Button,
+    ButtonSize,
+    Shape,
+};
+#[rustfmt::skip]
 pub use calendar::{
-    Calendar, CalendarDate, CalendarResponse, CalendarStrings, DayContent, MAX_YEAR, MIN_YEAR, TimeOfDay,
+    Calendar,
+    CalendarDate,
+    CalendarResponse,
+    CalendarStrings,
+    DayContent,
+    MAX_YEAR,
+    MIN_YEAR,
+    TimeOfDay,
     days_in_month,
 };
-pub use checkbox::{CheckState, Checkbox};
+#[rustfmt::skip]
+pub use checkbox::{
+    CheckState,
+    Checkbox,
+};
 pub use combobox::Combobox;
 pub use compound_button::CompoundButton;
-pub use date_picker::{DatePicker, PickerResponse, TimePicker};
+#[rustfmt::skip]
+pub use date_picker::{
+    DatePicker,
+    PickerResponse,
+    TimePicker,
+};
 pub use divider::Divider;
 pub use dropdown::Dropdown;
-pub use field::{Field, ValidationState};
-pub use file_card::{FileCard, FileCardResponse, file_card_row, file_icon, format_size};
-pub use input::{Input, InputAppearance, accent_open_for_test};
+#[rustfmt::skip]
+pub use field::{
+    Field,
+    ValidationState,
+};
+#[rustfmt::skip]
+pub use file_card::{
+    FileCard,
+    FileCardResponse,
+    file_card_row,
+    file_icon,
+    format_size,
+};
+#[rustfmt::skip]
+pub use input::{
+    Input,
+    InputAppearance,
+    accent_open_for_test,
+};
 pub use link::Link;
 pub use menu_button::MenuButton;
 pub use mini_bars::MiniBars;
-pub use pager::{PageItem, Pager, PagerResponse, page_count, page_window};
-pub use progress_bar::{ProgressBar, ProgressBarSize};
+#[rustfmt::skip]
+pub use pager::{
+    PageItem,
+    Pager,
+    PagerResponse,
+    page_count,
+    page_window,
+};
+#[rustfmt::skip]
+pub use progress_bar::{
+    ProgressBar,
+    ProgressBarSize,
+};
 pub use radio::RadioGroup;
 pub use search_box::SearchBox;
-pub use skeleton::{SKELETON_SIZES, Skeleton, SkeletonAnimation, SkeletonItem};
+#[rustfmt::skip]
+pub use skeleton::{
+    SKELETON_SIZES,
+    Skeleton,
+    SkeletonAnimation,
+    SkeletonItem,
+};
 pub use slider::Slider;
-pub use sparkline::{SeriesSummary, Sparkline};
+#[rustfmt::skip]
+pub use sparkline::{
+    SeriesSummary,
+    Sparkline,
+};
 pub use spin_button::SpinButton;
-pub use spinner::{Spinner, SpinnerSize};
-pub use split_button::{SplitButton, SplitButtonResponse};
+#[rustfmt::skip]
+pub use spinner::{
+    Spinner,
+    SpinnerSize,
+};
+#[rustfmt::skip]
+pub use split_button::{
+    SplitButton,
+    SplitButtonResponse,
+};
 pub use switch::Switch;
-pub use tag::{InteractionTag, Tag, TagAppearance, TagGroup, TagGroupResponse, TagResponse, TagSize};
-pub use tag_picker::{TagPicker, TagPickerResponse, TagSuggestion};
-pub use textarea::{Textarea, TextareaResize};
+#[rustfmt::skip]
+pub use tag::{
+    InteractionTag,
+    Tag,
+    TagAppearance,
+    TagGroup,
+    TagGroupResponse,
+    TagResponse,
+    TagSize,
+};
+#[rustfmt::skip]
+pub use tag_picker::{
+    TagPicker,
+    TagPickerResponse,
+    TagSuggestion,
+};
+#[rustfmt::skip]
+pub use textarea::{
+    Textarea,
+    TextareaResize,
+};
 pub use toggle_button::ToggleButton;

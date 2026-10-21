@@ -53,33 +53,145 @@ pub mod platform;
 pub mod surfaces;
 pub mod theme;
 
+#[rustfmt::skip]
 pub use controls::{
-    Badge, BadgeAppearance, BadgeColor, BadgeSize, CheckState, Checkbox, Combobox, CompoundButton, Divider,
-    Dropdown, Field, Input, InputAppearance, Link, MenuButton, ProgressBar, ProgressBarSize, RadioGroup,
-    SearchBox, Slider, SpinButton, Spinner, SpinnerSize, SplitButton, SplitButtonResponse, Switch, Textarea,
-    TextareaResize, ToggleButton, ValidationState,
+    Badge,
+    BadgeAppearance,
+    BadgeColor,
+    BadgeSize,
+    CheckState,
+    Checkbox,
+    Combobox,
+    CompoundButton,
+    Divider,
+    Dropdown,
+    Field,
+    Input,
+    InputAppearance,
+    Link,
+    MenuButton,
+    ProgressBar,
+    ProgressBarSize,
+    RadioGroup,
+    SearchBox,
+    Slider,
+    SpinButton,
+    Spinner,
+    SpinnerSize,
+    SplitButton,
+    SplitButtonResponse,
+    Switch,
+    Textarea,
+    TextareaResize,
+    ToggleButton,
+    ValidationState,
 };
+#[rustfmt::skip]
 pub use data::{
-    CellCtx, DataGrid, DataGridResponse, DataGridSize, DataGridState, FocusMode, RowId, SelectionMode,
+    CellCtx,
+    DataGrid,
+    DataGridResponse,
+    DataGridSize,
+    DataGridState,
+    FocusMode,
+    RowId,
+    SelectionMode,
 };
-pub use platform::{SystemPreferences, system_preferences, theme_from_system};
+#[rustfmt::skip]
+pub use platform::{
+    SystemPreferences,
+    system_preferences,
+    theme_from_system,
+};
+#[rustfmt::skip]
 pub use surfaces::{
-    Card, CardAppearance, CardHeader, CloseReason, CommandPalette, Dialog, DialogActions, DialogKind,
-    DialogResult, FluentTooltip, MenuItem, PaletteCommand, Popover, StripTab, TabAppearance, TabList,
-    TabSize, TabStrip, TabStripResponse, TooltipExt, TooltipTone, context_menu, divider, group_header,
-    menu_frame, submenu,
+    Card,
+    CardAppearance,
+    CardHeader,
+    CloseReason,
+    CommandPalette,
+    Dialog,
+    DialogActions,
+    DialogKind,
+    DialogResult,
+    FluentTooltip,
+    MenuItem,
+    PaletteCommand,
+    Popover,
+    StripTab,
+    TabAppearance,
+    TabList,
+    TabSize,
+    TabStrip,
+    TabStripResponse,
+    TooltipExt,
+    TooltipTone,
+    context_menu,
+    divider,
+    group_header,
+    menu_frame,
+    submenu,
 };
-pub use theme::{Theme, ThemeKind};
+#[rustfmt::skip]
+pub use theme::{
+    Theme,
+    ThemeKind,
+};
 
 /// Names a caller usually wants in scope.
 pub mod prelude {
-    pub use crate::foundation::icon::{Icon, IconName, IconSize, IconStyle};
-    pub use crate::foundation::text::{TypeRamp, font_id, rich, style};
+    #[rustfmt::skip]
+    pub use crate::foundation::icon::{
+        Icon,
+        IconName,
+        IconSize,
+        IconStyle,
+    };
+    #[rustfmt::skip]
+    pub use crate::foundation::text::{
+        TypeRamp,
+        font_id,
+        rich,
+        style,
+    };
+    #[rustfmt::skip]
     pub use crate::{
-        Badge, BadgeAppearance, BadgeColor, BadgeSize, Card, CardHeader, CheckState, Checkbox, Combobox,
-        CompoundButton, Dialog, DialogKind, Divider, Dropdown, Field, FluentTooltip, Input, Link, MenuButton,
-        ProgressBar, ProgressBarSize, RadioGroup, SearchBox, Slider, SpinButton, Spinner, SpinnerSize,
-        SplitButton, Switch, TabList, Textarea, Theme, ThemeKind, ToggleButton, TooltipExt, ValidationState,
+        Badge,
+        BadgeAppearance,
+        BadgeColor,
+        BadgeSize,
+        Card,
+        CardHeader,
+        CheckState,
+        Checkbox,
+        Combobox,
+        CompoundButton,
+        Dialog,
+        DialogKind,
+        Divider,
+        Dropdown,
+        Field,
+        FluentTooltip,
+        Input,
+        Link,
+        MenuButton,
+        ProgressBar,
+        ProgressBarSize,
+        RadioGroup,
+        SearchBox,
+        Slider,
+        SpinButton,
+        Spinner,
+        SpinnerSize,
+        SplitButton,
+        Switch,
+        TabList,
+        Textarea,
+        Theme,
+        ThemeKind,
+        ToggleButton,
+        TooltipExt,
+        ValidationState,
     };
 }
 
@@ -102,5 +214,20 @@ fn install_image_loaders(ctx: &egui::Context) {
     ctx.data_mut(|data| data.insert_temp(id, true));
 }
 
-pub use foundation::icon::{Icon, IconName, IconSize, IconStyle, paint_icon};
-pub use foundation::text::{TypeRamp, font_id, install_system_fonts, install_text_styles, rich, style};
+#[rustfmt::skip]
+pub use foundation::icon::{
+    Icon,
+    IconName,
+    IconSize,
+    IconStyle,
+    paint_icon,
+};
+#[rustfmt::skip]
+pub use foundation::text::{
+    TypeRamp,
+    font_id,
+    install_system_fonts,
+    install_text_styles,
+    rich,
+    style,
+};

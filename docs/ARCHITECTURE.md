@@ -153,7 +153,9 @@ cargo check -p fluent2-egui --target wasm32-unknown-unknown
 - `0.x` while egui is `0.x`. **One egui minor per release line**: the workspace pins
   `egui = "0.<minor>"`. Moving to a new egui minor is its own work item and bumps our minor.
 - `fluent2-tokens` and `fluent2-icons` version independently of egui.
-- `CHANGELOG.md` uses Keep a Changelog sections. Every PR that changes behaviour adds a line.
+- `CHANGELOG.md` uses Keep a Changelog sections. Every PR that changes behaviour adds a
+  fragment under `changelog.d/` (see its README); the release PR folds the fragments into
+  `[Unreleased]` and deletes them, so feature PRs never edit `CHANGELOG.md`.
 
 ## Upstreams
 

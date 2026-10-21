@@ -6,12 +6,18 @@ pub mod backstage;
 pub mod command_bar;
 pub mod keytips;
 pub mod qat;
+pub mod ribbon;
 pub mod status_bar;
 pub mod title_bar;
 pub mod window_edges;
-
-pub mod ribbon;
-pub use title_bar::{TitleBar, TitleBarResponse, TitleBarSlots, WindowAction, window_command};
+#[rustfmt::skip]
+pub use title_bar::{
+    TitleBar,
+    TitleBarResponse,
+    TitleBarSlots,
+    WindowAction,
+    window_command,
+};
 
 /// An egui id from any hashable caller value. Only `Hash` is required, so the public
 /// constructors take `impl Hash` as the spec says.
