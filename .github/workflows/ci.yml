@@ -164,7 +164,17 @@ jobs:
           SCOPE_ARGS: ${{ steps.scope.outputs.args }}
           CARGO_PROFILE_TEST_DEBUG: 0
         run: |
-          read -r -a args <<<"$SCOPE_ARGS"
+          read -r -a in <<<"$SCOPE_ARGS"
+          # Doc tests need a library target; gallery and xtask are bin-only,
+          # so `cargo test --doc -p <bin-only>` errors. Drop them from the scope.
+          args=()
+          for ((i = 0; i < ${#in[@]}; i++)); do
+            if [[ "${in[i]}" == -p && ( "${in[i+1]:-}" == gallery || "${in[i+1]:-}" == xtask ) ]]; then
+              i=$((i + 1)); continue
+            fi
+            args+=("${in[i]}")
+          done
+          if [[ ${#args[@]} -eq 0 ]]; then echo "No library crates in scope; skipping doc tests."; exit 0; fi
           cargo test --doc "${args[@]}" --locked
       - name: Serde feature tests
         if: steps.scope.outputs.full == 'true' || contains(format(' {0} ', needs.changes.outputs.rust_packages), ' fluent2-egui ')
