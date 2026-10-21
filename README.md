@@ -90,6 +90,9 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `Dropdown` | Dropdown | | Basic controls |
 | `Combobox` | Combobox | | Basic controls |
 | `TagPicker` | TagPicker | | Basic controls |
+| `Tag` | Tag | | Basic controls |
+| `InteractionTag` | InteractionTag | | Basic controls |
+| `TagGroup` | TagGroup | | Basic controls |
 | `DatePicker` | DatePicker | | Date and time |
 | `Calendar` | Calendar | | Date and time |
 | `TimePicker` | TimePicker | | Date and time |
