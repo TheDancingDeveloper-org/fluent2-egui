@@ -21,6 +21,7 @@ mod markdown;
 mod pager;
 mod reorder;
 mod ribbon;
+mod skeleton;
 mod surfaces;
 mod tab_strip;
 mod terminal;
@@ -46,6 +47,7 @@ pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
+pub use skeleton::SkeletonPage;
 pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
@@ -89,5 +91,6 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(ReorderPage::default()),
         Box::new(HtmlPage::default()),
         Box::new(MarkdownPage::default()),
+        Box::new(SkeletonPage),
     ]
 }
