@@ -34,6 +34,8 @@ const SUPPORTING: &[&str] = &[
     "ProgressBarSize",
     "SeriesSummary",
     "Shape",
+    "SkeletonAnimation",
+    "SkeletonItem",
     "SpinnerSize",
     "SplitButtonResponse",
     "TextareaResize",
