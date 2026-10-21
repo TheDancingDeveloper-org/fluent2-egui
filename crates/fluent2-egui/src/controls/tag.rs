@@ -7,7 +7,7 @@
 //! the arrow keys move between tags, and dismissing a tag moves focus to the next one.
 //!
 //! Keyboard: Enter or Space activates the focused target; Delete or Backspace on a focused tag
-//! dismisses it. Dismiss buttons are named "Remove <text>".
+//! dismisses it. Dismiss buttons are named `"Remove <text>"`.
 //!
 //! Tags are app data: [`TagResponse::dismissed`] tells the app to drop the tag.
 //!
@@ -145,7 +145,7 @@ impl Tag {
         self
     }
 
-    /// Add a dismiss button ("Remove <text>").
+    /// Add a dismiss button (`"Remove <text>"`).
     #[must_use]
     pub fn dismissible(mut self, dismissible: bool) -> Self {
         self.dismissible = dismissible;
@@ -799,7 +799,7 @@ fn show_tag(ui: &mut Ui, tag: &Tag, options: Options) -> TagResponse {
     let clicked = enabled && options.interactive && body.clicked();
 
     // AccessKit: the body is a Button (interactive) or a ListItem in a group; the dismiss
-    // target is a Button named "Remove <text>".
+    // target is a Button named `"Remove <text>"`.
     let text = tag.accessible_text();
     if options.interactive {
         let name = text.clone();
