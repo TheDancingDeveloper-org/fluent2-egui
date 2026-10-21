@@ -100,6 +100,7 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | `Spinner` | Spinner | | Basic controls |
 | `Skeleton`, `SkeletonItem` | Skeleton (SkeletonItem) | | Skeleton |
 | `Divider` | Divider | | Basic controls |
+| `Breadcrumb` (`BreadcrumbSize`, `BreadcrumbDivider`, `BreadcrumbItemStyle`, `BreadcrumbResponse`) | Breadcrumb | | Breadcrumb |
 | `Pager` | egui-only (pagination) | | Pager |
 | `Sparkline`, `MiniBars` | egui-only (charts) | | Charts |
 | `Avatar` | Avatar | | Avatars |
@@ -157,7 +158,6 @@ What the crate offers, by module, mapped to Fluent 2. "Gallery" is the page in `
 | Fluent 2 | status |
 |---|---|
 | Tag, InteractionTag, TagGroup | WI-1934 |
-| Breadcrumb | WI-1936 |
 | Accordion | WI-1937 |
 | Toolbar, Rating, InfoLabel, Image, Select, SwatchPicker, Carousel, TeachingPopover | not planned yet |
 
