@@ -8,8 +8,16 @@
 
 mod model;
 
+#[rustfmt::skip]
 pub use model::{
-    DEFAULT_CONTEXT, DiffModel, HunkHeader, InlineRow, LineKind, MAX_WORD_DIFF_COLUMNS, SplitRow, TAB_WIDTH,
+    DEFAULT_CONTEXT,
+    DiffModel,
+    HunkHeader,
+    InlineRow,
+    LineKind,
+    MAX_WORD_DIFF_COLUMNS,
+    SplitRow,
+    TAB_WIDTH,
 };
 
 use std::ops::Range;

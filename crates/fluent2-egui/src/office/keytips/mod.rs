@@ -45,10 +45,26 @@ use egui::text::{LayoutJob, TextFormat};
 use egui::{Context, Event, Id, Key, LayerId, Order, Popup, Pos2, Rect, Stroke, StrokeKind, Ui, Vec2};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
-pub use regions::{Region, mark_region};
+#[rustfmt::skip]
+pub use regions::{
+    Region,
+    mark_region,
+};
+#[rustfmt::skip]
 pub use state::{
-    KeyTipAction, KeyTipCandidate, KeyTipInput, KeyTipLevel, KeyTipResolution, KeyTipState, KeyTipStep,
-    KeyTipTarget, KeyTipTargets, KeyTipsReport, TargetKind, resolve_keytips, step,
+    KeyTipAction,
+    KeyTipCandidate,
+    KeyTipInput,
+    KeyTipLevel,
+    KeyTipResolution,
+    KeyTipState,
+    KeyTipStep,
+    KeyTipTarget,
+    KeyTipTargets,
+    KeyTipsReport,
+    TargetKind,
+    resolve_keytips,
+    step,
 };
 
 use crate::foundation::text::{TypeRamp, font_id};

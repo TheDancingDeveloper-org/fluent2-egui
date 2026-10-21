@@ -30,9 +30,26 @@ mod css;
 mod data_uri;
 mod model;
 
-pub use css::{Rgb, TextAlign, parse_color};
+#[rustfmt::skip]
+pub use css::{
+    Rgb,
+    TextAlign,
+    parse_color,
+};
+#[rustfmt::skip]
 pub use model::{
-    BASE_SIZE, Block, Cell, HtmlDocument, ImageRef, Inline, Length, MAX_DEPTH, Run, RunStyle, Table, TextKind,
+    BASE_SIZE,
+    Block,
+    Cell,
+    HtmlDocument,
+    ImageRef,
+    Inline,
+    Length,
+    MAX_DEPTH,
+    Run,
+    RunStyle,
+    Table,
+    TextKind,
 };
 
 use std::sync::Arc;
