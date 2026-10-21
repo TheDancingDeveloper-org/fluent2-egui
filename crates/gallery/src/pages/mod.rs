@@ -23,6 +23,7 @@ mod markdown;
 mod pager;
 mod reorder;
 mod ribbon;
+mod rich_text_editor;
 mod skeleton;
 mod surfaces;
 mod tab_strip;
@@ -51,6 +52,7 @@ pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
+pub use rich_text_editor::RichTextEditorPage;
 pub use skeleton::SkeletonPage;
 pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
@@ -95,6 +97,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(PagerPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
+        Box::new(RichTextEditorPage::default()),
         Box::new(SkeletonPage),
         Box::new(SurfacesPage::default()),
         Box::new(TabStripPage::default()),
