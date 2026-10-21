@@ -14,7 +14,7 @@ fluent2-tokens = { path = "crates/fluent2-tokens", version = "0.2.0" }
 fluent2-icons = { path = "crates/fluent2-icons", version = "0.2.0" }
 fluent2-egui = { path = "crates/fluent2-egui", version = "0.2.0" }
 # One egui minor per release line; see UPSTREAM.md "egui" and docs/ARCHITECTURE.md "Versioning".
-egui = { version = "0.36", default-features = false }
+egui = { version = "0.37", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

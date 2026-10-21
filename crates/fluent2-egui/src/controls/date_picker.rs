@@ -278,7 +278,7 @@ impl<'a> DatePicker<'a> {
         let value_text = self.value.map(|d| self.strings.long_date(d)).unwrap_or_default();
         let name = label.clone();
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, enabled, name.clone());
+            let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextInput, enabled, name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });

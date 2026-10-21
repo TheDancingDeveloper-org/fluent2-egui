@@ -327,7 +327,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                     let Some(key) = row.key.as_ref() else {
                         // The spinner row under a loading node: a busy TreeItem, not focusable.
                         let hit = ui.interact(visible_rect, id.with(("loading", index)), Sense::hover());
-                        hit.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, "Loading"));
+                        hit.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, "Loading"));
                         ui.ctx().accesskit_node_builder(hit.id, |node| {
                             node.set_role(Role::TreeItem);
                             node.set_label("Loading");
@@ -352,7 +352,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         active_row = Some(hit.id.accesskit_id());
                     }
                     let text = row.label.text();
-                    hit.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, text));
+                    hit.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, text));
                     let chevron = row.has_children.then(|| {
                         ui.interact(
                             slot.intersect(clip),
@@ -467,7 +467,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                 }
 
                 tree_response.widget_info(|| {
-                    WidgetInfo::labeled(WidgetType::Other, enabled, label.as_deref().unwrap_or_default())
+                    WidgetInfo::labeled(WidgetType::Unknown, enabled, label.as_deref().unwrap_or_default())
                 });
                 ui.ctx().accesskit_node_builder(tree_response.id, |node| {
                     node.set_role(Role::Tree);

@@ -457,7 +457,7 @@ impl TerminalView {
 
         let enabled = ui.is_enabled();
         let label = self.label.clone();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, &label));
         let text = grid.view_text();
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::Terminal);

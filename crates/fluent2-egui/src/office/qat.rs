@@ -227,7 +227,7 @@ impl<'a> Qat<'a> {
         // The toolbar has no widget of its own, so an interact over its rect gives the AccessKit
         // node bounds. It senses hover only, so clicks still reach the buttons.
         let toolbar = ui.interact(row.response.rect, id, Sense::hover());
-        toolbar.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Quick Access Toolbar"));
+        toolbar.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, "Quick Access Toolbar"));
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(accesskit::Role::Toolbar);
         });

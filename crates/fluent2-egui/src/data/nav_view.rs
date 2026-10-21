@@ -571,7 +571,7 @@ impl NavigationView {
         let item_count = plan.nav.len();
         ui.scope_builder(UiBuilder::new().id(list_id).max_rect(list_rect), |ui| {
             ui.interact(list_rect, list_id, Sense::hover())
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Navigation items"));
+                .widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, "Navigation items"));
             ui.ctx().accesskit_node_builder(list_id, |node| {
                 node.set_role(accesskit::Role::TabList);
                 node.set_orientation(accesskit::Orientation::Vertical);
@@ -729,7 +729,7 @@ impl NavigationView {
             focus::paint_focus_ring(ui, rect, CornerRadius::same(border_radius::MEDIUM as u8));
         }
         let title = self.title.as_deref().unwrap_or("Navigation");
-        pane.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, title));
+        pane.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, title));
         ui.ctx()
             .accesskit_node_builder(pane.id, |node| node.set_role(accesskit::Role::Navigation));
 

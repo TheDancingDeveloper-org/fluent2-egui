@@ -479,7 +479,7 @@ impl<'a> Gallery<'a> {
                             grid.request_focus();
                             focus_grid = false;
                         }
-                        grid.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, &grid_label));
+                        grid.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, &grid_label));
                         ui.memory_mut(|memory| {
                             memory.set_focus_lock_filter(
                                 grid_id,

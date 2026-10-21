@@ -475,7 +475,7 @@ impl ReorderList {
             item.request_focus();
         }
         let label = label.into();
-        item.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &label));
+        item.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, &label));
         ui.ctx().accesskit_node_builder(item_id, |node| {
             node.set_role(Role::ListItem);
             node.set_description("Alt+arrow keys to move");

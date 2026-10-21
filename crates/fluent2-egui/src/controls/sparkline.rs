@@ -109,7 +109,7 @@ pub(crate) fn finite_size(size: Vec2) -> Vec2 {
 /// Set the image role and summary label on a chart's response.
 pub(crate) fn describe(ui: &Ui, response: &Response, label: &str) {
     let enabled = ui.is_enabled();
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, label));
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, label));
     let label = label.to_owned();
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_role(Role::Image);

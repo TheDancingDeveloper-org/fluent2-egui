@@ -251,7 +251,7 @@ fn show(
     }
 
     response.widget_info(|| {
-        let mut info = WidgetInfo::labeled(WidgetType::Checkbox, enabled, label_text.clone());
+        let mut info = WidgetInfo::labeled(WidgetType::CheckBox, enabled, label_text.clone());
         info.selected = Some(state != CheckState::Unchecked);
         // Mixed is neither checked nor unchecked. AccessKit's tristate is `Toggled::Mixed`.
         if state == CheckState::Mixed {

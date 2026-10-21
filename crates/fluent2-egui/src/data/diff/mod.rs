@@ -262,7 +262,7 @@ impl DiffView {
                 response
             });
         let response = output.inner;
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &summary));
+        response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, &summary));
         DiffResponse {
             response,
             visible_rows: visible,

@@ -447,8 +447,8 @@ impl TagGroup {
         let label = self.label.clone();
         let enabled = ui.is_enabled();
         response.widget_info(|| match &label {
-            Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
-            None => WidgetInfo::new(WidgetType::Other),
+            Some(label) => WidgetInfo::labeled(WidgetType::Unknown, enabled, label.as_str()),
+            None => WidgetInfo::new(WidgetType::Unknown),
         });
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(egui::accesskit::Role::List);

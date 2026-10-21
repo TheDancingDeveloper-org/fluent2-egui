@@ -384,7 +384,7 @@ impl<'a> List<'a> {
                 if let Some((fill, _)) = fill {
                     ui.painter().rect_filled(row_rect, ring_radius, fill);
                 }
-                hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
+                hit.widget_info(|| WidgetInfo::new(WidgetType::Unknown));
                 let row_text = self.row_label.as_ref().map(|label| label(index));
                 ui.ctx().accesskit_node_builder(hit.id, |node| {
                     if let Some(text) = row_text {
@@ -471,8 +471,8 @@ impl<'a> List<'a> {
 
             let enabled = ui.is_enabled();
             list_response.widget_info(|| match &label {
-                Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
-                None => WidgetInfo::new(WidgetType::Other),
+                Some(label) => WidgetInfo::labeled(WidgetType::Unknown, enabled, label.as_str()),
+                None => WidgetInfo::new(WidgetType::Unknown),
             });
             ui.ctx().accesskit_node_builder(list_response.id, |node| {
                 if mode == SelectionMode::None {

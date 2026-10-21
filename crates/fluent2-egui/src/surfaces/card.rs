@@ -209,7 +209,7 @@ impl<'a> Card<'a> {
         if interactive {
             let name = label.clone().unwrap_or_default();
             response.widget_info(|| {
-                WidgetInfo::selected(WidgetType::Checkbox, enabled, selected_now, name.clone())
+                WidgetInfo::selected(WidgetType::CheckBox, enabled, selected_now, name.clone())
             });
             ui.ctx().accesskit_node_builder(id, |node| {
                 node.set_role(accesskit::Role::CheckBox);

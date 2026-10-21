@@ -373,7 +373,7 @@ impl ResizeHandle {
             {
                 WidgetInfo::slider(enabled, f64::from(*value), self.label.as_str())
             } else {
-                WidgetInfo::labeled(WidgetType::Other, enabled, self.label.as_str())
+                WidgetInfo::labeled(WidgetType::Unknown, enabled, self.label.as_str())
             }
         });
         ui.ctx().accesskit_node_builder(response.id, |node| {

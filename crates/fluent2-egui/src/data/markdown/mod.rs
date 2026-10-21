@@ -388,7 +388,7 @@ impl Painter<'_, '_> {
                     }
                     let label = item.blocks.first().map(block_text).unwrap_or_default();
                     response.widget_info(|| {
-                        WidgetInfo::selected(WidgetType::Checkbox, false, checked, label.clone())
+                        WidgetInfo::selected(WidgetType::CheckBox, false, checked, label.clone())
                     });
                 } else if let Some(n) = start {
                     let number = n.saturating_add(i as u64);

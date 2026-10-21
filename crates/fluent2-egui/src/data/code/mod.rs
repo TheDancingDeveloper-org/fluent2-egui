@@ -395,7 +395,7 @@ impl CodeView {
 
         let enabled = ui.is_enabled();
         let label = self.label.clone();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::TextEdit, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(WidgetType::TextInput, enabled, &label));
         // The builder runs only while AccessKit is on; the value was joined at highlight time.
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::MultilineTextInput);

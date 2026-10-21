@@ -135,7 +135,7 @@ impl Widget for Switch<'_> {
         // is then given the Switch role (ARCHITECTURE "Component API" rule 8). Narrator and
         // Orca announce "switch, on/off" instead of "check box, checked".
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::Checkbox, enabled, label_text.clone());
+            let mut info = WidgetInfo::labeled(WidgetType::CheckBox, enabled, label_text.clone());
             info.selected = Some(on);
             info
         });
