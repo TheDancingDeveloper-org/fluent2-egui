@@ -5,6 +5,7 @@
 
 mod avatars;
 mod backstage;
+mod breadcrumb;
 mod charts;
 mod code_view;
 mod command_palette;
@@ -30,6 +31,7 @@ mod variable_list;
 
 pub use avatars::AvatarsPage;
 pub use backstage::BackstagePage;
+pub use breadcrumb::BreadcrumbPage;
 pub use charts::ChartsPage;
 pub use code_view::CodeViewPage;
 pub use command_palette::CommandPalettePage;
@@ -75,6 +77,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DataGridPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(PagerPage::default()),
+        Box::new(BreadcrumbPage::default()),
         Box::new(BackstagePage::default()),
         Box::new(RibbonPage::default()),
         Box::new(TerminalPage::default()),

@@ -2,6 +2,7 @@
 
 mod avatar;
 mod badge;
+mod breadcrumb;
 pub(crate) mod button;
 mod calendar;
 mod checkbox;
@@ -35,6 +36,9 @@ pub use avatar::{
     initials, palette_index,
 };
 pub use badge::{Badge, BadgeAppearance, BadgeColor, BadgeSize};
+pub use breadcrumb::{
+    Breadcrumb, BreadcrumbDivider, BreadcrumbItemStyle, BreadcrumbResponse, BreadcrumbSize,
+};
 pub(crate) use button::ensure_type_ramp;
 pub use button::{Appearance, Button, ButtonSize, Shape};
 pub use calendar::{
