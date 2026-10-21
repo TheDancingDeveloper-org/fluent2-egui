@@ -8,7 +8,7 @@
 use egui::accesskit::Role;
 use egui::{
     Align, CornerRadius, Event, EventFilter, Id, Key, Layout, Modifiers, Pos2, Rect, ScrollArea, Sense, Ui,
-    UiBuilder, Vec2, WidgetInfo, WidgetType,
+    UiBuilder, Vec2, WidgetInfo,
 };
 
 use super::RowId;
@@ -384,7 +384,7 @@ impl<'a> List<'a> {
                 if let Some((fill, _)) = fill {
                     ui.painter().rect_filled(row_rect, ring_radius, fill);
                 }
-                hit.widget_info(|| WidgetInfo::new(WidgetType::Unknown));
+                hit.widget_info(|| WidgetInfo::new(Role::Unknown));
                 let row_text = self.row_label.as_ref().map(|label| label(index));
                 ui.ctx().accesskit_node_builder(hit.id, |node| {
                     if let Some(text) = row_text {
@@ -471,8 +471,8 @@ impl<'a> List<'a> {
 
             let enabled = ui.is_enabled();
             list_response.widget_info(|| match &label {
-                Some(label) => WidgetInfo::labeled(WidgetType::Unknown, enabled, label.as_str()),
-                None => WidgetInfo::new(WidgetType::Unknown),
+                Some(label) => WidgetInfo::labeled(Role::Unknown, enabled, label.as_str()),
+                None => WidgetInfo::new(Role::Unknown),
             });
             ui.ctx().accesskit_node_builder(list_response.id, |node| {
                 if mode == SelectionMode::None {

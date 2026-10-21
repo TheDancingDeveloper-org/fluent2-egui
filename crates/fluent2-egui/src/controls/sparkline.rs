@@ -9,7 +9,7 @@
 //! "CPU: 12 values, min 3, max 41, last 17".
 
 use egui::accesskit::Role;
-use egui::{Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget, WidgetInfo, WidgetType};
+use egui::{Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget, WidgetInfo};
 
 use fluent2_tokens::generated::global::{line_height, spacing_horizontal, stroke_width};
 
@@ -109,7 +109,7 @@ pub(crate) fn finite_size(size: Vec2) -> Vec2 {
 /// Set the image role and summary label on a chart's response.
 pub(crate) fn describe(ui: &Ui, response: &Response, label: &str) {
     let enabled = ui.is_enabled();
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, label));
+    response.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, label));
     let label = label.to_owned();
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_role(Role::Image);

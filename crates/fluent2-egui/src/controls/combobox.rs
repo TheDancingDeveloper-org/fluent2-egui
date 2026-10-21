@@ -4,7 +4,7 @@
 //! [`super::Dropdown`]. Metrics are the WI-1549 brief: 32 px rows, a check on the selected
 //! option, and [`egui::ScrollArea::show_rows`] past 50 options.
 
-use egui::{Id, Rect, Response, Sense, TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Id, Rect, Response, Sense, TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText, Role};
 
 use super::ButtonSize;
 use super::dropdown::{
@@ -243,7 +243,7 @@ impl Widget for Combobox<'_> {
         };
         let value_text = self.text.clone();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
+            let mut info = WidgetInfo::labeled(Role::ComboBox, enabled, accessible_name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });

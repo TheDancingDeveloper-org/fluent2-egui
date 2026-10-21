@@ -13,7 +13,7 @@
 //! a label widget. The child keeps the accessible name its own widget sets.
 //! Callers that need the child named should pass that label into the child.
 
-use egui::{Sense, TextStyle, Ui, WidgetInfo, WidgetText, WidgetType};
+use egui::{Sense, TextStyle, Ui, WidgetInfo, WidgetText, Role};
 
 use fluent2_tokens::generated::global::spacing_vertical;
 
@@ -146,7 +146,7 @@ impl<'a> Field<'a> {
                 }
             }
             response
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Label, ui.is_enabled(), accessible.clone()));
+                .widget_info(|| WidgetInfo::labeled(Role::Label, ui.is_enabled(), accessible.clone()));
         });
         ui.add_space(spacing_vertical::XXS);
         // Controls in the child without a label of their own take the Field's label as their
@@ -227,7 +227,7 @@ fn paint_line(
         if ui.is_rect_visible(rect) {
             ui.painter().galley(rect.left_top(), galley, theme::c(color));
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text.to_owned()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Label, true, text.to_owned()));
     });
 }
 

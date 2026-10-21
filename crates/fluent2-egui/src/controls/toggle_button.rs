@@ -5,7 +5,7 @@
 //! uses `brand_background_selected`, and subtle and transparent use `subtle_background_selected`
 //! with `neutral_foreground_2_brand_selected`.
 
-use egui::{Id, Response, Sense, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Id, Response, Sense, Ui, Vec2, Widget, WidgetInfo, WidgetText, Role};
 
 use fluent2_icons::Icon;
 
@@ -197,7 +197,7 @@ impl Widget for ToggleButton<'_> {
         }
         let selected = *self.checked;
         response
-            .widget_info(|| WidgetInfo::selected(WidgetType::Button, enabled, selected, accessible.clone()));
+            .widget_info(|| WidgetInfo::selected(Role::Button, enabled, selected, accessible.clone()));
         response
     }
 }

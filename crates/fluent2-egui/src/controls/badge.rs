@@ -18,7 +18,7 @@
 //! foreground step they pick.
 
 use egui::{
-    CornerRadius, Response, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
+    CornerRadius, Response, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, Role,
 };
 
 use fluent2_tokens::Rgba;
@@ -163,7 +163,7 @@ impl Widget for Badge<'_> {
             ui.painter().galley(text_pos, galley, theme::c(pair.foreground));
         }
         let label = self.text.text().to_owned();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Label, true, label.clone()));
         response
     }
 }

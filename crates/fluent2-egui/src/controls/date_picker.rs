@@ -243,7 +243,7 @@ impl<'a> DatePicker<'a> {
         }
         let choose = format!("Choose {}", label.to_lowercase());
         calendar_button
-            .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, choose.clone()));
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, choose.clone()));
         ui.ctx().accesskit_node_builder(calendar_button.id, |node| {
             node.set_has_popup(egui::accesskit::HasPopup::Dialog);
             if open {
@@ -278,7 +278,7 @@ impl<'a> DatePicker<'a> {
         let value_text = self.value.map(|d| self.strings.long_date(d)).unwrap_or_default();
         let name = label.clone();
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextInput, enabled, name.clone());
+            let mut info = egui::WidgetInfo::labeled(egui::Role::TextInput, enabled, name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });

@@ -19,7 +19,7 @@ use egui::epaint::RectShape;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
     Align2, Area, Context, CornerRadius, Frame, Id, Key, Modal, Order, Rect, Sense, Stroke, TextWrapMode, Ui,
-    UiBuilder, UiKind, Vec2, WidgetInfo, WidgetType,
+    UiBuilder, UiKind, Vec2, WidgetInfo, Role,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -840,7 +840,7 @@ fn paint_row(
     let enabled = !command.disabled;
     let label = command.label.clone();
     response.widget_info(|| {
-        let mut info = WidgetInfo::labeled(WidgetType::SelectableLabel, enabled, &label);
+        let mut info = WidgetInfo::labeled(Role::ListBoxOption, enabled, &label);
         info.selected = Some(selected);
         info
     });

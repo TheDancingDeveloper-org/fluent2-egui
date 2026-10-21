@@ -14,7 +14,7 @@
 use egui::epaint::RectShape;
 use egui::{
     CornerRadius, Id, Key, Modifiers, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    Role, accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -240,7 +240,7 @@ impl<'a> TabList<'a> {
             .get(selected)
             .map(|tab| tab.label.as_str())
             .unwrap_or("");
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::SelectableLabel, enabled_parent, label));
+        response.widget_info(|| WidgetInfo::labeled(Role::Tab, enabled_parent, label));
         let tab_labels: Vec<(String, bool, bool)> = self
             .tabs
             .iter()

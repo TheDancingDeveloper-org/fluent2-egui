@@ -10,7 +10,7 @@
 use egui::epaint::RectShape;
 use egui::{
     Align, CornerRadius, Frame, Id, InnerResponse, Layout, Popup, Rect, Response, Sense, Stroke,
-    TextWrapMode, Ui, UiKind, UiStackInfo, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
+    TextWrapMode, Ui, UiKind, UiStackInfo, Vec2, Widget, WidgetInfo, WidgetText, Role,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -233,7 +233,7 @@ impl Widget for MenuItem<'_> {
         let enabled = ui.is_enabled();
         let checkable = self.checked.is_some();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::Button, enabled, &label);
+            let mut info = WidgetInfo::labeled(Role::Button, enabled, &label);
             // Only a checkable item has a state. Always set, it made every item a "toggle
             // button, not pressed" in Orca (WI-1586).
             info.selected = checkable.then_some(selected);

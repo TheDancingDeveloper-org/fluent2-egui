@@ -102,7 +102,7 @@ impl Popover {
                 let (_, response) =
                     ui.allocate_exact_size(Vec2::new(width, 1.0), Sense::focusable_noninteractive());
                 response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), accessible.clone())
+                    egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), accessible.clone())
                 });
                 ui.ctx().accesskit_node_builder(response.id, |node| {
                     node.set_role(egui::accesskit::Role::Dialog);

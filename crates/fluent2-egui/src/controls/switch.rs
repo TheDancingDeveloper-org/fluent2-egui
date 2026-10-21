@@ -5,7 +5,7 @@
 
 use egui::{
     CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
-    WidgetText, WidgetType, epaint::RectShape,
+    WidgetText, Role, epaint::RectShape,
 };
 use fluent2_tokens::generated::global::{spacing_horizontal, stroke_width};
 
@@ -131,11 +131,11 @@ impl Widget for Switch<'_> {
             }
         }
 
-        // WidgetType has no switch, so the widget info says checkbox and the AccessKit node
+        // Role has no switch, so the widget info says checkbox and the AccessKit node
         // is then given the Switch role (ARCHITECTURE "Component API" rule 8). Narrator and
         // Orca announce "switch, on/off" instead of "check box, checked".
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::CheckBox, enabled, label_text.clone());
+            let mut info = WidgetInfo::labeled(Role::CheckBox, enabled, label_text.clone());
             info.selected = Some(on);
             info
         });

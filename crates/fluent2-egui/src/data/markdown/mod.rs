@@ -20,7 +20,7 @@ use egui::accesskit::Role;
 use egui::text::LayoutJob;
 use egui::{
     Align2, Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Id, Label, Layout, Margin,
-    RichText, Sense, Stroke, Ui, Vec2, WidgetInfo, WidgetType,
+    RichText, Sense, Stroke, Ui, Vec2, WidgetInfo,
 };
 
 use crate::foundation::focus;
@@ -329,7 +329,7 @@ impl Painter<'_, '_> {
         let response = ui.add(if wrap { label.wrap() } else { label.extend() });
         let enabled = ui.is_enabled();
         let label_text = text.to_owned();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Link, enabled, label_text.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label_text.clone()));
         if focus::focus_visible(ui, &response) {
             focus::paint_focus_ring(ui, response.rect, CornerRadius::ZERO);
         }
@@ -388,7 +388,7 @@ impl Painter<'_, '_> {
                     }
                     let label = item.blocks.first().map(block_text).unwrap_or_default();
                     response.widget_info(|| {
-                        WidgetInfo::selected(WidgetType::CheckBox, false, checked, label.clone())
+                        WidgetInfo::selected(Role::CheckBox, false, checked, label.clone())
                     });
                 } else if let Some(n) = start {
                     let number = n.saturating_add(i as u64);

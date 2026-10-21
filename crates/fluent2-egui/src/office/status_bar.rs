@@ -1,7 +1,7 @@
 //! Office status bar: a bottom strip with left and right slots and a zoom control (spec §8.1,
 //! WI-1569).
 
-use egui::{Align, Id, Layout, Sense, Ui, UiBuilder, WidgetInfo, WidgetType, accesskit, vec2};
+use egui::{Align, Id, Layout, Sense, Ui, UiBuilder, WidgetInfo, Role, accesskit, vec2};
 
 use super::keytips::{self, Region};
 use crate::controls::{Appearance, Button, ButtonSize, Slider};
@@ -153,7 +153,7 @@ impl<'a> StatusBar<'a> {
                     .appearance(Appearance::Subtle)
                     .size(ButtonSize::Small),
             );
-            zoom_in.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "Zoom in"));
+            zoom_in.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, "Zoom in"));
             let mut step = if zoom_in.clicked() { ZOOM_STEP } else { 0.0 };
             let slider = right_ui.add(Slider::new(&mut slider_value, 10.0..=400.0).step(Some(1.0)));
             slider.widget_info(|| WidgetInfo::slider(enabled, slider_value, "Zoom"));
@@ -162,7 +162,7 @@ impl<'a> StatusBar<'a> {
                     .appearance(Appearance::Subtle)
                     .size(ButtonSize::Small),
             );
-            zoom_out.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "Zoom out"));
+            zoom_out.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, "Zoom out"));
             if zoom_out.clicked() {
                 step -= ZOOM_STEP;
             }

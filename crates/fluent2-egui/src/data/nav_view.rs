@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 use egui::{
     Area, CornerRadius, Id, Key, Layout, Modifiers, Order, Pos2, Rect, Sense, TextStyle, TextWrapMode, Ui,
-    UiBuilder, Vec2, WidgetInfo, WidgetText, WidgetType, accesskit,
+    UiBuilder, Vec2, WidgetInfo, WidgetText, Role, accesskit,
 };
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -571,7 +571,7 @@ impl NavigationView {
         let item_count = plan.nav.len();
         ui.scope_builder(UiBuilder::new().id(list_id).max_rect(list_rect), |ui| {
             ui.interact(list_rect, list_id, Sense::hover())
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, "Navigation items"));
+                .widget_info(|| WidgetInfo::labeled(Role::Unknown, true, "Navigation items"));
             ui.ctx().accesskit_node_builder(list_id, |node| {
                 node.set_role(accesskit::Role::TabList);
                 node.set_orientation(accesskit::Orientation::Vertical);
@@ -679,7 +679,7 @@ impl NavigationView {
                         let item_id = id.with(("item", nav));
                         let label = item.label.clone();
                         ui.interact(rect, item_id, Sense::hover()).widget_info(|| {
-                            WidgetInfo::labeled(WidgetType::SelectableLabel, true, label.as_str())
+                            WidgetInfo::labeled(Role::TreeItem, true, label.as_str())
                         });
                         ui.ctx().accesskit_node_builder(item_id, |node| {
                             node.set_role(accesskit::Role::Tab);
@@ -711,7 +711,7 @@ impl NavigationView {
                             .galley(pos, galley, c(theme.color.neutral_foreground_3));
                         let section_id = id.with(("section", entry));
                         ui.interact(row, section_id, Sense::hover())
-                            .widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.as_str()));
+                            .widget_info(|| WidgetInfo::labeled(Role::Label, true, label.as_str()));
                         ui.ctx().accesskit_node_builder(section_id, |node| {
                             node.set_role(accesskit::Role::Heading);
                             node.set_level(2);
@@ -729,7 +729,7 @@ impl NavigationView {
             focus::paint_focus_ring(ui, rect, CornerRadius::same(border_radius::MEDIUM as u8));
         }
         let title = self.title.as_deref().unwrap_or("Navigation");
-        pane.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, title));
+        pane.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, title));
         ui.ctx()
             .accesskit_node_builder(pane.id, |node| node.set_role(accesskit::Role::Navigation));
 

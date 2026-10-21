@@ -13,7 +13,7 @@
 
 use egui::{
     CornerRadius, Id, Key, Modifiers, Rect, Response, Sense, Stroke, StrokeKind, TextEdit, Ui, Vec2,
-    WidgetInfo, WidgetText, WidgetType,
+    WidgetInfo, WidgetText, Role,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
@@ -404,7 +404,7 @@ impl<'a> TagPicker<'a> {
         let value = self.tags.join(", ");
         let name = label.clone();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, name.clone());
+            let mut info = WidgetInfo::labeled(Role::ComboBox, enabled, name.clone());
             info.current_text_value = Some(value.clone());
             info
         });
@@ -516,7 +516,7 @@ fn tag_chip(ui: &mut Ui, id: Id, tag: &str, valid: bool, enabled: bool) -> bool 
         paint_focus_ring(ui, x_rect, radius);
     }
     let name = format!("Remove {tag}");
-    remove.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
+    remove.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, name.clone()));
     let tag_text = tag.to_owned();
     ui.ctx().accesskit_node_builder(chip.id, |node| {
         node.set_role(egui::accesskit::Role::ListItem);

@@ -276,7 +276,7 @@ fn collapsed_button(ui: &mut Ui, icon: IconName, label: &str, theme: &Theme) -> 
     if focus::focus_visible(ui, &response) {
         paint_focus_ring(ui, rect, corner);
     }
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_has_popup(accesskit::HasPopup::Dialog);
     });

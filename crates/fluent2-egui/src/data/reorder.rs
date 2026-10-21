@@ -19,7 +19,7 @@
 use egui::accesskit::Role;
 use egui::{
     CornerRadius, CursorIcon, Id, InnerResponse, Key, LayerId, Modifiers, Order, Pos2, Rect, Sense, Ui,
-    UiBuilder, WidgetInfo, WidgetType, emath::TSTransform,
+    UiBuilder, WidgetInfo, emath::TSTransform,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -475,7 +475,7 @@ impl ReorderList {
             item.request_focus();
         }
         let label = label.into();
-        item.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, &label));
+        item.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, &label));
         ui.ctx().accesskit_node_builder(item_id, |node| {
             node.set_role(Role::ListItem);
             node.set_description("Alt+arrow keys to move");

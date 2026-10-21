@@ -10,7 +10,7 @@
 
 use egui::{
     Color32, CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, TextEdit, Ui, Vec2, Widget,
-    WidgetInfo, WidgetType, epaint::RectShape,
+    WidgetInfo, Role, epaint::RectShape,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -378,7 +378,7 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
             response.request_focus();
             response.mark_changed();
         }
-        clear.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Clear"));
+        clear.widget_info(|| WidgetInfo::labeled(Role::Button, true, "Clear"));
     }
 
     if focus_visible(ui, &response) {

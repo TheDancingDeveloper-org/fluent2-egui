@@ -7,7 +7,7 @@
 use egui::epaint::RectShape;
 use egui::{
     CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    Role, accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -209,7 +209,7 @@ impl<'a> Card<'a> {
         if interactive {
             let name = label.clone().unwrap_or_default();
             response.widget_info(|| {
-                WidgetInfo::selected(WidgetType::CheckBox, enabled, selected_now, name.clone())
+                WidgetInfo::selected(Role::CheckBox, enabled, selected_now, name.clone())
             });
             ui.ctx().accesskit_node_builder(id, |node| {
                 node.set_role(accesskit::Role::CheckBox);

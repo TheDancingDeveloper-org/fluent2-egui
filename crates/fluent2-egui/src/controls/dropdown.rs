@@ -10,7 +10,7 @@
 
 use egui::{
     Align, CornerRadius, Id, Layout, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, Widget,
-    WidgetInfo, WidgetText, WidgetType, epaint::RectShape,
+    WidgetInfo, WidgetText, Role, epaint::RectShape,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -211,7 +211,7 @@ impl Widget for Dropdown<'_> {
             .and_then(|index| self.options.get(index).cloned())
             .unwrap_or_default();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
+            let mut info = WidgetInfo::labeled(Role::ComboBox, enabled, accessible_name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });
@@ -389,7 +389,7 @@ pub(super) fn option_row(
         let pos = egui::pos2(text_rect.left(), rect.center().y - galley.size().y / 2.0);
         ui.painter().galley(pos, galley, c(ink));
     }
-    response.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, true, selected, label));
+    response.widget_info(|| WidgetInfo::selected(Role::ListBoxOption, true, selected, label));
     response
 }
 

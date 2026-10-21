@@ -4,7 +4,7 @@
 //! `brand_foreground_link_hover` (underlined) and `brand_foreground_link_pressed`.
 //! The link does not open a URL. The caller handles [`egui::Response::clicked`].
 
-use egui::{Response, Sense, TextStyle, Ui, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Response, Sense, TextStyle, Ui, Widget, WidgetInfo, WidgetText, Role};
 
 use crate::foundation::focus;
 use crate::foundation::text::TypeRamp;
@@ -85,7 +85,7 @@ impl Widget for Link<'_> {
             }
         }
         let label = self.text.text().to_owned();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Link, enabled, label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label.clone()));
         response
     }
 }

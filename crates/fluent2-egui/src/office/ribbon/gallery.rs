@@ -10,7 +10,7 @@ use std::ops::Range;
 
 use egui::{
     CornerRadius, EventFilter, Id, Key, Modifiers, Popup, PopupCloseBehavior, Rect, Response, ScrollArea,
-    Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText, WidgetType,
+    Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2, WidgetInfo, WidgetText, Role,
 };
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -277,7 +277,7 @@ impl<'a> Gallery<'a> {
             }
             let label = self.label_of(index);
             let selected = state.selected;
-            tile_response.widget_info(|| WidgetInfo::selected(WidgetType::Button, enabled, selected, &label));
+            tile_response.widget_info(|| WidgetInfo::selected(Role::Button, enabled, selected, &label));
             if tile_response.clicked() && *self.selected != Some(index) {
                 *self.selected = Some(index);
                 changed = true;
@@ -479,7 +479,7 @@ impl<'a> Gallery<'a> {
                             grid.request_focus();
                             focus_grid = false;
                         }
-                        grid.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, &grid_label));
+                        grid.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, &grid_label));
                         ui.memory_mut(|memory| {
                             memory.set_focus_lock_filter(
                                 grid_id,
@@ -524,7 +524,7 @@ impl<'a> Gallery<'a> {
                                             id.with(("header", category.first)),
                                             Sense::hover(),
                                         )
-                                        .widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
+                                        .widget_info(|| WidgetInfo::labeled(Role::Label, true, &text));
                                     }
                                 }
                                 Line::Row(range) => {
@@ -549,7 +549,7 @@ impl<'a> Gallery<'a> {
                                         let label = label_of(index);
                                         let selected = state.selected;
                                         tile_response.widget_info(|| {
-                                            WidgetInfo::selected(WidgetType::Button, true, selected, &label)
+                                            WidgetInfo::selected(Role::Button, true, selected, &label)
                                         });
                                         if tile_response.clicked() {
                                             clicked = Some(index);
@@ -560,7 +560,7 @@ impl<'a> Gallery<'a> {
                         }
                     });
                     ui.ctx()
-                        .data_mut(|data| data.insert_temp(id.with("offset"), output.state.offset.y));
+                        .data_mut(|data| data.insert_temp(id.with("offset"), output.state.offset().y));
                     if let Some(footer) = footer.take() {
                         divider(ui);
                         let footer_rect = ui.scope(footer).response.rect;
@@ -781,7 +781,7 @@ fn edge_button(ui: &mut Ui, theme: &Theme, rect: Rect, id: Id, icon: Icon, label
             paint_focus_ring(ui, rect, radius);
         }
     }
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
     response
 }
 

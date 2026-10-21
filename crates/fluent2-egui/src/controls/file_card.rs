@@ -8,7 +8,7 @@
 //! on; when the card is openable, clicking it (or Enter on it) opens too. [`file_card_row`] lays
 //! cards out in wrapping rows.
 
-use egui::{CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType};
+use egui::{CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, Role};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
 use crate::controls::{ProgressBar, ProgressBarSize};
@@ -226,7 +226,7 @@ impl FileCard {
                 paint_focus_ring(ui, b, radius);
             }
             let name = format!("{verb} {}", self.name);
-            response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
+            response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, name.clone()));
             let response = response.fluent_tooltip(verb.to_string());
             if enabled && response.clicked() {
                 pressed[usize::from(index > 0 && self.removable)] = true;
@@ -285,9 +285,9 @@ impl FileCard {
             (None, None) => {}
         }
         let kind = if self.openable {
-            WidgetType::Button
+            Role::Button
         } else {
-            WidgetType::Label
+            Role::Label
         };
         card.widget_info(|| WidgetInfo::labeled(kind, enabled, label.clone()));
         let pointer_on_action = ui

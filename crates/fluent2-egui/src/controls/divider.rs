@@ -3,7 +3,7 @@
 //! The rule is `neutral_stroke_2`. Optional text is centred on the rule and
 //! drawn in `neutral_foreground_2` at body1.
 
-use egui::{Response, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Response, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, Role};
 
 use fluent2_tokens::generated::global::stroke_width;
 
@@ -72,7 +72,7 @@ impl Widget for Divider<'_> {
             if ui.is_rect_visible(rect) {
                 ui.painter().vline(rect.center().x, rect.y_range(), stroke);
             }
-            response.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.clone()));
+            response.widget_info(|| WidgetInfo::labeled(Role::Label, true, label.clone()));
             return response;
         }
         let width = finite(ui.available_width()).max(1.0);
@@ -111,7 +111,7 @@ impl Widget for Divider<'_> {
                 ui.painter().hline(rect.x_range(), y, stroke);
             }
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Label, true, label.clone()));
         response
     }
 }

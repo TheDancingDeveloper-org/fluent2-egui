@@ -3,7 +3,7 @@
 //! The popup is framed by [`crate::surfaces::menu_frame`] and filled by the caller. Metrics,
 //! colours and the focus ring are the same as [`super::SplitButton`].
 
-use egui::{Id, Key, Modifiers, Popup, Response, Sense, Ui, Vec2, WidgetInfo, WidgetText, WidgetType};
+use egui::{Id, Key, Modifiers, Popup, Response, Sense, Ui, Vec2, WidgetInfo, WidgetText, Role};
 
 use fluent2_icons::Icon;
 
@@ -131,7 +131,7 @@ impl<'a> MenuButton<'a> {
             }
         }
 
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &label));
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_expanded(open);
         });

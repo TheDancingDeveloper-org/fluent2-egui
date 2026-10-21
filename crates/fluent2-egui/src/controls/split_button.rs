@@ -10,7 +10,7 @@
 
 use egui::{
     CornerRadius, Id, Key, Modifiers, Popup, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2,
-    WidgetInfo, WidgetText, WidgetType,
+    WidgetInfo, WidgetText, Role,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -177,9 +177,9 @@ impl<'a> SplitButton<'a> {
             }
         }
 
-        main.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &label));
+        main.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &label));
         let options = format!("{label} options");
-        menu_response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &options));
+        menu_response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &options));
         let expanded = menu_open;
         ui.ctx().accesskit_node_builder(id_menu, |node| {
             node.set_expanded(expanded);

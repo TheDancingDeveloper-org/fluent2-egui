@@ -6,7 +6,7 @@
 use egui::epaint::RectShape;
 use egui::{
     CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, Widget, WidgetInfo, WidgetText,
-    WidgetType,
+    Role,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -192,7 +192,7 @@ impl Widget for CompoundButton<'_> {
         if primary.elided {
             response = response.on_hover_text(accessible.clone());
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, accessible.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, accessible.clone()));
         response
     }
 }

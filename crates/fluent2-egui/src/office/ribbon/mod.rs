@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use egui::{
     Area, CornerRadius, Frame, Galley, Id, Key, Modifiers, Order, Pos2, Rect, Response, Sense, Stroke,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType, accesskit,
+    TextStyle, Ui, Vec2, WidgetInfo, WidgetText, Role, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
@@ -647,7 +647,7 @@ fn file_tab_button(ui: &mut Ui, file: &FileTab, width: f32, theme: &Theme) -> Re
     if focus::focus_visible(ui, &response) {
         paint_focus_ring(ui, rect, corner);
     }
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, file.label.as_str()));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, true, file.label.as_str()));
     response
 }
 

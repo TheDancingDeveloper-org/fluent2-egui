@@ -10,7 +10,7 @@
 use egui::epaint::{Color32, RectShape};
 use egui::{
     CornerRadius, Galley, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget,
-    WidgetInfo, WidgetText, WidgetType,
+    WidgetInfo, WidgetText, Role,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -257,7 +257,7 @@ impl Widget for Button<'_> {
         if galley.as_ref().is_some_and(|galley| galley.elided) {
             response = response.on_hover_text(accessible.clone());
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, accessible.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, accessible.clone()));
         response
     }
 }

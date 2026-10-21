@@ -8,7 +8,7 @@
 
 use egui::{
     Align2, Context, CornerRadius, Frame, Id, Key, Modifiers, Rect, Response, Sense, Ui, Vec2, WidgetInfo,
-    WidgetType, accesskit,
+    Role, accesskit,
 };
 
 use fluent2_icons::Icon;
@@ -337,7 +337,7 @@ fn nav_row(ui: &mut Ui, id: Id, label: &str, selected: bool) -> Response {
     if response.has_focus() {
         paint_focus_ring(ui, rect, radius);
     }
-    response.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, true, selected, label));
+    response.widget_info(|| WidgetInfo::selected(Role::Tab, true, selected, label));
     response
 }
 

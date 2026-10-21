@@ -24,7 +24,7 @@ use std::ops::Range;
 
 use egui::{
     Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, ScrollArea, Sense, Stroke, StrokeKind,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetType,
+    TextStyle, Ui, Vec2, WidgetInfo, Role,
 };
 
 use super::rows::visible_rows;
@@ -262,7 +262,7 @@ impl DiffView {
                 response
             });
         let response = output.inner;
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, enabled, &summary));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, &summary));
         DiffResponse {
             response,
             visible_rows: visible,

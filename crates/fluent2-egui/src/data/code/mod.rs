@@ -12,7 +12,7 @@ pub use highlight::{Highlighter, SyntaxToken, TokenSpan, highlight, line_job, sp
 use egui::accesskit::Role;
 use egui::{
     Align2, CornerRadius, Event, EventFilter, FontId, Key, Modifiers, Pos2, Rect, ScrollArea, Sense, Stroke,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetType,
+    TextStyle, Ui, Vec2, WidgetInfo,
 };
 
 use crate::foundation::focus::paint_focus_ring;
@@ -395,7 +395,7 @@ impl CodeView {
 
         let enabled = ui.is_enabled();
         let label = self.label.clone();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::TextInput, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(Role::TextInput, enabled, &label));
         // The builder runs only while AccessKit is on; the value was joined at highlight time.
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::MultilineTextInput);

@@ -12,7 +12,7 @@
 
 use egui::{
     Align2, CornerRadius, Id, Key, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo,
-    WidgetType,
+    Role,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_vertical, stroke_width};
 
@@ -721,7 +721,7 @@ impl<'a> Calendar<'a> {
             response.mark_changed();
         }
         let label = self.strings.month_year(memory.month);
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Unknown, true, label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, label.clone()));
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(egui::accesskit::Role::Grid);
             node.set_row_count(6);

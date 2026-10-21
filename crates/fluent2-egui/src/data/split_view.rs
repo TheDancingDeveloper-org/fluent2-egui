@@ -10,7 +10,7 @@
 
 use egui::{
     Color32, CornerRadius, EventFilter, Id, Key, Modifiers, Pos2, Rect, Response, Sense, Ui, UiBuilder, Vec2,
-    WidgetInfo, WidgetType, accesskit,
+    WidgetInfo, Role, accesskit,
 };
 
 use crate::foundation::focus::{self, paint_focus_ring};
@@ -373,7 +373,7 @@ impl ResizeHandle {
             {
                 WidgetInfo::slider(enabled, f64::from(*value), self.label.as_str())
             } else {
-                WidgetInfo::labeled(WidgetType::Unknown, enabled, self.label.as_str())
+                WidgetInfo::labeled(Role::Unknown, enabled, self.label.as_str())
             }
         });
         ui.ctx().accesskit_node_builder(response.id, |node| {
