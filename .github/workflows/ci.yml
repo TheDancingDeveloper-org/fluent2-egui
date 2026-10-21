@@ -123,7 +123,10 @@ jobs:
         with:
           shared-key: ci
           save-if: ${{ github.event_name != 'pull_request' }}
+      # install-action's tar step fails on the Windows runner's cargo path;
+      # Windows falls back to `cargo test` below.
       - uses: taiki-e/install-action@899b013517f9e7774591216672bf75a46bb9a481
+        if: runner.os != 'Windows'
         with:
           tool: cargo-nextest
       - name: Resolve the Rust scope
@@ -157,7 +160,11 @@ jobs:
           CARGO_PROFILE_TEST_DEBUG: 0
         run: |
           read -r -a args <<<"$SCOPE_ARGS"
-          cargo nextest run "${args[@]}" --all-targets --locked
+          if command -v cargo-nextest >/dev/null; then
+            cargo nextest run "${args[@]}" --all-targets --locked
+          else
+            cargo test "${args[@]}" --all-targets --locked
+          fi
       - name: Documentation tests
         shell: bash
         env:
