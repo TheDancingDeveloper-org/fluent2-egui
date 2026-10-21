@@ -93,6 +93,7 @@ fn scrolling_to_the_end_shows_the_last_row() {
         delta: Vec2::new(0.0, -1.0e9),
         modifiers: Default::default(),
         phase: TouchPhase::Move,
+        source: egui::MouseWheelSource::Wheel,
     });
     harness.run_steps(120);
     assert_eq!(probe.last_row_seen.get(), 99_999);
