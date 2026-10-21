@@ -1,4 +1,24 @@
 //! Fluent surfaces. One file per surface; see `docs/ARCHITECTURE.md`.
+//!
+//! A message bar and a card, shown together:
+//!
+//! ```
+//! use fluent2_egui::surfaces::{Card, CardHeader, Intent, MessageBar};
+//!
+//! # fn demo(ui: &mut egui::Ui) {
+//! let bar = MessageBar::new(Intent::Warning, "The file changed on disk.")
+//!     .action("Reload")
+//!     .dismissible()
+//!     .show(ui);
+//! if bar.action_clicked == Some(0) {
+//!     // reload
+//! }
+//!
+//! Card::new().show(ui, |ui| {
+//!     CardHeader::new("Quarterly report").description("Edited 2 hours ago").show(ui);
+//! });
+//! # }
+//! ```
 
 mod accordion;
 mod bottom_sheet;

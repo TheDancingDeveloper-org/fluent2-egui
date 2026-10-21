@@ -4,6 +4,32 @@
 //! it draws at most three toasts in a foreground [`egui::Area`], newest at the
 //! bottom. Enter and exit slide and fade with the motion tokens. A timeout
 //! (default 5 s) pauses while the toast is hovered.
+//!
+//! ```
+//! use fluent2_egui::surfaces::{Intent, Toast, ToastPosition, Toaster};
+//!
+//! # fn demo(ctx: &egui::Context) {
+//! // When the save finishes, queue a toast. Its action is reported by `take_action_clicks`.
+//! let saved = Toaster::push(
+//!     ctx,
+//!     Toast {
+//!         intent: Intent::Success,
+//!         title: "Saved".into(),
+//!         body: Some("Changes are stored.".into()),
+//!         timeout: None,
+//!         action: Some("Undo".into()),
+//!     },
+//! );
+//!
+//! // Every frame, after the app's widgets: draw the stack and read the action clicks.
+//! Toaster::show(ctx, ToastPosition::BottomEnd);
+//! for id in Toaster::take_action_clicks(ctx) {
+//!     if id == saved {
+//!         // undo the save
+//!     }
+//! }
+//! # }
+//! ```
 
 use std::time::Duration;
 
