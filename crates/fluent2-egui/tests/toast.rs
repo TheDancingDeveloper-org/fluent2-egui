@@ -207,3 +207,104 @@ fn idle_toaster_schedules_the_repaint_that_expires_it() {
         "show should ask for a repaint at the timeout, got {delays:?}"
     );
 }
+
+/// Harness that runs `setup` on the first frame, then draws the stack on every frame.
+fn seeded_harness(setup: impl Fn(&egui::Context) + 'static) -> Harness<'static, u32> {
+    Harness::builder().with_step_dt(STEP).build_ui_state(
+        move |ui, step: &mut u32| {
+            let ctx = ui.ctx().clone();
+            install(&ctx, &Theme::default());
+            if *step == 0 {
+                setup(&ctx);
+            }
+            Toaster::show(&ctx, ToastPosition::BottomEnd);
+            *step += 1;
+        },
+        0u32,
+    )
+}
+
+#[test]
+fn fifty_rapid_pushes_show_the_stack_and_a_count() {
+    let mut harness = seeded_harness(|ctx| {
+        for n in 1..=50 {
+            let _ = Toaster::push(ctx, toast(&format!("Item {n}"), Duration::from_secs(30)));
+        }
+    });
+    harness.step();
+    assert!(harness.query_by_label("Item 50").is_some());
+    assert!(harness.query_by_label("Item 48").is_some());
+    assert!(harness.query_by_label("Item 47").is_none());
+    assert!(harness.query_by_label("+47 more").is_some());
+}
+
+#[test]
+fn keyed_pushes_coalesce_into_one_toast() {
+    let mut harness = seeded_harness(|ctx| {
+        let first = Toaster::push_keyed(ctx, "pause", toast("Paused 1 torrents", Duration::from_secs(30)));
+        for n in 2..=50 {
+            let title = format!("Paused {n} torrents");
+            let id = Toaster::push_keyed(ctx, "pause", toast(&title, Duration::from_secs(30)));
+            assert_eq!(id, first, "a live keyed toast keeps its id");
+        }
+    });
+    harness.step();
+    assert!(harness.query_by_label("Paused 50 torrents").is_some());
+    assert!(harness.query_by_label("Paused 49 torrents").is_none());
+    // Two more plain toasts fill the three slots only if the keyed push was one entry; were
+    // it fifty, the coalesced toast would be waiting behind the cap and not drawn.
+    let _ = Toaster::push(&harness.ctx, toast("Second", Duration::from_secs(30)));
+    let _ = Toaster::push(&harness.ctx, toast("Third", Duration::from_secs(30)));
+    harness.step();
+    assert!(harness.query_by_label("Paused 50 torrents").is_some());
+    assert_eq!(Toaster::history(&harness.ctx).len(), 52);
+}
+
+#[test]
+fn keyed_push_after_dismiss_starts_a_new_toast() {
+    let mut harness = seeded_harness(|ctx| {
+        let id = Toaster::push_keyed(ctx, "pause", toast("Paused 3 torrents", Duration::from_secs(30)));
+        Toaster::dismiss(ctx, id);
+    });
+    harness.step();
+    advance(&mut harness, 1.0);
+    assert!(harness.query_by_label("Paused 3 torrents").is_none());
+    let _ = Toaster::push_keyed(
+        &harness.ctx,
+        "pause",
+        toast("Paused 4 torrents", Duration::from_secs(30)),
+    );
+    harness.step();
+    assert!(harness.query_by_label("Paused 4 torrents").is_some());
+}
+
+#[test]
+fn history_keeps_the_last_hundred_pushes() {
+    let mut harness = seeded_harness(|ctx| {
+        for n in 1..=150 {
+            let _ = Toaster::push(ctx, toast(&format!("Log {n}"), Duration::from_secs(30)));
+        }
+    });
+    harness.step();
+    let history = Toaster::history(&harness.ctx);
+    assert_eq!(history.len(), 100);
+    assert_eq!(history.first().map(|t| t.title.as_str()), Some("Log 51"));
+    assert_eq!(history.last().map(|t| t.title.as_str()), Some("Log 150"));
+
+    Toaster::clear_history(&harness.ctx);
+    assert!(Toaster::history(&harness.ctx).is_empty());
+}
+
+#[test]
+fn max_visible_is_configurable() {
+    let mut harness = seeded_harness(|ctx| {
+        Toaster::set_max_visible(ctx, 1);
+        for name in ["One", "Two", "Three"] {
+            let _ = Toaster::push(ctx, toast(name, Duration::from_secs(30)));
+        }
+    });
+    harness.step();
+    assert!(harness.query_by_label("Three").is_some());
+    assert!(harness.query_by_label("Two").is_none());
+    assert!(harness.query_by_label("+2 more").is_some());
+}

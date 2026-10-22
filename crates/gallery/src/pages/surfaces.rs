@@ -129,6 +129,43 @@ impl Page for SurfacesPage {
                 }
             }
         });
+        ui.horizontal_wrapped(|ui| {
+            // Presses coalesce into one toast while it is showing (push_keyed).
+            if ui.add(Button::new("Pause 12 torrents")).clicked() {
+                Toaster::push_keyed(
+                    ui.ctx(),
+                    "pause-torrents",
+                    Toast {
+                        intent: Intent::Info,
+                        title: "Paused 12 torrents".to_owned(),
+                        body: None,
+                        timeout: None,
+                        action: None,
+                    },
+                );
+            }
+            // Fifty pushes show the newest three and a "+47 more" row.
+            if ui.add(Button::new("Push 50 toasts")).clicked() {
+                for n in 1..=50 {
+                    Toaster::push(
+                        ui.ctx(),
+                        Toast {
+                            intent: Intent::Success,
+                            title: format!("Item {n}"),
+                            body: None,
+                            timeout: None,
+                            action: None,
+                        },
+                    );
+                }
+            }
+        });
+        let history = Toaster::history(ui.ctx());
+        egui::CollapsingHeader::new(format!("Toast history ({})", history.len())).show(ui, |ui| {
+            for toast in history.iter().rev() {
+                ui.label(&toast.title);
+            }
+        });
         Toaster::show(ui.ctx(), ToastPosition::BottomEnd);
 
         ui.add_space(8.0);
