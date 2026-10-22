@@ -17,6 +17,8 @@ log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
 serde = { version = "1", optional = true, features = ["derive"] }
+# LayoutStore keeps each registered state as a JSON value (MIT OR Apache-2.0, builds for wasm).
+serde_json = { version = "1", optional = true }
 vte = { version = "0.15", optional = true }
 unicode-width = { version = "0.2", optional = true }
 # Native and browser file dialogs (MIT). `xdg-portal` keeps Linux free of GTK.
@@ -35,8 +37,9 @@ default = ["bundled-font"]
 # every non-Windows target, and Windows without Segoe UI. Adds about 830 KB. Turn it off with
 # `default-features = false` to keep egui's default face instead.
 bundled-font = []
-# Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
-serde = ["dep:serde"]
+# Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends),
+# and `platform::LayoutStore`, which saves them under keys as one JSON document.
+serde = ["dep:serde", "dep:serde_json"]
 # TerminalView and its VT grid model (`data::terminal`). Not a Fluent component, so off by
 # default; it adds the `vte` parser. See docs/ARCHITECTURE.md "Optional features".
 terminal = ["dep:vte", "dep:unicode-width"]

@@ -3,6 +3,8 @@
 //! Later items add a page by adding one file in `crates/gallery/src/pages/` and one line in
 //! [`pages`] below. Nothing else in the gallery needs to change.
 
+use fluent2_egui::platform::LayoutStore;
+
 mod accordion;
 mod avatars;
 mod backstage;
@@ -80,6 +82,13 @@ pub trait Page {
 
     /// Paint the page into the central panel.
     fn ui(&mut self, ui: &mut egui::Ui);
+
+    /// Put the page's layout state (splits, docks, grid columns) into `store` (issue #118).
+    /// Pages without layout keep the default, which stores nothing.
+    fn save_layout(&self, _store: &mut LayoutStore) {}
+
+    /// Take the page's layout state back from `store` on start. Missing keys keep defaults.
+    fn load_layout(&mut self, _store: &LayoutStore) {}
 }
 
 /// The pages this gallery ships with.
@@ -127,7 +136,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
 
 #[cfg(test)]
 mod tests {
-    use super::pages;
+    use super::{LayoutStore, pages};
 
     #[test]
     fn pages_are_sorted_by_name() {
@@ -135,5 +144,39 @@ mod tests {
         let mut sorted = names.clone();
         sorted.sort_unstable();
         assert_eq!(names, sorted, "gallery pages must be sorted by name");
+    }
+
+    /// Issue #118: every page's layout survives a save and a fresh start.
+    #[test]
+    fn page_layouts_survive_a_restart() {
+        let first = pages();
+        let mut store = LayoutStore::new();
+        for page in &first {
+            page.save_layout(&mut store);
+        }
+        assert!(store.contains("docking_tree"));
+        assert!(store.contains("data_grid"));
+        // A user collapsed the Explorer and switched the grid to compact rows.
+        let collapsed = fluent2_egui::surfaces::SideDockState {
+            open: false,
+            size: 300.0,
+        };
+        store.put("docking_explorer", &collapsed);
+        store.put(
+            "data_grid_size",
+            &fluent2_egui::data::data_grid::DataGridSize::ExtraSmall,
+        );
+        let saved = store.to_json();
+
+        let loaded = LayoutStore::from_json(&saved);
+        let mut second = pages();
+        for page in &mut second {
+            page.load_layout(&loaded);
+        }
+        let mut again = LayoutStore::new();
+        for page in &second {
+            page.save_layout(&mut again);
+        }
+        assert_eq!(again.to_json(), saved);
     }
 }
