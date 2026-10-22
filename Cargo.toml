@@ -25,3 +25,10 @@ dbg_macro = "warn"
 todo = "warn"
 unwrap_used = "warn"
 expect_used = "warn"
+
+# Release size (docs/wasm-size.md): the wasm gallery is what ships to the web, and these
+# settings change code generation only, not the API.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
