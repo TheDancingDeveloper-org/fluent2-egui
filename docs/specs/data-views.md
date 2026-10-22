@@ -310,7 +310,12 @@ the focus ring; in **cell** focus a single cell is. The header row is always cel
 | Enter | `activated` | if the cell has an interactive child, focus moves into it (Escape returns); else `activated` |
 | F2 | `edit_requested` | `edit_requested` |
 | Shift+F10, Menu | `context_menu` | `context_menu` |
+| Ctrl+C | copies the selected rows (else the focused row) as TSV | copies the focused cell's text |
 | Escape | clears nothing; releases focus lock | from inside a cell child: back to the cell |
+
+Ctrl+C copies only when the grid has `cell_text` (its text per cell), and returns what it copied
+in `DataGridResponse::copied`. The text goes to the clipboard through `Context::copy_text`, which
+on wasm uses the browser Clipboard API. Issue #105.
 
 On a focused header cell: Left/Right move between header cells, Down goes to row 0, Enter or
 Space sorts (§2.1), Ctrl+Left/Ctrl+Right resize the column by 8 pt, Ctrl+Enter autofits.
