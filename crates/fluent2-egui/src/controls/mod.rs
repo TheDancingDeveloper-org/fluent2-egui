@@ -23,7 +23,7 @@ mod badge;
 mod breadcrumb;
 pub(crate) mod button;
 mod calendar;
-mod checkbox;
+pub(crate) mod checkbox;
 mod combobox;
 mod compound_button;
 mod date_picker;

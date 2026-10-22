@@ -30,6 +30,7 @@ mod surfaces;
 mod tab_strip;
 mod terminal;
 mod tokens;
+mod tree_view;
 mod typography;
 mod variable_list;
 
@@ -60,6 +61,7 @@ pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
+pub use tree_view::TreeViewPage;
 pub use typography::TypographyPage;
 pub use variable_list::VariableListPage;
 
@@ -106,6 +108,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TabStripPage::default()),
         Box::new(TerminalPage::default()),
         Box::new(TokensPage),
+        Box::new(TreeViewPage::default()),
         Box::new(TypographyPage),
     ]
 }

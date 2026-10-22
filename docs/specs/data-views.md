@@ -423,6 +423,14 @@ Each row: indentation `(depth) × spacingHorizontalXXL`, then a 24 pt chevron sl
 (`ChevronRight`, rotated to `ChevronDown` when expanded, `duration::FAST`; empty for
 `Children::None`), optional 20 pt icon, label. Clicking the chevron toggles without selecting.
 
+**Checks and cells (issue #110).** `TreeNode::checked(CheckState)` draws a 16 pt checkbox in a
+24 pt slot after the chevron. A click on it, or Space on the focused node, reports
+`TreeViewResponse::check_toggled(key)` without selecting; the app sets the new states and does
+the tri-state propagation (a folder is `Mixed` when its children are partly checked).
+`TreeView::columns(&[TreeColumn], cell)` adds fixed-width trailing columns with a header row
+("Name", then each title); `cell(ui, key, column)` is called for visible rows only, so a
+5,000-node tree with size, progress and priority cells stays virtualised.
+
 ### 5.2 Keyboard
 
 One Tab stop. Up/Down previous/next visible row; Home/End first/last. **Right:** collapsed →
@@ -438,6 +446,8 @@ Type-ahead is not in 0.1.
 depth + 1`, `expanded` (absent for leaves), `selected`, `position_in_set` and `size_of_set`
 among its siblings, and the label. The Loading row is a `TreeItem` labelled "Loading" with
 `busy`.
+A checked node's `TreeItem` carries `toggled` (`True`, `False` or `Mixed`, read as "checked",
+"not checked", "partially checked"), and its checkbox is a `CheckBox` labelled "Check <label>".
 
 ## 6. List
 
