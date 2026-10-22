@@ -1,7 +1,8 @@
 //! Data views: DataGrid, TreeView, List, NavigationView, SplitView, the Reorder drag helper and row
 //! drag onto external targets
 //! (see `docs/specs/data-views.md`), TerminalView behind the `terminal` feature, MarkdownView
-//! behind `markdown`, DiffView behind `diff` and CodeView behind `highlight`.
+//! behind `markdown`, DiffView behind `diff` and CodeView behind `highlight`, and the in-app find
+//! bar (`find`).
 
 #[cfg(feature = "highlight")]
 pub mod code;
@@ -9,6 +10,7 @@ pub mod data_grid;
 #[cfg(feature = "diff")]
 pub mod diff;
 pub mod editable_list;
+pub mod find;
 #[cfg(feature = "html")]
 pub mod html;
 pub mod list;

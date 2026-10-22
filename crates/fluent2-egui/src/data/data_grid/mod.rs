@@ -100,6 +100,7 @@ pub struct CellCtx {
 
 /// Row height class of a DataGrid (§10).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataGridSize {
     /// 24 pt rows, `Caption1` text.
     ExtraSmall,
@@ -197,6 +198,7 @@ pub struct DataGrid<'a> {
     cell_text: Option<CellText<'a>>,
     drag_source: bool,
     drag_label: Option<Box<dyn Fn(usize) -> String + 'a>>,
+    scroll_to_row: Option<usize>,
 }
 
 /// The accessible text of one cell, from its row index and column id.
@@ -239,6 +241,7 @@ impl<'a> DataGrid<'a> {
             cell_text: None,
             drag_source: false,
             drag_label: None,
+            scroll_to_row: None,
         }
     }
 
@@ -267,6 +270,14 @@ impl<'a> DataGrid<'a> {
     #[must_use]
     pub fn focus_mode(mut self, mode: FocusMode) -> Self {
         self.focus_mode = mode;
+        self
+    }
+
+    /// Scroll row `index` into the middle of the view this frame, for example to show a find
+    /// match (`data::find`). Out-of-range indices are ignored.
+    #[must_use]
+    pub fn scroll_to_row(mut self, index: usize) -> Self {
+        self.scroll_to_row = Some(index);
         self
     }
 
@@ -416,6 +427,17 @@ impl<'a> DataGrid<'a> {
                     offsets: &offsets,
                     all_columns,
                 };
+
+                if let Some(index) = self.scroll_to_row.filter(|&index| index < self.row_count) {
+                    let top = origin.y + header_height + index as f32 * row_height;
+                    ui.scroll_to_rect(
+                        Rect::from_min_size(
+                            Pos2::new(origin.x + viewport.min.x, top),
+                            Vec2::new(viewport.width(), row_height),
+                        ),
+                        Some(egui::Align::Center),
+                    );
+                }
 
                 // Focus is inside a cell's child (Enter, §3.3). egui releases focus on Escape
                 // before the grid runs, so Escape is checked first and does not need the focus.
