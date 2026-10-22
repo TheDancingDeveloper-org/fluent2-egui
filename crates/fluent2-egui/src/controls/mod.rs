@@ -1,4 +1,22 @@
 //! Fluent controls. One file per control; see `docs/ARCHITECTURE.md`.
+//!
+//! A few controls together, bound to app state:
+//!
+//! ```
+//! use fluent2_egui::controls::{Appearance, Badge, Button, Checkbox, ProgressBar, Switch};
+//!
+//! # fn demo(ui: &mut egui::Ui, notify: &mut bool, agree: &mut bool, progress: f32) {
+//! ui.add(Switch::new(notify, "Notifications"));
+//! ui.add(Checkbox::bool(agree, "I agree to the terms"));
+//! ui.add(ProgressBar::new(Some(progress)));
+//! ui.horizontal(|ui| {
+//!     if ui.add(Button::new("Save").appearance(Appearance::Primary)).clicked() {
+//!         // save
+//!     }
+//!     ui.add(Badge::new("3 new"));
+//! });
+//! # }
+//! ```
 
 mod avatar;
 mod badge;
