@@ -270,9 +270,18 @@ impl Default for Theme {
 /// decision 2026-10-19). Fluent's dark `status_danger_foreground_1` is 4.16:1 on
 /// `neutral_background_1` and `neutral_foreground_2_brand_hover` is 4.18:1 on
 /// `subtle_background_hover`. They take `status_danger_foreground_3` (about 8:1) and
-/// `neutral_foreground_2_hover` instead. Light and high contrast keep Fluent's values.
+/// `neutral_foreground_2_hover` instead. Fluent's dark `status_danger_foreground_inverted` is
+/// the fill's own red (177,14,28) on `status_danger_background_3` (197,15,31), so a filled
+/// danger Badge is unreadable (issue #124). It takes white, about 6:1 on that fill.
+/// Light and high contrast keep Fluent's values.
 fn dark_aa_overrides(mut color: AliasColors) -> AliasColors {
     color.status_danger_foreground_1 = color.status_danger_foreground_3;
+    color.status_danger_foreground_inverted = Rgba {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
+    };
     color.neutral_foreground_2_brand_hover = color.neutral_foreground_2_hover;
     color
 }
