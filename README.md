@@ -125,6 +125,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `MenuItem`, `context_menu`, `submenu` | Menu | | Surfaces |
 | `MessageBar` | MessageBar | | Surfaces |
 | `Popover` | Popover | | Surfaces |
+| `ShortcutOverlay`, `foundation::shortcuts::Shortcuts` | egui-only (shortcut registry and help) | | Shortcuts |
 | `TabList` | TabList | | Surfaces |
 | `TabStrip` | egui-only (document tabs) | | Tab strip |
 | `Toaster` | Toast | | Surfaces |

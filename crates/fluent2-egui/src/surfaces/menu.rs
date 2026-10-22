@@ -18,6 +18,7 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spaci
 
 use crate::foundation::focus;
 use crate::foundation::icon::paint_icon;
+use crate::foundation::shortcuts::ShortcutsExt;
 use crate::foundation::text::{self, TypeRamp};
 use crate::theme::{Theme, ThemeKind, c};
 
@@ -70,6 +71,7 @@ pub struct MenuItem<'a> {
     text: WidgetText,
     icon: Option<Icon>,
     shortcut: Option<&'a str>,
+    bound: Option<&'a str>,
     checked: Option<bool>,
     check_column: bool,
     disabled_reason: Option<&'a str>,
@@ -85,6 +87,7 @@ impl<'a> MenuItem<'a> {
             text: text.into(),
             icon: None,
             shortcut: None,
+            bound: None,
             checked: None,
             check_column: false,
             disabled_reason: None,
@@ -104,6 +107,23 @@ impl<'a> MenuItem<'a> {
     #[must_use]
     pub fn shortcut(mut self, shortcut: &'a str) -> Self {
         self.shortcut = Some(shortcut);
+        self
+    }
+
+    /// Take the shortcut caption from the installed
+    /// [`Shortcuts`](crate::foundation::shortcuts::Shortcuts) registry entry `id`, so the menu
+    /// shows what the key handling uses (⌘ on macOS). An explicit [`Self::shortcut`] wins; an
+    /// unknown id draws no caption.
+    ///
+    /// ```
+    /// # use fluent2_egui::surfaces::MenuItem;
+    /// # fn demo(ui: &mut egui::Ui) {
+    /// let _ = ui.add(MenuItem::new("Save").bound("file.save"));
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn bound(mut self, id: &'a str) -> Self {
+        self.bound = Some(id);
         self
     }
 
@@ -155,7 +175,12 @@ impl Widget for MenuItem<'_> {
             0.0
         };
         let icon_w = if self.icon.is_some() { ICON_SLOT + GAP } else { 0.0 };
-        let shortcut_w = match self.shortcut {
+        let shortcut: Option<String> = match (self.shortcut, self.bound) {
+            (Some(text), _) => Some(text.to_owned()),
+            (None, Some(id)) => ui.ctx().shortcut_caption(id),
+            (None, None) => None,
+        };
+        let shortcut_w = match shortcut.as_deref() {
             Some(shortcut) => {
                 ui.fonts_mut(|fonts| {
                     fonts
@@ -215,9 +240,9 @@ impl Widget for MenuItem<'_> {
         let text_pos = egui::pos2(x, rect.center().y - galley.size().y * 0.5);
         ui.painter().galley(text_pos, galley, fg);
 
-        if let Some(shortcut) = self.shortcut {
-            let shortcut_galley = ui
-                .fonts_mut(|fonts| fonts.layout_no_wrap(shortcut.to_owned(), shortcut_font, shortcut_color));
+        if let Some(shortcut) = shortcut {
+            let shortcut_galley =
+                ui.fonts_mut(|fonts| fonts.layout_no_wrap(shortcut, shortcut_font, shortcut_color));
             let pos = egui::pos2(
                 rect.right() - H_PADDING - shortcut_galley.size().x,
                 rect.center().y - shortcut_galley.size().y * 0.5,

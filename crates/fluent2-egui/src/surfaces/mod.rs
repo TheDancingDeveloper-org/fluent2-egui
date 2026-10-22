@@ -31,6 +31,7 @@ mod drawer;
 mod menu;
 mod message_bar;
 mod popover;
+mod shortcut_overlay;
 mod tab_list;
 mod tab_strip;
 mod toast;
@@ -99,6 +100,7 @@ pub use message_bar::{
     MessageBarResponse,
 };
 pub use popover::Popover;
+pub use shortcut_overlay::ShortcutOverlay;
 #[rustfmt::skip]
 pub use tab_list::{
     TabAppearance,
