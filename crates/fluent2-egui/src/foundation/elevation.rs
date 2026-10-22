@@ -1,6 +1,6 @@
 //! Fluent elevation shadows.
 
-use egui::{Color32, CornerRadius, Painter, Shadow, epaint::Rect};
+use egui::{Color32, CornerRadius, Painter, Shadow, Shape, epaint::Rect};
 use fluent2_tokens::ShadowLayer;
 
 use crate::theme::Theme;
@@ -33,12 +33,20 @@ pub fn paint_shadow(
     elevation: Elevation,
     theme: &Theme,
 ) {
-    for layer in layers(theme, elevation) {
-        let Some(shadow) = shadow_from_layer(layer) else {
-            continue;
-        };
-        painter.add(shadow.as_shape(rect, radius));
+    for shape in shadow_shapes(theme, rect, radius, elevation) {
+        painter.add(shape);
     }
+}
+
+/// The shapes [`paint_shadow`] paints, in token order, for a caller that must place them in a
+/// layer slot itself. A surface that paints its fill into a slot reserved earlier puts these
+/// before the fill, or the shadow lands on top of it.
+pub fn shadow_shapes(theme: &Theme, rect: Rect, radius: CornerRadius, elevation: Elevation) -> Vec<Shape> {
+    layers(theme, elevation)
+        .iter()
+        .filter_map(shadow_from_layer)
+        .map(|shadow| Shape::from(shadow.as_shape(rect, radius)))
+        .collect()
 }
 
 fn layers(theme: &Theme, elevation: Elevation) -> &'static [ShadowLayer] {
