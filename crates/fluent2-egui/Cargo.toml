@@ -60,6 +60,9 @@ markdown = ["dep:pulldown-cmark"]
 # links and images through app policies, a few inline styles) tokenised by `html5gum`. Built for
 # HTML mail. Not a Fluent component, so off by default.
 html = ["dep:html5gum"]
+# Lets `data::find::capture_browser_find` cancel the browser's own find on Ctrl+F (wasm only), so
+# the FindBar gets the key. No effect on native targets.
+web-find = ["dep:wasm-bindgen", "dep:web-sys", "web-sys?/KeyboardEvent", "web-sys?/Window", "web-sys?/EventTarget"]
 # `From` conversions between the calendar types (`CalendarDate`, `TimeOfDay`) and `chrono`'s
 # `NaiveDate` and `NaiveTime`.
 chrono = ["dep:chrono"]
@@ -81,6 +84,8 @@ pollster = { version = "0.4", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 # FileDropZone reads a dropped file's size before reading it (already in the tree through egui).
 web-sys = { version = "0.3", optional = true, features = ["Blob", "File"] }
+# The capturing keydown listener of `web-find` (already in the tree through eframe).
+wasm-bindgen = { version = "0.2", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", optional = true, features = ["UI_ViewManagement"] }

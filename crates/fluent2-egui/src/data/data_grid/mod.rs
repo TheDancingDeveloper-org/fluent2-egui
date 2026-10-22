@@ -177,6 +177,7 @@ pub struct DataGrid<'a> {
     focus_mode: FocusMode,
     label: Option<String>,
     cell_text: Option<CellText<'a>>,
+    scroll_to_row: Option<usize>,
 }
 
 /// The accessible text of one cell, from its row index and column id.
@@ -216,6 +217,7 @@ impl<'a> DataGrid<'a> {
             focus_mode: FocusMode::Row,
             label: None,
             cell_text: None,
+            scroll_to_row: None,
         }
     }
 
@@ -244,6 +246,14 @@ impl<'a> DataGrid<'a> {
     #[must_use]
     pub fn focus_mode(mut self, mode: FocusMode) -> Self {
         self.focus_mode = mode;
+        self
+    }
+
+    /// Scroll row `index` into the middle of the view this frame, for example to show a find
+    /// match (`data::find`). Out-of-range indices are ignored.
+    #[must_use]
+    pub fn scroll_to_row(mut self, index: usize) -> Self {
+        self.scroll_to_row = Some(index);
         self
     }
 
@@ -365,6 +375,17 @@ impl<'a> DataGrid<'a> {
                     widths: &widths,
                     offsets: &offsets,
                 };
+
+                if let Some(index) = self.scroll_to_row.filter(|&index| index < self.row_count) {
+                    let top = origin.y + header_height + index as f32 * row_height;
+                    ui.scroll_to_rect(
+                        Rect::from_min_size(
+                            Pos2::new(origin.x + viewport.min.x, top),
+                            Vec2::new(viewport.width(), row_height),
+                        ),
+                        Some(egui::Align::Center),
+                    );
+                }
 
                 // Focus is inside a cell's child (Enter, §3.3). egui releases focus on Escape
                 // before the grid runs, so Escape is checked first and does not need the focus.
