@@ -6,6 +6,8 @@
 
 #![warn(missing_docs)]
 
+#[cfg(all(target_arch = "wasm32", feature = "web-a11y-dom"))]
+mod a11y_dom;
 mod app;
 mod pages;
 
@@ -48,7 +50,11 @@ async fn start_web() -> Result<(), String> {
         .start(
             canvas,
             eframe::WebOptions::default(),
-            Box::new(|cc| Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))),
+            Box::new(|cc| {
+                #[cfg(feature = "web-a11y-dom")]
+                cc.egui_ctx.add_plugin(a11y_dom::A11yDomPlugin);
+                Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))
+            }),
         )
         .await
         .map_err(|error| format!("{error:?}"))

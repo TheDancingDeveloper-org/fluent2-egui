@@ -19,6 +19,9 @@ system-preferences = ["fluent2-egui/system-preferences"]
 # Pixel snapshots of every page for the README gallery, through a wgpu adapter. Off in
 # `cargo test`; see tests/gallery_snapshots.rs and scripts/gallery-screenshots.sh.
 snapshots = ["egui_kittest/wgpu", "egui_kittest/snapshot"]
+# Prototype for issue #108: on wasm, mirror the AccessKit tree into a hidden DOM layer so
+# browser find and screen readers see labels and buttons. See src/a11y_dom.rs.
+web-a11y-dom = ["web-sys/Document", "web-sys/DomRect", "web-sys/Element", "web-sys/HtmlElement", "web-sys/CssStyleDeclaration", "web-sys/EventTarget", "web-sys/Window"]
 
 [dependencies]
 eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "accesskit", "x11", "wayland"] }
