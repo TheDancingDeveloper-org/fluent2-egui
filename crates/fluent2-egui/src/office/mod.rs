@@ -5,6 +5,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 pub mod backstage;
 pub mod command_bar;
 pub mod keytips;
+pub mod menu_bar;
 pub mod qat;
 pub mod ribbon;
 pub mod status_bar;

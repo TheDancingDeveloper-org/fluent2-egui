@@ -188,18 +188,24 @@ impl<'a> Card<'a> {
                 selected_now,
                 interactive,
             );
-            if let Some(step) = shadow {
-                elevation::paint_shadow(ui.painter(), rect, radius, step, &theme);
-            }
-            let shape = RectShape::new(
-                rect,
-                radius,
-                c(fill),
-                Stroke::new(stroke_width::THIN, c(stroke)),
-                StrokeKind::Inside,
+            // The shadow goes into the slot reserved before the content, ahead of the fill, so it
+            // sits behind the card instead of over its fill (issue #124).
+            let mut shapes = shadow.map_or_else(Vec::new, |step| {
+                elevation::shadow_shapes(&theme, rect, radius, step)
+            });
+            shapes.push(
+                RectShape::new(
+                    rect,
+                    radius,
+                    c(fill),
+                    Stroke::new(stroke_width::THIN, c(stroke)),
+                    StrokeKind::Inside,
+                )
+                .into(),
             );
             ui.ctx().graphics_mut(|gfx| {
-                gfx.entry(layer).set(frame_idx, ui.clip_rect(), shape.into());
+                gfx.entry(layer)
+                    .set(frame_idx, ui.clip_rect(), egui::Shape::Vec(shapes));
             });
             if interactive && focus::focus_visible(ui, &response) {
                 paint_focus_ring(ui, rect, radius);

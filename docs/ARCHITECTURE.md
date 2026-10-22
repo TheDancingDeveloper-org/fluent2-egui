@@ -112,6 +112,11 @@ default build stays a Fluent library with no extra dependencies.
   Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
   (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
   --workspace` through the gallery's feature unification.
+- `chart`: `controls::LineChart` with `ChartSeries` (a fixed-capacity ring buffer of
+  `(time, value)` samples) and `TimeRange` chips. Axes, legend and hover read-out are painted
+  with egui only; series take Fluent palette tokens in a fixed order, alternating colours and
+  dashes in high contrast. Each frame keeps at most two points per pixel column. The gallery
+  turns it on; `tests/line_chart.rs` is `#![cfg(feature = "chart")]`.
 - `diff`: `data::diff` (`DiffModel`, line and word diffs through `imara-diff`, and `DiffView`,
   a read-only inline or side-by-side view virtualised with `rows::visible_rows`). Lines are
   compared without terminators; colours come from palette tokens, with strokes in high
@@ -128,6 +133,17 @@ default build stays a Fluent library with no extra dependencies.
   §9.1): a pane split tree with a TabStrip per pane and collapsible side docks. No extra
   dependencies. The gallery turns it on, with `serde`, so `tests/dock.rs` and the tree's serde
   round trip run under `cargo test --workspace`.
+- `serde`: serde derives on the layout and data-view state structs (`SplitState`,
+  `SideDockState`, `DockTree`, `DataGridState`, `DataGridSize`, `Density`, ...) and
+  `platform::LayoutStore` (issue #118), which keeps them under app-chosen keys as one JSON
+  document (`serde_json`). The store has no storage backend of its own: `LayoutStore::load` and
+  `save` take closures, so the app passes eframe's `Storage` (a file natively, `localStorage` on
+  wasm) or its own settings file. Loading never fails; an unreadable document or a stale entry
+  leaves the component at its default, and unknown keys are written back. A component that adds
+  persisted state adds a serde field to its state struct (with `#[serde(default)]`), not a new
+  store key, so a saved `DataGridState` picks up the column layout of issue #109 unchanged. The
+  gallery saves density and the DataGrid and Docking pages' state this way
+  (`Page::save_layout` / `load_layout`).
 - `markdown`: `data::markdown` (`Document`, parsed with `pulldown-cmark`, and `MarkdownView`).
   The app owns link handling through a `LinkPolicy` and may plug a syntax highlighter into
   code blocks. The gallery turns it on; `tests/markdown.rs` is `#![cfg(feature = "markdown")]`.
@@ -141,6 +157,12 @@ default build stays a Fluent library with no extra dependencies.
   with the pure-Rust regex engine, so it builds for wasm. Diff and markdown views reuse the
   highlighter. Spec: `docs/specs/code-view.md`. The gallery turns it on, and `tests/code_view.rs`
   is `#![cfg(feature = "highlight")]`.
+- `web-find`: lets `data::find::capture_browser_find` cancel the browser's own find on Ctrl+F
+  and Cmd+F (a capturing `keydown` listener through `web-sys`), so the `FindBar` gets the key on
+  wasm. No effect on native targets. `data::find` itself (`FindBar`, `FindState`, the
+  `FindProvider` trait) is always built; views highlight with `FindState::layout_job` and scroll
+  with `List::scroll_to_row`, `DataGrid::scroll_to_row` or `Response::scroll_to_me`. The gallery
+  turns it on.
 
 ## Gates (run before every commit; CI runs the same)
 

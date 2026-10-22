@@ -17,7 +17,7 @@ fn main() {
     if let Err(error) = eframe::run_native(
         "fluent2-egui gallery",
         native,
-        Box::new(|cc| Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))),
+        Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
     ) {
         eprintln!("gallery: {error}");
     }
@@ -44,11 +44,13 @@ async fn start_web() -> Result<(), String> {
         .ok_or("no #the_canvas_id element")?
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .map_err(|_| "#the_canvas_id is not a canvas")?;
+    // Ctrl+F opens the gallery's find bar, not the browser's find.
+    fluent2_egui::data::find::capture_browser_find();
     eframe::WebRunner::new()
         .start(
             canvas,
             eframe::WebOptions::default(),
-            Box::new(|cc| Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))),
+            Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
         )
         .await
         .map_err(|error| format!("{error:?}"))

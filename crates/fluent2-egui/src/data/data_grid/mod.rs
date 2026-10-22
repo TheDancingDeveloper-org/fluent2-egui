@@ -6,6 +6,7 @@
 
 mod a11y;
 mod column;
+mod copy;
 mod header;
 mod selection;
 mod state;
@@ -16,8 +17,12 @@ use egui::{
 };
 use std::collections::HashMap;
 
+mod menu;
+
 pub use column::{Align, Column, ColumnWidth};
-pub use state::{DataGridState, GridFocus, Selection, SortDirection, SortSpec};
+pub use copy::{rows_to_copy, tsv_field, tsv_rows};
+pub use menu::{ColumnMenuResponse, column_menu};
+pub use state::{ColumnLayout, DataGridState, GridFocus, Selection, SortDirection, SortSpec};
 
 use crate::data::rows::{all_selected, visible_rows};
 use crate::foundation::focus::paint_focus_ring;
@@ -94,6 +99,7 @@ pub struct CellCtx {
 
 /// Row height class of a DataGrid (§10).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataGridSize {
     /// 24 pt rows, `Caption1` text.
     ExtraSmall,
@@ -146,6 +152,16 @@ pub struct DataGridResponse {
     pub edit_requested: Option<CellCtx>,
     /// Secondary click or Shift+F10. Attach a context menu to this.
     pub context_menu: Option<CellCtx>,
+    /// Secondary click or Shift+F10 on a header cell, by column id (§2.4). Open a menu with
+    /// [`column_menu`] in it.
+    pub header_context_menu: Option<&'static str>,
+    /// The user dragged a header or pressed Alt+Left/Right on one, and `state.layout` holds the
+    /// new column order (§2.4).
+    pub columns_reordered: bool,
+    /// Ctrl+C on the focused grid copied this text: the focused cell, or the selected rows (else
+    /// the focused row) as TSV. Only set with [`DataGrid::cell_text`]. The grid has already passed
+    /// it to the clipboard (issue #105).
+    pub copied: Option<String>,
 }
 
 /// A virtualised DataGrid. Build it, then call [`DataGrid::show`].
@@ -177,6 +193,7 @@ pub struct DataGrid<'a> {
     focus_mode: FocusMode,
     label: Option<String>,
     cell_text: Option<CellText<'a>>,
+    scroll_to_row: Option<usize>,
 }
 
 /// The accessible text of one cell, from its row index and column id.
@@ -189,6 +206,7 @@ struct Reports {
     activated: Option<CellCtx>,
     edit_requested: Option<CellCtx>,
     context_menu: Option<CellCtx>,
+    copied: Option<String>,
 }
 
 /// Where the grid's cells are, in content coordinates, for one frame.
@@ -216,6 +234,7 @@ impl<'a> DataGrid<'a> {
             focus_mode: FocusMode::Row,
             label: None,
             cell_text: None,
+            scroll_to_row: None,
         }
     }
 
@@ -244,6 +263,14 @@ impl<'a> DataGrid<'a> {
     #[must_use]
     pub fn focus_mode(mut self, mode: FocusMode) -> Self {
         self.focus_mode = mode;
+        self
+    }
+
+    /// Scroll row `index` into the middle of the view this frame, for example to show a find
+    /// match (`data::find`). Out-of-range indices are ignored.
+    #[must_use]
+    pub fn scroll_to_row(mut self, index: usize) -> Self {
+        self.scroll_to_row = Some(index);
         self
     }
 
@@ -292,7 +319,12 @@ impl<'a> DataGrid<'a> {
         let multi = self.selection_mode == SelectionMode::Multi;
         let lead = if multi { metrics.selection_cell_width } else { 0.0 };
         let lead_columns = usize::from(multi);
-        let widths = column::resolve_widths(self.columns, ui.available_width(), &state.widths);
+        // Hidden columns drop out and the rest take the layout's order (§2.4), so everything
+        // below, AccessKit indices included, works in display order.
+        let all_columns = self.columns;
+        let shown = state.layout.apply(all_columns);
+        let columns: &[Column] = &shown;
+        let widths = column::resolve_widths(columns, ui.available_width(), &state.widths);
         let offsets: Vec<f32> = column::prefix_offsets(&widths)
             .into_iter()
             .map(|offset| offset + lead)
@@ -311,6 +343,9 @@ impl<'a> DataGrid<'a> {
         let inside_key = grid_key.with("inside");
         let targets_key = grid_key.with("targets");
         let mut events = header::HeaderEvents::default();
+        if let Some(id) = state.autofit_request.take() {
+            events.autofit = columns.iter().position(|column| column.id == id);
+        }
 
         let output = ScrollArea::both()
             .id_salt(self.id)
@@ -332,7 +367,7 @@ impl<'a> DataGrid<'a> {
                 let visible_range = visible_rows(viewport, header_height, row_height, self.row_count);
                 let rows = Rows {
                     row_count: self.row_count,
-                    column_count: self.columns.len(),
+                    column_count: columns.len(),
                     mode: self.selection_mode,
                     focus_mode: self.focus_mode,
                     page: (page_rows as usize).saturating_sub(1).max(1),
@@ -361,10 +396,22 @@ impl<'a> DataGrid<'a> {
                 let header_layout = header::HeaderLayout {
                     id: self.id,
                     rect: header_rect,
-                    columns: self.columns,
+                    columns,
                     widths: &widths,
                     offsets: &offsets,
+                    all_columns,
                 };
+
+                if let Some(index) = self.scroll_to_row.filter(|&index| index < self.row_count) {
+                    let top = origin.y + header_height + index as f32 * row_height;
+                    ui.scroll_to_rect(
+                        Rect::from_min_size(
+                            Pos2::new(origin.x + viewport.min.x, top),
+                            Vec2::new(viewport.width(), row_height),
+                        ),
+                        Some(egui::Align::Center),
+                    );
+                }
 
                 // Focus is inside a cell's child (Enter, §3.3). egui releases focus on Escape
                 // before the grid runs, so Escape is checked first and does not need the focus.
@@ -377,6 +424,7 @@ impl<'a> DataGrid<'a> {
                     }
                 }
 
+                let mut header_menu = None;
                 if grid_response.has_focus() {
                     // Arrow keys move focus in the grid, not to a neighbouring widget (§3.3).
                     let lock = EventFilter {
@@ -404,7 +452,7 @@ impl<'a> DataGrid<'a> {
                                     ui.memory_mut(|memory| memory.request_focus(child));
                                     ui.ctx().data_mut(|data| data.insert_temp(inside_key, child));
                                 }
-                                None => reports.activated = focus_ctx(state, self.columns, &row_id),
+                                None => reports.activated = focus_ctx(state, columns, &row_id),
                             }
                         }
                         if let Some(index) = state
@@ -415,12 +463,30 @@ impl<'a> DataGrid<'a> {
                             header_key(state, &header_layout, &mut events, index, &out);
                         }
                         if out.edit {
-                            reports.edit_requested = focus_ctx(state, self.columns, &row_id);
+                            reports.edit_requested = focus_ctx(state, columns, &row_id);
                         }
                         if out.context_menu {
-                            reports.context_menu = focus_ctx(state, self.columns, &row_id);
+                            reports.context_menu = focus_ctx(state, columns, &row_id);
+                            header_menu = header_focus_column(state, columns);
                         }
                     }
+                }
+
+                // Ctrl+C copies what the focus names (issue #105). Without `cell_text` there is no
+                // text to copy, so the grid copies nothing.
+                if grid_response.has_focus()
+                    && let Some(text) = self.cell_text.as_deref().and_then(|cell_text| {
+                        copy::copy_payload(state, self.columns, self.row_count, row_id, cell_text)
+                    })
+                    && ui.input(|input| {
+                        input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Copy))
+                    })
+                {
+                    ui.ctx().copy_text(text.clone());
+                    reports.copied = Some(text);
                 }
 
                 for row in visible_range.clone() {
@@ -469,7 +535,7 @@ impl<'a> DataGrid<'a> {
                     }
                     let row_selected = (self.selection_mode != SelectionMode::None).then_some(selected);
                     let row_label = self.cell_text.as_ref().map(|text| {
-                        self.columns
+                        columns
                             .iter()
                             .map(|column| text(row, column.id))
                             .filter(|part| !part.is_empty())
@@ -504,7 +570,7 @@ impl<'a> DataGrid<'a> {
                         }
                     }
 
-                    for (index, column) in self.columns.iter().enumerate() {
+                    for (index, column) in columns.iter().enumerate() {
                         let cell_rect = Rect::from_min_size(
                             Pos2::new(origin.x + offsets[index], top),
                             Vec2::new(widths[index], row_height),
@@ -561,6 +627,8 @@ impl<'a> DataGrid<'a> {
                 events.sort_changed |= header_events.sort_changed;
                 events.resized = header_events.resized.or(events.resized);
                 events.autofit = header_events.autofit.or(events.autofit);
+                events.reordered |= header_events.reordered;
+                events.context_menu = header_events.context_menu.or(header_menu);
                 if multi {
                     let box_rect = Rect::from_min_size(header_rect.min, Vec2::new(lead, header_height));
                     let mut child = ui.new_child(
@@ -591,19 +659,9 @@ impl<'a> DataGrid<'a> {
                     Sense::hover(),
                 );
                 a11y::row(ui.ctx(), header_row.id, 0, None, None);
-                for (index, column) in self.columns.iter().enumerate() {
-                    // A sortable cell is interacted by `header::show`; its node is named here.
-                    let id = if column.sortable {
-                        self.id.with(("sort", column.id))
-                    } else {
-                        let rect = Rect::from_min_size(
-                            Pos2::new(origin.x + offsets[index], header_rect.min.y),
-                            Vec2::new(widths[index], header_height),
-                        );
-                        let id = grid_key.with(("header", index));
-                        ui.interact(rect.intersect(clip), id, Sense::hover());
-                        id
-                    };
+                for (index, column) in columns.iter().enumerate() {
+                    // Every header cell is interacted by `header::show`; its node is named here.
+                    let id = header::cell_id(self.id, column.id);
                     a11y::header_cell(ui.ctx(), id, column.header.text(), index + lead_columns);
                     if state
                         .focus
@@ -616,7 +674,7 @@ impl<'a> DataGrid<'a> {
                 // Autofit (§2.3): a double-clicked handle or a header key, and an Auto column on
                 // its first show. Cells are measured in a sizing pass over the visible rows, so
                 // the new width reaches the rows on the next frame.
-                for (index, column) in self.columns.iter().enumerate() {
+                for (index, column) in columns.iter().enumerate() {
                     let first_show =
                         matches!(column.width, ColumnWidth::Auto) && !state.widths.contains_key(column.id);
                     if events.autofit != Some(index) && !first_show {
@@ -658,17 +716,17 @@ impl<'a> DataGrid<'a> {
                     grid_response.request_focus();
                 }
                 if let Some((row, column)) = activate_at {
-                    reports.activated = cell_report(state, self.columns, &row_id, row, column);
+                    reports.activated = cell_report(state, columns, &row_id, row, column);
                 }
                 if let Some((row, column)) = context_at {
-                    reports.context_menu = cell_report(state, self.columns, &row_id, row, column);
+                    reports.context_menu = cell_report(state, columns, &row_id, row, column);
                 }
                 a11y::grid(
                     ui.ctx(),
                     grid_response.id,
                     self.label.as_deref(),
                     self.row_count,
-                    self.columns.len() + lead_columns,
+                    columns.len() + lead_columns,
                     multi,
                     active,
                 );
@@ -684,8 +742,17 @@ impl<'a> DataGrid<'a> {
             activated: reports.activated,
             edit_requested: reports.edit_requested,
             context_menu: reports.context_menu,
+            header_context_menu: events.context_menu,
+            columns_reordered: events.reordered,
+            copied: reports.copied,
         }
     }
+}
+
+/// The column of the focused header cell, or `None` when focus is not on the header.
+fn header_focus_column(state: &DataGridState, columns: &[Column]) -> Option<&'static str> {
+    let focus = state.focus.filter(|focus| focus.header)?;
+    columns.get(focus.column?).map(|column| column.id)
 }
 
 /// The rectangle of the focused row, cell or header cell, in screen coordinates, or `None`
@@ -803,6 +870,25 @@ fn header_key(
     }
     if out.autofit && column.resizable {
         events.autofit = Some(index);
+    }
+    if out.reorder != 0 {
+        // Alt+Left goes before the left neighbour; Alt+Right before the one after the right
+        // neighbour, or last (§2.4). Focus follows the column.
+        let target = index
+            .checked_add_signed(out.reorder)
+            .filter(|&target| target < layout.columns.len());
+        if let Some(target) = target {
+            let before = layout
+                .columns
+                .get(if out.reorder < 0 { target } else { target + 1 })
+                .map(|other| other.id);
+            if state.layout.move_before(layout.all_columns, column.id, before) {
+                events.reordered = true;
+                if let Some(focus) = state.focus.as_mut() {
+                    focus.column = Some(target);
+                }
+            }
+        }
     }
 }
 

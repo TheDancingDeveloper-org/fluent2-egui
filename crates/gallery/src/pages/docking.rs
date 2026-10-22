@@ -7,6 +7,8 @@ use fluent2_egui::surfaces::{
     DockArea, DockEdge, DockSide, DockTree, DockViewer, SideDock, SideDockState, StripTab,
 };
 
+use fluent2_egui::platform::LayoutStore;
+
 use super::Page;
 
 /// Files the Explorer offers.
@@ -63,6 +65,18 @@ impl DockViewer<String> for Viewer {
 impl Page for DockingPage {
     fn name(&self) -> &'static str {
         "Docking"
+    }
+
+    fn save_layout(&self, store: &mut LayoutStore) {
+        store.put("docking_tree", &self.tree);
+        store.put("docking_explorer", &self.explorer);
+        store.put("docking_output", &self.output);
+    }
+
+    fn load_layout(&mut self, store: &LayoutStore) {
+        store.restore("docking_tree", &mut self.tree);
+        store.restore("docking_explorer", &mut self.explorer);
+        store.restore("docking_output", &mut self.output);
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {

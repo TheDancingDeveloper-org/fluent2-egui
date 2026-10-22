@@ -54,6 +54,7 @@ pub struct Column {
     pub(super) sortable: bool,
     pub(super) resizable: bool,
     pub(super) align: Align,
+    pub(super) required: bool,
 }
 
 impl Column {
@@ -68,6 +69,7 @@ impl Column {
             sortable: true,
             resizable: true,
             align: Align::Start,
+            required: false,
         }
     }
 
@@ -117,6 +119,20 @@ impl Column {
     pub fn align(mut self, align: Align) -> Self {
         self.align = align;
         self
+    }
+
+    /// Whether the column is always shown (§2.4). A required column has no checkbox in
+    /// [`super::column_menu`] and ignores [`super::ColumnLayout::hidden`]. Default false.
+    #[must_use]
+    pub fn required(mut self, required: bool) -> Self {
+        self.required = required;
+        self
+    }
+
+    /// The column's header text.
+    #[must_use]
+    pub fn header_text(&self) -> &str {
+        self.header.text()
     }
 
     /// Layout of a cell or header cell: vertically centred, aligned by [`Align`].
