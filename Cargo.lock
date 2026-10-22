@@ -1234,6 +1234,7 @@ dependencies = [
  "syntect",
  "unicode-width",
  "vte",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "windows",

@@ -11,6 +11,7 @@ use crate::theme::Theme;
 pub mod file_dialog;
 #[cfg(feature = "file-dialog")]
 pub mod file_drop;
+pub mod hash_state;
 
 #[cfg(not(any(
     all(feature = "system-preferences", windows),

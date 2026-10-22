@@ -30,6 +30,7 @@ mod tab_strip;
 mod terminal;
 mod tokens;
 mod typography;
+mod url_state;
 mod variable_list;
 
 pub use accordion::AccordionPage;
@@ -59,6 +60,7 @@ pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
 pub use typography::TypographyPage;
+pub use url_state::UrlStatePage;
 pub use variable_list::VariableListPage;
 
 /// A page in the gallery's left-hand list.
@@ -104,6 +106,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TerminalPage::default()),
         Box::new(TokensPage),
         Box::new(TypographyPage),
+        Box::new(UrlStatePage::default()),
     ]
 }
 

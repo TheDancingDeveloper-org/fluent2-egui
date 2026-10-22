@@ -1,0 +1,2 @@
+### Added
+- URL state (`platform::hash_state`): `encode`, `decode` and `value` turn `key=value` pairs into a percent-encoded URL fragment and back, and `HashState` reads and writes the browser's `location.hash` on wasm (`replaceState`, so filters add no history entries). Native builds have no URL: reads return `None` and writes do nothing. The app polls `read_external` each frame, which picks up back and forward and pasted links. Spec: `docs/specs/url-state.md`. Gallery page "URL state" round-trips a tab and a filter through the address bar (#119).
