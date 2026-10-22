@@ -20,6 +20,7 @@ mod file_dialog;
 mod html_view;
 mod icons;
 mod markdown;
+mod menu_bar;
 mod pager;
 mod reorder;
 mod ribbon;
@@ -49,6 +50,7 @@ pub use file_dialog::FileDialogPage;
 pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
+pub use menu_bar::MenuBarPage;
 pub use pager::PagerPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
@@ -94,6 +96,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(IconsPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
+        Box::new(MenuBarPage::default()),
         Box::new(PagerPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),

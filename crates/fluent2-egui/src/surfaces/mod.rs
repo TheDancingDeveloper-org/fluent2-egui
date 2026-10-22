@@ -105,6 +105,7 @@ pub use tab_list::{
     TabList,
     TabSize,
 };
+pub(crate) use menu::{cancel_focus_request, focus_first_item, menu_contents_style};
 pub(crate) use tab_list::{paint_indicator, tab_widths};
 #[rustfmt::skip]
 pub use tab_strip::{
