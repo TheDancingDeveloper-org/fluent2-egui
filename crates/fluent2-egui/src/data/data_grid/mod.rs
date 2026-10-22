@@ -6,6 +6,7 @@
 
 mod a11y;
 mod column;
+mod copy;
 mod header;
 mod selection;
 mod state;
@@ -17,6 +18,7 @@ use egui::{
 use std::collections::HashMap;
 
 pub use column::{Align, Column, ColumnWidth};
+pub use copy::{rows_to_copy, tsv_field, tsv_rows};
 pub use state::{DataGridState, GridFocus, Selection, SortDirection, SortSpec};
 
 use crate::data::rows::{all_selected, visible_rows};
@@ -146,6 +148,10 @@ pub struct DataGridResponse {
     pub edit_requested: Option<CellCtx>,
     /// Secondary click or Shift+F10. Attach a context menu to this.
     pub context_menu: Option<CellCtx>,
+    /// Ctrl+C on the focused grid copied this text: the focused cell, or the selected rows (else
+    /// the focused row) as TSV. Only set with [`DataGrid::cell_text`]. The grid has already passed
+    /// it to the clipboard (issue #105).
+    pub copied: Option<String>,
 }
 
 /// A virtualised DataGrid. Build it, then call [`DataGrid::show`].
@@ -189,6 +195,7 @@ struct Reports {
     activated: Option<CellCtx>,
     edit_requested: Option<CellCtx>,
     context_menu: Option<CellCtx>,
+    copied: Option<String>,
 }
 
 /// Where the grid's cells are, in content coordinates, for one frame.
@@ -421,6 +428,23 @@ impl<'a> DataGrid<'a> {
                             reports.context_menu = focus_ctx(state, self.columns, &row_id);
                         }
                     }
+                }
+
+                // Ctrl+C copies what the focus names (issue #105). Without `cell_text` there is no
+                // text to copy, so the grid copies nothing.
+                if grid_response.has_focus()
+                    && let Some(text) = self.cell_text.as_deref().and_then(|cell_text| {
+                        copy::copy_payload(state, self.columns, self.row_count, row_id, cell_text)
+                    })
+                    && ui.input(|input| {
+                        input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Copy))
+                    })
+                {
+                    ui.ctx().copy_text(text.clone());
+                    reports.copied = Some(text);
                 }
 
                 for row in visible_range.clone() {
@@ -684,6 +708,7 @@ impl<'a> DataGrid<'a> {
             activated: reports.activated,
             edit_requested: reports.edit_requested,
             context_menu: reports.context_menu,
+            copied: reports.copied,
         }
     }
 }
