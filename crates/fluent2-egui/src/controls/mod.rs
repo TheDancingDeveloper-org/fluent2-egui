@@ -32,6 +32,8 @@ mod dropdown;
 mod field;
 mod file_card;
 mod input;
+#[cfg(feature = "chart")]
+mod line_chart;
 mod link;
 mod menu_button;
 mod mini_bars;
@@ -133,6 +135,17 @@ pub use input::{
     Input,
     InputAppearance,
     accent_open_for_test,
+};
+#[cfg(feature = "chart")]
+#[rustfmt::skip]
+pub use line_chart::{
+    ChartHover,
+    ChartSeries,
+    LineChart,
+    LineChartResponse,
+    TimeRange,
+    bytes_per_second,
+    time_ago,
 };
 pub use link::Link;
 pub use menu_button::MenuButton;
