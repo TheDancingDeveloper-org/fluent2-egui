@@ -4,6 +4,10 @@
 //! tree flattens those answers into rows with a depth, then paints only the rows in view. The
 //! selection and roving focus follow the rules of the DataGrid (§3), keyed by the app's `K` rather
 //! than by [`RowId`](crate::data::RowId).
+//!
+//! A node can carry a checkbox ([`TreeNode::checked`]) and the tree can show trailing cell
+//! columns ([`TreeView::columns`]). The tree reports a toggle; the app owns the check states and
+//! their tri-state propagation to parents.
 
 use std::collections::BTreeSet;
 use std::f32::consts::FRAC_PI_2;
@@ -20,6 +24,7 @@ use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, strok
 
 use super::data_grid::SelectionMode;
 use crate::controls::Spinner;
+use crate::controls::checkbox::{CheckState, paint_box};
 use crate::data::rows::visible_rows;
 use crate::foundation::focus::paint_focus_ring;
 use crate::foundation::icon::{Icon, IconName};
@@ -31,6 +36,8 @@ use crate::theme::{DataMetrics, Theme, c};
 const MAX_DEPTH: usize = 64;
 /// Width of the chevron slot, 24 pt (§5.1). The slot is the `spacing_horizontal::XXL` value.
 const CHEVRON_SLOT: f32 = spacing_horizontal::XXL;
+/// Side of the checkbox square: the 16 pt medium Fluent checkbox.
+const CHECK_BOX: f32 = 16.0;
 
 /// Whether a node has children, and whether they are still arriving.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,6 +68,8 @@ pub struct TreeNode<K> {
     pub icon: Option<Icon>,
     /// Whether the node has children.
     pub children: Children,
+    /// The node's checkbox. `None` draws no checkbox.
+    pub checked: Option<CheckState>,
 }
 
 impl<K> TreeNode<K> {
@@ -72,7 +81,17 @@ impl<K> TreeNode<K> {
             label: label.into(),
             icon: None,
             children: Children::None,
+            checked: None,
         }
+    }
+
+    /// Draw a checkbox in `state` before the icon. Use [`CheckState::Mixed`] on a parent whose
+    /// children are partly checked. A click or Space reports
+    /// [`TreeViewResponse::check_toggled`]; the app sets the new states.
+    #[must_use]
+    pub fn checked(mut self, state: CheckState) -> Self {
+        self.checked = Some(state);
+        self
     }
 
     /// Set whether the node has children.
@@ -140,6 +159,44 @@ impl TreeSize {
     }
 }
 
+/// A trailing cell column of a TreeView: a header title and a fixed width.
+///
+/// ```
+/// use fluent2_egui::data::tree_view::TreeColumn;
+/// let size = TreeColumn::new("Size", 80.0);
+/// assert_eq!(size.width, 80.0);
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct TreeColumn {
+    /// Header text.
+    pub title: String,
+    /// Width in points.
+    pub width: f32,
+}
+
+impl TreeColumn {
+    /// A column titled `title`, `width` points wide.
+    #[must_use]
+    pub fn new(title: impl Into<String>, width: f32) -> Self {
+        Self {
+            title: title.into(),
+            width,
+        }
+    }
+
+    /// The width, finite and not negative.
+    fn width(&self) -> f32 {
+        if self.width.is_finite() {
+            self.width.max(0.0)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Draws one cell: `(ui, key, column index)`.
+type CellFn<'a, K> = Box<dyn FnMut(&mut Ui, &K, usize) + 'a>;
+
 /// What a TreeView reports after `show`.
 #[derive(Clone, Debug)]
 pub struct TreeViewResponse<K> {
@@ -156,6 +213,9 @@ pub struct TreeViewResponse<K> {
     pub activated: Option<K>,
     /// Secondary click or Shift+F10 on a node. Attach a context menu to this.
     pub context_menu: Option<K>,
+    /// The checkbox of this node was clicked, or Space was pressed on it. The app sets the new
+    /// state and propagates it to children and parents.
+    pub check_toggled: Option<K>,
 }
 
 /// A virtualised tree. Build it, then call [`TreeView::show`].
@@ -181,6 +241,8 @@ pub struct TreeView<'a, K> {
     selection_mode: SelectionMode,
     size: TreeSize,
     label: Option<String>,
+    columns: &'a [TreeColumn],
+    cell: Option<CellFn<'a, K>>,
     marker: PhantomData<&'a K>,
 }
 
@@ -193,6 +255,8 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
             selection_mode: SelectionMode::Single,
             size: TreeSize::Medium,
             label: None,
+            columns: &[],
+            cell: None,
             marker: PhantomData,
         }
     }
@@ -215,6 +279,31 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
+        self
+    }
+
+    /// Trailing cell columns after the label, with a header row above the tree. `cell(ui, key,
+    /// column)` draws one cell, for visible rows only, in a left-to-right `ui` the column's width.
+    ///
+    /// ```
+    /// # use fluent2_egui::data::tree_view::{TreeColumn, TreeNode, TreeState, TreeView};
+    /// # fn demo(ui: &mut egui::Ui, state: &mut TreeState<u64>) {
+    /// let columns = [TreeColumn::new("Size", 80.0)];
+    /// TreeView::new("files")
+    ///     .columns(&columns, |ui, key, _column| {
+    ///         ui.label(format!("{key} KB"));
+    ///     })
+    ///     .show(ui, state, |parent, out| {
+    ///         if parent.is_none() {
+    ///             out.push(TreeNode::new(1, "a.txt"));
+    ///         }
+    ///     });
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn columns(mut self, columns: &'a [TreeColumn], cell: impl FnMut(&mut Ui, &K, usize) + 'a) -> Self {
+        self.columns = columns;
+        self.cell = Some(Box::new(cell));
         self
     }
 
@@ -259,6 +348,18 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
         let id = self.id;
         let mode = self.selection_mode;
         let label = self.label;
+        let columns = self.columns;
+        let mut cell = self.cell;
+        let cells_width: f32 = columns.iter().map(TreeColumn::width).sum();
+        if !columns.is_empty() {
+            paint_header(
+                ui,
+                columns,
+                row_height,
+                cells_width,
+                c(theme.color.neutral_foreground_3),
+            );
+        }
         let enabled = ui.is_enabled();
         let before = state.selection.clone();
         let output = ScrollArea::vertical()
@@ -360,6 +461,23 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                             Sense::CLICK,
                         )
                     });
+                    let check_slot =
+                        Rect::from_min_size(Pos2::new(slot.max.x, top), Vec2::new(CHEVRON_SLOT, row_height));
+                    let check = row.checked.map(|state| {
+                        let hit = ui.interact(
+                            check_slot.intersect(clip),
+                            id.with(("check", hashed(key))),
+                            Sense::CLICK,
+                        );
+                        (state, hit)
+                    });
+                    if let Some((_, check)) = &check
+                        && check.clicked()
+                    {
+                        clicked = true;
+                        state.focus = Some(key.clone());
+                        report.check_toggled = Some(key.clone());
+                    }
                     if hit.clicked() {
                         clicked = true;
                         let modifiers = ui.input(|input| input.modifiers);
@@ -411,7 +529,36 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         }
                         node.set_position_in_set(row.set_index + 1);
                         node.set_size_of_set(row.set_size);
+                        if let Some(checked) = row.checked {
+                            node.set_toggled(toggled(checked));
+                        }
                     });
+                    if let Some((checked, check)) = &check {
+                        let check_label = format!("Check {text}");
+                        check.widget_info(|| {
+                            let mut info =
+                                WidgetInfo::labeled(WidgetType::Checkbox, enabled, check_label.as_str());
+                            info.selected = Some(*checked == CheckState::Checked);
+                            info
+                        });
+                        ui.ctx().accesskit_node_builder(check.id, |node| {
+                            node.set_role(Role::CheckBox);
+                            node.set_label(check_label.as_str());
+                            node.set_toggled(toggled(*checked));
+                        });
+                        let square = Rect::from_center_size(check_slot.center(), Vec2::splat(CHECK_BOX));
+                        if visible_rect.intersects(square) {
+                            paint_box(
+                                ui,
+                                square,
+                                *checked,
+                                &theme,
+                                enabled,
+                                check.hovered(),
+                                check.is_pointer_button_down_on(),
+                            );
+                        }
+                    }
                     if let Some(chevron) = &chevron {
                         let name = if row.expanded { "Collapse" } else { "Expand" };
                         let chevron_label = format!("{name} {text}");
@@ -432,8 +579,18 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         paint_chevron(ui, slot, turn, color);
                     }
 
-                    let text_x = slot.max.x + spacing_horizontal::XS;
+                    let lead = if row.checked.is_some() {
+                        check_slot.max.x
+                    } else {
+                        slot.max.x
+                    };
+                    let text_x = lead + spacing_horizontal::XS;
                     let mut x = text_x;
+                    let cells_x = (row_rect.max.x - cells_width).max(text_x);
+                    let label_clip = visible_rect.intersect(Rect::from_min_max(
+                        row_rect.min,
+                        Pos2::new(cells_x - spacing_horizontal::XS, row_rect.max.y),
+                    ));
                     let mut child = ui.new_child(
                         UiBuilder::new()
                             .max_rect(Rect::from_min_max(
@@ -442,19 +599,37 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                             ))
                             .layout(Layout::left_to_right(Align::Center)),
                     );
-                    child.set_clip_rect(visible_rect);
+                    child.set_clip_rect(label_clip);
                     if let Some(name) = row.icon {
                         let icon =
                             child.add(Icon::new(name).tint(Some(if selected { color } else { icon_color })));
                         x = icon.rect.max.x + spacing_horizontal::XS;
                     }
-                    ui.painter_at(visible_rect).text(
+                    ui.painter_at(label_clip).text(
                         Pos2::new(x, row_rect.center().y),
                         Align2::LEFT_CENTER,
                         text,
                         font_id(TypeRamp::Body1),
                         color,
                     );
+                    if let Some(cell) = cell.as_mut() {
+                        let mut left = cells_x;
+                        for (column, spec) in columns.iter().enumerate() {
+                            let cell_rect = Rect::from_min_size(
+                                Pos2::new(left, top),
+                                Vec2::new(spec.width(), row_height),
+                            );
+                            left = cell_rect.max.x;
+                            let mut cell_ui = ui.new_child(
+                                UiBuilder::new()
+                                    .id_salt(("cell", hashed(key), column))
+                                    .max_rect(cell_rect.shrink2(Vec2::new(spacing_horizontal::XS, 0.0)))
+                                    .layout(Layout::left_to_right(Align::Center)),
+                            );
+                            cell_ui.set_clip_rect(visible_rect.intersect(cell_rect));
+                            cell(&mut cell_ui, key, column);
+                        }
+                    }
                 }
 
                 if focused && let Some(index) = focus_row {
@@ -497,8 +672,49 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
             collapsed: report.collapsed,
             activated: report.activated,
             context_menu: report.context_menu,
+            check_toggled: report.check_toggled,
         }
     }
+}
+
+/// The AccessKit tristate of a check state: screen readers say "checked", "not checked" or
+/// "partially checked".
+fn toggled(state: CheckState) -> egui::accesskit::Toggled {
+    match state {
+        CheckState::Checked => egui::accesskit::Toggled::True,
+        CheckState::Unchecked => egui::accesskit::Toggled::False,
+        CheckState::Mixed => egui::accesskit::Toggled::Mixed,
+    }
+}
+
+/// The header row above a tree with columns: "Name" over the labels, then each column's title.
+fn paint_header(ui: &mut Ui, columns: &[TreeColumn], height: f32, cells_width: f32, color: Color32) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), height), Sense::hover());
+    let painter = ui.painter_at(rect);
+    let font = font_id(TypeRamp::Caption1);
+    let mut left = (rect.max.x - cells_width).max(rect.min.x);
+    painter.text(
+        Pos2::new(rect.min.x + spacing_horizontal::S, rect.center().y),
+        Align2::LEFT_CENTER,
+        "Name",
+        font.clone(),
+        color,
+    );
+    for column in columns {
+        painter.text(
+            Pos2::new(left + spacing_horizontal::XS, rect.center().y),
+            Align2::LEFT_CENTER,
+            column.title.as_str(),
+            font.clone(),
+            color,
+        );
+        left += column.width();
+    }
+    painter.hline(
+        rect.x_range(),
+        rect.max.y - stroke_width::THIN / 2.0,
+        Stroke::new(stroke_width::THIN, color.gamma_multiply(0.4)),
+    );
 }
 
 /// One row of the flattened tree for one frame.
@@ -517,6 +733,7 @@ struct Row<K> {
     set_size: usize,
     label: WidgetText,
     icon: Option<IconName>,
+    checked: Option<CheckState>,
 }
 
 /// The app's answer for one node: the children of `Some(&key)`, or the roots for `None`.
@@ -542,6 +759,7 @@ fn flatten<K: Clone + Ord>(
             label,
             icon,
             children: kind,
+            checked,
         } = node;
         if !seen.insert(key.clone()) {
             continue;
@@ -559,6 +777,7 @@ fn flatten<K: Clone + Ord>(
             set_size: count,
             label,
             icon: icon.map(|icon| icon.name),
+            checked,
         });
         if expanded {
             let before = rows.len();
@@ -574,6 +793,7 @@ fn flatten<K: Clone + Ord>(
                     set_size: 1,
                     label: WidgetText::from("Loading"),
                     icon: None,
+                    checked: None,
                 });
             }
         }
@@ -589,6 +809,7 @@ struct Reports<K> {
     collapsed: Option<K>,
     activated: Option<K>,
     context_menu: Option<K>,
+    check_toggled: Option<K>,
 }
 
 impl<K> Default for Reports<K> {
@@ -600,6 +821,7 @@ impl<K> Default for Reports<K> {
             collapsed: None,
             activated: None,
             context_menu: None,
+            check_toggled: None,
         }
     }
 }
@@ -887,6 +1109,7 @@ fn handle_key<K: Clone + Ord>(
                 toggle_at(state, rows, index, report);
             }
         }
+        Key::Space if row.checked.is_some() => report.check_toggled = Some(row_key),
         Key::Space if mode == SelectionMode::Multi => {
             state.focus = Some(row_key.clone());
             toggle_key(state, row_key);

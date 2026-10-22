@@ -108,6 +108,11 @@ default build stays a Fluent library with no extra dependencies.
   Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
   (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
   --workspace` through the gallery's feature unification.
+- `chart`: `controls::LineChart` with `ChartSeries` (a fixed-capacity ring buffer of
+  `(time, value)` samples) and `TimeRange` chips. Axes, legend and hover read-out are painted
+  with egui only; series take Fluent palette tokens in a fixed order, alternating colours and
+  dashes in high contrast. Each frame keeps at most two points per pixel column. The gallery
+  turns it on; `tests/line_chart.rs` is `#![cfg(feature = "chart")]`.
 - `diff`: `data::diff` (`DiffModel`, line and word diffs through `imara-diff`, and `DiffView`,
   a read-only inline or side-by-side view virtualised with `rows::visible_rows`). Lines are
   compared without terminators; colours come from palette tokens, with strokes in high

@@ -8,6 +8,7 @@ pub mod code;
 pub mod data_grid;
 #[cfg(feature = "diff")]
 pub mod diff;
+pub mod editable_list;
 pub mod find;
 #[cfg(feature = "html")]
 pub mod html;

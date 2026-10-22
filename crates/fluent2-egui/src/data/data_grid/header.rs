@@ -31,6 +31,13 @@ pub(super) struct HeaderLayout<'a> {
     pub widths: &'a [f32],
     /// Left edge of each column, relative to the grid's left edge.
     pub offsets: &'a [f32],
+    /// Every column the app defined, hidden ones included, for reordering (§2.4).
+    pub all_columns: &'a [Column],
+}
+
+/// Id of a column's header cell. `header::show` interacts it; `DataGrid::show` names its node.
+pub(super) fn cell_id(grid: Id, column: &str) -> Id {
+    grid.with(("sort", column))
 }
 
 /// What the header did this frame, for `DataGrid::show` to fold into its response.
@@ -42,6 +49,10 @@ pub(super) struct HeaderEvents {
     pub resized: Option<&'static str>,
     /// Index of a column whose handle was double-clicked. The grid autofits it (§2.3).
     pub autofit: Option<usize>,
+    /// A header cell was dragged to a new place (§2.4). `state.layout` already holds it.
+    pub reordered: bool,
+    /// A header cell was secondary-clicked (§2.4), by column id.
+    pub context_menu: Option<&'static str>,
 }
 
 /// Paint the header and handle its clicks and drags.
@@ -62,11 +73,14 @@ pub(super) fn show(
     let hover = c(theme.color.subtle_background_hover);
     let pressed = c(theme.color.subtle_background_pressed);
 
+    let mut drop_at: Option<f32> = None;
     for (index, column) in layout.columns.iter().enumerate() {
         let cell = cell_rect(rect, layout.offsets[index], layout.widths[index]);
         let mut ink = text;
+        // Every cell drags to reorder and takes a secondary click for the column menu (§2.4);
+        // only sortable cells react to a primary click.
+        let response = ui.interact(cell, cell_id(layout.id, column.id), Sense::click_and_drag());
         if column.sortable {
-            let response = ui.interact(cell, layout.id.with(("sort", column.id)), Sense::click());
             if response.hovered() {
                 // High contrast hovers with the highlight colour; the label follows it.
                 let (fill, state_ink) = if response.is_pointer_button_down_on() {
@@ -84,12 +98,36 @@ pub(super) fn show(
             let label = column.header.text().to_owned();
             response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, label.clone()));
         }
+        if response.secondary_clicked() {
+            events.context_menu = Some(column.id);
+        }
+        if (response.dragged() || response.drag_stopped())
+            && let Some(pointer) = response.interact_pointer_pos()
+        {
+            let gap = drop_gap(pointer.x - rect.min.x, layout.offsets, layout.widths);
+            let x = rect.min.x
+                + layout.offsets.get(gap).copied().unwrap_or_else(|| {
+                    layout.offsets.last().copied().unwrap_or(0.0)
+                        + layout.widths.last().copied().unwrap_or(0.0)
+                });
+            if response.drag_stopped() {
+                let before = layout.columns.get(gap).map(|column| column.id);
+                events.reordered |= state.layout.move_before(layout.all_columns, column.id, before);
+            } else {
+                drop_at = Some(x);
+            }
+        }
         let sort = state
             .sort
             .as_ref()
             .filter(|spec| spec.column == column.id)
             .map(|spec| spec.direction);
         paint_label(ui, cell, column, sort, ink);
+    }
+    if let Some(x) = drop_at {
+        // The insertion mark: a brand line where the dragged column will land.
+        let line = Stroke::new(stroke_width::THICK, c(theme.color.brand_stroke_1));
+        ui.painter().vline(x, rect.y_range(), line);
     }
 
     for (index, column) in layout.columns.iter().enumerate() {
@@ -126,6 +164,18 @@ pub(super) fn show(
         }
     }
     events
+}
+
+/// The gap a dragged column lands in, as the index of the column it goes before
+/// (`offsets.len()` for the end). `x` is relative to the grid's left edge. A gap next to the
+/// dragged column leaves it where it is.
+#[must_use]
+pub(super) fn drop_gap(x: f32, offsets: &[f32], widths: &[f32]) -> usize {
+    offsets
+        .iter()
+        .zip(widths)
+        .take_while(|(offset, width)| x >= *offset + *width / 2.0)
+        .count()
 }
 
 /// Next sort state for a click on `column` (§2.1): none, then ascending, then descending, then

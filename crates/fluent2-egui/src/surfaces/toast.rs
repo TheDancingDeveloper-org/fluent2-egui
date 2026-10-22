@@ -1,9 +1,15 @@
 //! Fluent Toast and a toaster host.
 //!
 //! [`Toaster`] lives in `ctx.data`. The app calls [`Toaster::show`] once per frame;
-//! it draws at most three toasts in a foreground [`egui::Area`], newest at the
-//! bottom. Enter and exit slide and fade with the motion tokens. A timeout
-//! (default 5 s) pauses while the toast is hovered.
+//! it draws at most three toasts (see [`Toaster::set_max_visible`]) in a foreground
+//! [`egui::Area`], newest at the bottom. Toasts that do not fit are counted in a
+//! "+N more" row above the stack. Enter and exit slide and fade with the motion tokens.
+//! A timeout (default 5 s) pauses while the toast is hovered.
+//!
+//! [`Toaster::push_keyed`] coalesces: while a toast with the same key is still
+//! showing, the push replaces its content and restarts its timeout instead of stacking
+//! a second toast, so twelve "Paused" pushes from one bulk action read as one toast.
+//! [`Toaster::history`] keeps the last 100 pushes for a history list.
 //!
 //! ```
 //! use fluent2_egui::surfaces::{Intent, Toast, ToastPosition, Toaster};
@@ -31,6 +37,7 @@
 //! # }
 //! ```
 
+use std::collections::VecDeque;
 use std::time::Duration;
 
 use egui::epaint::RectShape;
@@ -78,9 +85,14 @@ pub struct Toast {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct ToastId(u64);
 
+/// How many pushes [`Toaster::history`] keeps. Older ones are dropped.
+const HISTORY_LIMIT: usize = 100;
+
 #[derive(Clone)]
 struct Entry {
     id: ToastId,
+    /// Coalescing key from [`Toaster::push_keyed`]; `None` for plain pushes.
+    key: Option<String>,
     toast: Toast,
     born: f64,
     paused_for: f64,
@@ -94,6 +106,8 @@ struct Host {
     next: u64,
     entries: Vec<Entry>,
     action_clicks: Vec<ToastId>,
+    max_visible: usize,
+    history: VecDeque<Toast>,
 }
 
 impl Default for Host {
@@ -102,6 +116,8 @@ impl Default for Host {
             next: 1,
             entries: Vec::new(),
             action_clicks: Vec::new(),
+            max_visible: MAX_VISIBLE,
+            history: VecDeque::new(),
         }
     }
 }
@@ -112,22 +128,102 @@ pub struct Toaster;
 impl Toaster {
     /// Queue a toast and return its id.
     pub fn push(ctx: &egui::Context, toast: Toast) -> ToastId {
+        Self::enqueue(ctx, None, toast)
+    }
+
+    /// Queue a toast under a coalescing key, and return its id.
+    ///
+    /// If a toast with the same key is still showing (not yet dismissed or exiting), it
+    /// takes the new content, moves to the newest position and restarts its timeout, and
+    /// its id is returned again. Otherwise this queues a new toast, as [`Toaster::push`]
+    /// does. Use it for bulk results such as "Paused 12 torrents".
+    ///
+    /// ```
+    /// use fluent2_egui::surfaces::{Intent, Toast, Toaster};
+    ///
+    /// # fn demo(ctx: &egui::Context, paused: usize) {
+    /// let _ = Toaster::push_keyed(
+    ///     ctx,
+    ///     "pause-torrents",
+    ///     Toast {
+    ///         intent: Intent::Info,
+    ///         title: format!("Paused {paused} torrents"),
+    ///         body: None,
+    ///         timeout: None,
+    ///         action: None,
+    ///     },
+    /// );
+    /// # }
+    /// ```
+    pub fn push_keyed(ctx: &egui::Context, key: impl AsRef<str>, toast: Toast) -> ToastId {
+        Self::enqueue(ctx, Some(key.as_ref()), toast)
+    }
+
+    /// How many toasts [`Toaster::show`] draws at once. Default 3; values below 1 are raised
+    /// to 1. Toasts beyond the limit wait in the queue and show as "+N more".
+    pub fn set_max_visible(ctx: &egui::Context, max: usize) {
+        ctx.data_mut(|data| {
+            data.get_temp_mut_or_default::<Host>(host_id()).max_visible = max.max(1);
+        });
+        ctx.request_repaint();
+    }
+
+    /// Every toast pushed recently, oldest first, including ones that have expired,
+    /// been dismissed or were coalesced into another. Keeps the last 100 pushes.
+    pub fn history(ctx: &egui::Context) -> Vec<Toast> {
+        ctx.data(|data| {
+            data.get_temp::<Host>(host_id())
+                .map(|host| host.history.iter().cloned().collect())
+                .unwrap_or_default()
+        })
+    }
+
+    /// Forget the history returned by [`Toaster::history`]. Toasts on screen are unchanged.
+    pub fn clear_history(ctx: &egui::Context) {
+        ctx.data_mut(|data| {
+            data.get_temp_mut_or_default::<Host>(host_id()).history.clear();
+        });
+    }
+
+    fn enqueue(ctx: &egui::Context, key: Option<&str>, toast: Toast) -> ToastId {
         // Read the clock before taking the data lock: `ctx.input` inside `data_mut` deadlocks.
         let now = ctx.input(|input| input.time);
         let mut id = ToastId(0);
         ctx.data_mut(|data| {
             let host = data.get_temp_mut_or_default::<Host>(host_id());
-            id = ToastId(host.next);
-            host.next = host.next.saturating_add(1);
-            host.entries.push(Entry {
-                id,
-                toast,
-                born: now,
-                paused_for: 0.0,
-                pause_started: None,
-                exiting: false,
-                exit_at: now,
+            if host.history.len() >= HISTORY_LIMIT {
+                host.history.pop_front();
+            }
+            host.history.push_back(toast.clone());
+
+            let live = key.and_then(|key| {
+                host.entries
+                    .iter()
+                    .position(|entry| !entry.exiting && entry.key.as_deref() == Some(key))
             });
+            if let Some(index) = live {
+                // Coalesce: move the live entry to the newest slot with the new content.
+                let mut entry = host.entries.remove(index);
+                entry.toast = toast;
+                entry.born = now;
+                entry.paused_for = 0.0;
+                entry.pause_started = None;
+                id = entry.id;
+                host.entries.push(entry);
+            } else {
+                id = ToastId(host.next);
+                host.next = host.next.saturating_add(1);
+                host.entries.push(Entry {
+                    id,
+                    key: key.map(str::to_owned),
+                    toast,
+                    born: now,
+                    paused_for: 0.0,
+                    pause_started: None,
+                    exiting: false,
+                    exit_at: now,
+                });
+            }
         });
         ctx.request_repaint();
         id
@@ -168,6 +264,7 @@ impl Toaster {
             MotionDuration::Normal.seconds() as f64
         };
         let mut visible: Vec<ToastId> = Vec::new();
+        let mut hidden = 0usize;
         let mut next_wake: Option<f64> = None;
         ctx.data_mut(|data| {
             let host = data.get_temp_mut_or_default::<Host>(host_id());
@@ -187,8 +284,13 @@ impl Toaster {
             }
             host.entries
                 .retain(|entry| !entry.exiting || now - entry.exit_at < motion);
-            // Newest at the bottom: the three newest are the tail, oldest of those first.
-            let start = host.entries.len().saturating_sub(MAX_VISIBLE);
+            // Newest at the bottom: the newest `max_visible` are the tail, oldest of those first.
+            let start = host.entries.len().saturating_sub(host.max_visible);
+            // Only toasts still waiting count as "more"; one fading out is not.
+            hidden = host.entries[..start]
+                .iter()
+                .filter(|entry| !entry.exiting)
+                .count();
             visible = host.entries[start..].iter().map(|entry| entry.id).collect();
             next_wake = next_wake_secs(&host.entries, now, motion);
         });
@@ -217,6 +319,9 @@ impl Toaster {
                 ui.set_width(320.0);
                 ui.spacing_mut().item_spacing.y = 8.0;
                 let theme = Theme::get(ctx);
+                if hidden > 0 {
+                    paint_overflow(ui, &theme, hidden);
+                }
                 for id in visible {
                     paint_one(ui, &theme, id, now, motion);
                 }
@@ -225,6 +330,17 @@ impl Toaster {
 }
 
 const MAX_VISIBLE: usize = 3;
+
+/// The collapsed row above the stack that counts toasts waiting behind the visible ones.
+fn paint_overflow(ui: &mut Ui, theme: &Theme, hidden: usize) {
+    let text = format!("+{hidden} more");
+    let color = crate::theme::c(theme.color.neutral_foreground_2);
+    ui.label(
+        egui::RichText::new(text)
+            .text_style(style(TypeRamp::Caption1))
+            .color(color),
+    );
+}
 
 fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
     let snapshot = ui.ctx().data(|data| {

@@ -63,6 +63,9 @@ html = ["dep:html5gum"]
 # Lets `data::find::capture_browser_find` cancel the browser's own find on Ctrl+F (wasm only), so
 # the FindBar gets the key. No effect on native targets.
 web-find = ["dep:wasm-bindgen", "dep:web-sys", "web-sys?/KeyboardEvent", "web-sys?/Window", "web-sys?/EventTarget"]
+# LineChart (`controls::LineChart`, `ChartSeries`, `TimeRange`): a multi-series time-series chart
+# with axes, legend, hover read-out and time-range chips, painted with egui only. Off by default.
+chart = []
 # `From` conversions between the calendar types (`CalendarDate`, `TimeOfDay`) and `chrono`'s
 # `NaiveDate` and `NaiveTime`.
 chrono = ["dep:chrono"]
