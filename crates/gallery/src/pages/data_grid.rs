@@ -1,10 +1,14 @@
 //! DataGrid: 100,000 synthetic rows in twenty columns, virtualised. Right-click a header for the
-//! column chooser; drag a header, or press Alt+Left/Right on a focused one, to reorder.
+//! column chooser; drag a header, or press Alt+Left/Right on a focused one, to reorder. Ctrl+C
+//! copies the focused cell or the selected rows as TSV, and the right-click menu offers the same
+//! copies (issue #105).
 
 use fluent2_egui::data::data_grid::{
-    Column, ColumnWidth, DataGrid, DataGridSize, DataGridState, column_menu,
+    CellCtx, Column, ColumnWidth, DataGrid, DataGridSize, DataGridState, RowId, column_menu, rows_to_copy,
+    tsv_rows,
 };
-use fluent2_egui::surfaces::menu_frame;
+use fluent2_egui::surfaces::{MenuItem, context_menu, menu_frame};
+use fluent2_icons::Icon;
 
 use super::Page;
 
@@ -40,6 +44,9 @@ pub struct DataGridPage {
     size: DataGridSize,
     /// The column whose header menu is open, and where it opened.
     menu: Option<(&'static str, egui::Pos2)>,
+    /// The cell the last right-click landed on. The menu stays open over later frames, which
+    /// report no new cell, so the page keeps it here.
+    menu_cell: Option<CellCtx>,
 }
 
 impl Page for DataGridPage {
@@ -54,7 +61,7 @@ impl Page for DataGridPage {
             ui.selectable_value(&mut self.size, DataGridSize::Small, "Small");
             ui.selectable_value(&mut self.size, DataGridSize::Medium, "Medium");
         });
-        ui.label("Right-click a header to choose columns. Drag a header, or press Alt+Left or Alt+Right on a focused one, to reorder.");
+        ui.label("Right-click a header to choose columns. Drag a header, or press Alt+Left or Alt+Right on a focused one, to reorder. Ctrl+C copies the focused cell or the selected rows.");
         ui.add_space(8.0);
         let columns: Vec<Column> = COLUMNS
             .iter()
@@ -71,7 +78,8 @@ impl Page for DataGridPage {
         let response = DataGrid::new("gallery_data_grid", &columns, ROWS)
             .label("Synthetic rows")
             .size(self.size)
-            // Screen readers read the focused cell and row from this text (WI-1848).
+            // Screen readers read the focused cell and row from this text (WI-1848). Ctrl+C
+            // copies the same text (issue #105).
             .cell_text(cell_text)
             .show(ui, &mut self.state, |cell, ui| {
                 ui.add(egui::Label::new(cell_text(cell.row, cell.column)).truncate());
@@ -103,6 +111,35 @@ impl Page for DataGridPage {
                 self.menu = None;
             }
         }
+
+        if let Some(cell) = response.context_menu {
+            self.menu_cell = Some(cell);
+        }
+        let rows = rows_to_copy(&self.state, ROWS, |row| RowId(row as u64));
+        let menu_cell = self.menu_cell;
+        context_menu(&response.response, |ui| {
+            let Some(cell) = menu_cell else {
+                return;
+            };
+            if ui
+                .add(MenuItem::new("Copy cell").icon(Icon::Copy).shortcut("Ctrl+C"))
+                .clicked()
+            {
+                ui.ctx().copy_text(cell_text(cell.row, cell.column));
+                ui.close();
+            }
+            let label = if rows.len() > 1 { "Copy rows" } else { "Copy row" };
+            if ui
+                .add_enabled(
+                    !rows.is_empty(),
+                    MenuItem::new(label).icon(Icon::Copy).shortcut("Ctrl+C"),
+                )
+                .clicked()
+            {
+                ui.ctx().copy_text(tsv_rows(&columns, &rows, cell_text));
+                ui.close();
+            }
+        });
     }
 }
 

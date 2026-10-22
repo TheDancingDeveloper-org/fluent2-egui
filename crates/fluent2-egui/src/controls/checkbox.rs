@@ -274,7 +274,7 @@ fn show(
     response
 }
 
-fn paint_box(
+pub(crate) fn paint_box(
     ui: &Ui,
     rect: Rect,
     state: CheckState,

@@ -21,6 +21,7 @@ mod html_view;
 mod icons;
 mod markdown;
 mod pager;
+mod pieces;
 mod reorder;
 mod ribbon;
 mod rich_text_editor;
@@ -29,6 +30,7 @@ mod surfaces;
 mod tab_strip;
 mod terminal;
 mod tokens;
+mod tree_view;
 mod typography;
 mod variable_list;
 
@@ -50,6 +52,7 @@ pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
+pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
 pub use rich_text_editor::RichTextEditorPage;
@@ -58,6 +61,7 @@ pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
+pub use tree_view::TreeViewPage;
 pub use typography::TypographyPage;
 pub use variable_list::VariableListPage;
 
@@ -95,6 +99,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
         Box::new(PagerPage::default()),
+        Box::new(PiecesPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
         Box::new(RichTextEditorPage::default()),
@@ -103,6 +108,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(TabStripPage::default()),
         Box::new(TerminalPage::default()),
         Box::new(TokensPage),
+        Box::new(TreeViewPage::default()),
         Box::new(TypographyPage),
     ]
 }

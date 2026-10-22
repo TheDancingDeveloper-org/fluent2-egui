@@ -6,6 +6,7 @@
 
 mod a11y;
 mod column;
+mod copy;
 mod header;
 mod selection;
 mod state;
@@ -19,6 +20,7 @@ use std::collections::HashMap;
 mod menu;
 
 pub use column::{Align, Column, ColumnWidth};
+pub use copy::{rows_to_copy, tsv_field, tsv_rows};
 pub use menu::{ColumnMenuResponse, column_menu};
 pub use state::{ColumnLayout, DataGridState, GridFocus, Selection, SortDirection, SortSpec};
 
@@ -155,6 +157,10 @@ pub struct DataGridResponse {
     /// The user dragged a header or pressed Alt+Left/Right on one, and `state.layout` holds the
     /// new column order (§2.4).
     pub columns_reordered: bool,
+    /// Ctrl+C on the focused grid copied this text: the focused cell, or the selected rows (else
+    /// the focused row) as TSV. Only set with [`DataGrid::cell_text`]. The grid has already passed
+    /// it to the clipboard (issue #105).
+    pub copied: Option<String>,
 }
 
 /// A virtualised DataGrid. Build it, then call [`DataGrid::show`].
@@ -198,6 +204,7 @@ struct Reports {
     activated: Option<CellCtx>,
     edit_requested: Option<CellCtx>,
     context_menu: Option<CellCtx>,
+    copied: Option<String>,
 }
 
 /// Where the grid's cells are, in content coordinates, for one frame.
@@ -441,6 +448,23 @@ impl<'a> DataGrid<'a> {
                             header_menu = header_focus_column(state, columns);
                         }
                     }
+                }
+
+                // Ctrl+C copies what the focus names (issue #105). Without `cell_text` there is no
+                // text to copy, so the grid copies nothing.
+                if grid_response.has_focus()
+                    && let Some(text) = self.cell_text.as_deref().and_then(|cell_text| {
+                        copy::copy_payload(state, self.columns, self.row_count, row_id, cell_text)
+                    })
+                    && ui.input(|input| {
+                        input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Copy))
+                    })
+                {
+                    ui.ctx().copy_text(text.clone());
+                    reports.copied = Some(text);
                 }
 
                 for row in visible_range.clone() {
@@ -698,6 +722,7 @@ impl<'a> DataGrid<'a> {
             context_menu: reports.context_menu,
             header_context_menu: events.context_menu,
             columns_reordered: events.reordered,
+            copied: reports.copied,
         }
     }
 }
