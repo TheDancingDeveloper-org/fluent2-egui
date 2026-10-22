@@ -38,6 +38,7 @@ mod mini_bars;
 mod pager;
 mod progress_bar;
 mod radio;
+mod rich_text_editor;
 mod search_box;
 mod skeleton;
 mod slider;
@@ -150,6 +151,15 @@ pub use progress_bar::{
     ProgressBarSize,
 };
 pub use radio::RadioGroup;
+#[rustfmt::skip]
+pub use rich_text_editor::{
+    BlockKind,
+    CharStyle,
+    InlineFormat,
+    RichText,
+    RichTextEditor,
+    RichTextEditorResponse,
+};
 pub use search_box::SearchBox;
 #[rustfmt::skip]
 pub use skeleton::{
