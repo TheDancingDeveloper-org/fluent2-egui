@@ -26,9 +26,11 @@ todo = "warn"
 unwrap_used = "warn"
 expect_used = "warn"
 
-# Release size (docs/wasm-size.md): the wasm gallery is what ships to the web, and these
-# settings change code generation only, not the API.
-[profile.release]
+# Wasm size (docs/wasm-size.md): the gallery wasm build selects this profile through
+# `data-cargo-profile` in crates/gallery/index.html. It changes code generation only, not the
+# API, and it leaves `[profile.release]` (native builds, published crates) untouched.
+[profile.wasm-release]
+inherits = "release"
 opt-level = "s"
 lto = true
 codegen-units = 1

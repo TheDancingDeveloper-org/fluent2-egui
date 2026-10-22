@@ -6,8 +6,9 @@ Pages. The gallery is the only binary the browser downloads, so it is what this 
 ## Method
 
 - Build: `trunk build index.html --release` in `crates/gallery`, trunk 0.21.14, wasm-bindgen
-  0.2.129 (matches `Cargo.lock`), `CARGO_BUILD_JOBS=4`. Trunk runs the wasm through wasm-opt for
-  release builds.
+  0.2.129 (matches `Cargo.lock`), `CARGO_BUILD_JOBS=4`. The gallery's trunk link sets
+  `data-cargo-profile="wasm-release"`, so the wasm is built with that profile. Trunk runs the wasm
+  through wasm-opt for release builds.
 - Sizes: bytes of the emitted `gallery-*_bg.wasm`, raw and `gzip -9` (brotli is not installed
   here, so no brotli figure).
 - Contributors: `twiggy top` and `twiggy dominators` on the baseline build. `cargo bloat` was not
@@ -22,11 +23,14 @@ Pages. The gallery is the only binary the browser downloads, so it is what this 
 | Build | wasm raw | wasm gzip -9 | vs baseline (raw / gzip) |
 |---|---:|---:|---:|
 | Baseline: no `[profile.release]` | 11,808,581 B | 4,832,109 B | — |
-| `opt-level = "s"`, `lto = true`, `codegen-units = 1` (**applied**) | 9,447,086 B | 4,109,368 B | −20.0% / −15.0% |
+| `[profile.wasm-release]`: `opt-level = "s"`, `lto = true`, `codegen-units = 1` (**applied**) | 9,447,086 B | 4,109,368 B | −20.0% / −15.0% |
 | Same with `opt-level = "z"` (not applied) | 9,524,175 B | 3,940,644 B | −19.3% / −18.4% |
 
-The applied profile is in the root `Cargo.toml`. It changes code generation only, so no public API
-moves. Nothing else in the build changed.
+The applied profile is `[profile.wasm-release]` in the root `Cargo.toml`, which inherits `release`.
+The gallery selects it with `data-cargo-profile="wasm-release"` on its trunk link in
+`crates/gallery/index.html`, so only the wasm build uses it. It changes code generation only, so
+no public API moves. `[profile.release]` is unchanged, so native release builds and downstream
+users of the published crates keep their defaults.
 
 `opt-level = "z"` is smaller on the wire: about 169 KB less gzip than `s`. It is not applied: it
 trades runtime speed for size, and the issue does not measure frame cost. Pick it if the budget
@@ -88,9 +92,13 @@ URL. The code paths above are from reading the source, not from a browser run.
 
 ## Decisions and recommendations
 
-**Applied:** the release profile above (`opt-level = "s"`, `lto = true`, `codegen-units = 1`).
-It applies to every release build in the workspace, native included. Native runtime speed and
-release build time were not measured; check them when the next release is cut.
+**Applied:** the `wasm-release` profile above (`opt-level = "s"`, `lto = true`,
+`codegen-units = 1`), selected only by the gallery's trunk build. Native builds keep
+`[profile.release]`, so their speed, build time and output are unchanged.
+
+**CI cost:** the fat LTO and `codegen-units = 1` make the final wasm link of the gallery trunk job
+serial. That may add a few minutes to that job on a cold cache. Job time before and after is not
+measured here; the PR records it.
 
 **Not applied, cheap to consider later:**
 
@@ -111,6 +119,6 @@ without a conscious decision. Pick `opt-level = "z"` only if the budget needs th
 
 - Measure throttled time-to-first-frame in a headless run that waits for the wasm download to
   finish, then a scripted Open and Save pass.
-- Re-measure native release build time and runtime with the profile on.
+- Measure the gallery trunk job's CI time before and after the profile lands.
 - Add the before and after table to the gallery docs and the README defaults, as the issue
   asks, once the budget is agreed.
