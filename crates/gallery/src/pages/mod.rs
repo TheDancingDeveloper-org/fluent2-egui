@@ -30,6 +30,7 @@ mod pieces;
 mod reorder;
 mod ribbon;
 mod rich_text_editor;
+mod row_drag;
 mod shortcuts;
 mod skeleton;
 mod surfaces;
@@ -67,6 +68,7 @@ pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
 pub use rich_text_editor::RichTextEditorPage;
+pub use row_drag::RowDragPage;
 pub use shortcuts::ShortcutsPage;
 pub use skeleton::SkeletonPage;
 pub use surfaces::SurfacesPage;
@@ -127,6 +129,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
         Box::new(RichTextEditorPage::default()),
+        Box::new(RowDragPage::default()),
         Box::new(ShortcutsPage::default()),
         Box::new(SkeletonPage),
         Box::new(SurfacesPage::default()),

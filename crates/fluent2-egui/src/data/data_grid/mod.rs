@@ -12,8 +12,8 @@ mod selection;
 mod state;
 
 use egui::{
-    Align as EguiAlign, CornerRadius, EventFilter, Id, Key, Layout, Pos2, Rect, ScrollArea, Sense, Stroke,
-    Ui, UiBuilder, Vec2,
+    Align as EguiAlign, CornerRadius, EventFilter, Id, Key, Layout, Modifiers, Pos2, Rect, ScrollArea, Sense,
+    Stroke, Ui, UiBuilder, Vec2,
 };
 use std::collections::HashMap;
 
@@ -24,6 +24,7 @@ pub use copy::{rows_to_copy, tsv_field, tsv_rows};
 pub use menu::{ColumnMenuResponse, column_menu};
 pub use state::{ColumnLayout, DataGridState, GridFocus, Selection, SortDirection, SortSpec};
 
+use crate::data::row_drag::{self, RowDrag};
 use crate::data::rows::{all_selected, visible_rows};
 use crate::foundation::focus::paint_focus_ring;
 use crate::theme::{Theme, c};
@@ -152,6 +153,8 @@ pub struct DataGridResponse {
     pub edit_requested: Option<CellCtx>,
     /// Secondary click or Shift+F10. Attach a context menu to this.
     pub context_menu: Option<CellCtx>,
+    /// The row drag this grid started, while it lasts (see [`DataGrid::drag_source`]).
+    pub dragging: Option<RowDrag>,
     /// Secondary click or Shift+F10 on a header cell, by column id (§2.4). Open a menu with
     /// [`column_menu`] in it.
     pub header_context_menu: Option<&'static str>,
@@ -193,6 +196,8 @@ pub struct DataGrid<'a> {
     focus_mode: FocusMode,
     label: Option<String>,
     cell_text: Option<CellText<'a>>,
+    drag_source: bool,
+    drag_label: Option<Box<dyn Fn(usize) -> String + 'a>>,
     scroll_to_row: Option<usize>,
 }
 
@@ -234,6 +239,8 @@ impl<'a> DataGrid<'a> {
             focus_mode: FocusMode::Row,
             label: None,
             cell_text: None,
+            drag_source: false,
+            drag_label: None,
             scroll_to_row: None,
         }
     }
@@ -289,6 +296,25 @@ impl<'a> DataGrid<'a> {
     #[must_use]
     pub fn cell_text(mut self, f: impl Fn(usize, &'static str) -> String + 'a) -> Self {
         self.cell_text = Some(Box::new(f));
+        self
+    }
+
+    /// Let rows be dragged onto a [`DropTarget`](crate::data::row_drag::DropTarget) outside
+    /// the grid (see [`crate::data::row_drag`]). Default `false`.
+    ///
+    /// A drag on a selected row carries every selected row; a drag on any other row selects it
+    /// and carries it alone. Clicks still select; the drag starts past egui's drag threshold.
+    #[must_use]
+    pub fn drag_source(mut self, drag_source: bool) -> Self {
+        self.drag_source = drag_source;
+        self
+    }
+
+    /// Text of the ghost that follows a row drag, from the number of rows, for example
+    /// `|n| format!("{n} torrents")`. Default "1 row" / "3 rows".
+    #[must_use]
+    pub fn drag_label(mut self, f: impl Fn(usize) -> String + 'a) -> Self {
+        self.drag_label = Some(Box::new(f));
         self
     }
 
@@ -496,11 +522,32 @@ impl<'a> DataGrid<'a> {
                     let id = row_id(row);
                     // The row's own response goes first, so the cells and checkbox drawn after
                     // it take clicks in their own rects.
-                    let row_hit = ui.interact(
-                        row_rect.intersect(body),
-                        grid_key.with(("row", id.0)),
-                        Sense::CLICK,
-                    );
+                    let row_sense = if self.drag_source && ui.is_enabled() {
+                        Sense::click_and_drag()
+                    } else {
+                        Sense::CLICK
+                    };
+                    let row_hit =
+                        ui.interact(row_rect.intersect(body), grid_key.with(("row", id.0)), row_sense);
+                    if row_hit.drag_started() {
+                        clicked = true;
+                        if !state.selection.selected.contains(&id) {
+                            reports.selection_changed |=
+                                selection::click(state, &rows, row, 0, Modifiers::NONE);
+                        }
+                        let dragged: Vec<RowId> = if state.selection.selected.contains(&id) {
+                            state.selection.selected.iter().copied().collect()
+                        } else {
+                            vec![id]
+                        };
+                        egui::DragAndDrop::set_payload(
+                            ui.ctx(),
+                            RowDrag {
+                                source: self.id,
+                                rows: dragged,
+                            },
+                        );
+                    }
                     let column_at = row_hit
                         .interact_pointer_pos()
                         .map_or(0, |pos| column_at(pos.x - origin.x, &offsets));
@@ -734,6 +781,15 @@ impl<'a> DataGrid<'a> {
             });
 
         let (response, reports) = output.inner;
+        let dragging = RowDrag::current(ui.ctx()).filter(|drag| drag.source == self.id);
+        if let Some(drag) = &dragging {
+            let count = drag.rows.len();
+            let text = self
+                .drag_label
+                .as_ref()
+                .map_or_else(|| row_drag::default_drag_label(count), |label| label(count));
+            row_drag::paint_ghost(ui, &text);
+        }
         DataGridResponse {
             response,
             sort_changed: events.sort_changed,
@@ -742,6 +798,7 @@ impl<'a> DataGrid<'a> {
             activated: reports.activated,
             edit_requested: reports.edit_requested,
             context_menu: reports.context_menu,
+            dragging,
             header_context_menu: events.context_menu,
             columns_reordered: events.reordered,
             copied: reports.copied,
@@ -909,7 +966,7 @@ impl DataGridSize {
 }
 
 /// Scroll-state id from a caller's salt. Hashed to a `u64` so any `Hash` value works.
-fn salt_id(salt: impl std::hash::Hash) -> Id {
+pub(crate) fn salt_id(salt: impl std::hash::Hash) -> Id {
     use std::hash::Hasher;
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     salt.hash(&mut hasher);
