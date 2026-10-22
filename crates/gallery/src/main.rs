@@ -44,6 +44,8 @@ async fn start_web() -> Result<(), String> {
         .ok_or("no #the_canvas_id element")?
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .map_err(|_| "#the_canvas_id is not a canvas")?;
+    // Ctrl+F opens the gallery's find bar, not the browser's find.
+    fluent2_egui::data::find::capture_browser_find();
     eframe::WebRunner::new()
         .start(
             canvas,

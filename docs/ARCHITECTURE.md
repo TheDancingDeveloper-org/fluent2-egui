@@ -142,6 +142,12 @@ default build stays a Fluent library with no extra dependencies.
   with the pure-Rust regex engine, so it builds for wasm. Diff and markdown views reuse the
   highlighter. Spec: `docs/specs/code-view.md`. The gallery turns it on, and `tests/code_view.rs`
   is `#![cfg(feature = "highlight")]`.
+- `web-find`: lets `data::find::capture_browser_find` cancel the browser's own find on Ctrl+F
+  and Cmd+F (a capturing `keydown` listener through `web-sys`), so the `FindBar` gets the key on
+  wasm. No effect on native targets. `data::find` itself (`FindBar`, `FindState`, the
+  `FindProvider` trait) is always built; views highlight with `FindState::layout_job` and scroll
+  with `List::scroll_to_row`, `DataGrid::scroll_to_row` or `Response::scroll_to_me`. The gallery
+  turns it on.
 
 ## Gates (run before every commit; CI runs the same)
 

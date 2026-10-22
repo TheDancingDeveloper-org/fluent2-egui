@@ -18,6 +18,7 @@ mod docking;
 mod drawer;
 mod editable_list;
 mod file_dialog;
+mod find;
 mod html_view;
 mod icons;
 mod markdown;
@@ -52,6 +53,7 @@ pub use docking::DockingPage;
 pub use drawer::DrawerPage;
 pub use editable_list::EditableListPage;
 pub use file_dialog::FileDialogPage;
+pub use find::FindPage;
 pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
@@ -101,6 +103,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DrawerPage::default()),
         Box::new(EditableListPage::default()),
         Box::new(FileDialogPage::default()),
+        Box::new(FindPage::default()),
         Box::new(HtmlPage::default()),
         Box::new(IconsPage::default()),
         Box::new(VariableListPage::default()),
