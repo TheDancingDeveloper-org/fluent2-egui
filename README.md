@@ -114,6 +114,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 
 | type | Fluent 2 | feature | gallery |
 |---|---|---|---|
+| `Accordion`, `AccordionItem`, `AccordionSize`, `ExpandIconPosition`, `AccordionResponse` | Accordion | | Accordion |
 | `Card`, `CardHeader` | Card | | Surfaces |
 | `CommandPalette` | egui-only (command palette) | | Command palette |
 | `Dialog` | Dialog | | Surfaces |
