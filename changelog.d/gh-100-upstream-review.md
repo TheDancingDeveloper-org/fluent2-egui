@@ -1,0 +1,1 @@
+- Weekly upstream review (#100): refresh `Cargo.lock` to latest compatible patch/minor releases (egui stays 0.36); bump unchanged upstream pins for egui, fluentui-system-icons, inter and deckcraft.
