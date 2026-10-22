@@ -83,6 +83,7 @@ pub struct List<'a> {
     estimate: Option<f32>,
     label: Option<String>,
     row_label: Option<Box<dyn Fn(usize) -> String + 'a>>,
+    scroll_to_row: Option<usize>,
 }
 
 /// Per-list memory of the variable-height mode (§6.1): measured heights and the scroll anchor.
@@ -154,7 +155,16 @@ impl<'a> List<'a> {
             estimate: None,
             label: None,
             row_label: None,
+            scroll_to_row: None,
         }
+    }
+
+    /// Scroll row `index` into the middle of the view this frame, for example to show a find
+    /// match (`data::find`). Out-of-range indices are ignored.
+    #[must_use]
+    pub fn scroll_to_row(mut self, index: usize) -> Self {
+        self.scroll_to_row = Some(index);
+        self
     }
 
     /// Accessible text of each row, from its index (WI-1848).
@@ -245,6 +255,7 @@ impl<'a> List<'a> {
             selection_mode: mode,
             label,
             estimate,
+            scroll_to_row,
             ..
         } = self;
         let ids_fn = |index: usize| row_id.as_ref().map_or(RowId(index as u64), |f| f(index));
@@ -342,6 +353,14 @@ impl<'a> List<'a> {
                 ui.scroll_to_rect(
                     Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, geometry.height(index))),
                     None,
+                );
+            }
+
+            if let Some(index) = scroll_to_row.filter(|&index| index < row_count) {
+                let top = origin.y + geometry.top(index);
+                ui.scroll_to_rect(
+                    Rect::from_min_size(Pos2::new(origin.x, top), Vec2::new(width, geometry.height(index))),
+                    Some(egui::Align::Center),
                 );
             }
 

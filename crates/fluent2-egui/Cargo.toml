@@ -17,6 +17,8 @@ log = "0.4"
 fluent2-tokens = { workspace = true }
 fluent2-icons = { workspace = true }
 serde = { version = "1", optional = true, features = ["derive"] }
+# LayoutStore keeps each registered state as a JSON value (MIT OR Apache-2.0, builds for wasm).
+serde_json = { version = "1", optional = true }
 vte = { version = "0.15", optional = true }
 unicode-width = { version = "0.2", optional = true }
 # Native and browser file dialogs (MIT). `xdg-portal` keeps Linux free of GTK.
@@ -35,8 +37,9 @@ default = ["bundled-font"]
 # every non-Windows target, and Windows without Segoe UI. Adds about 830 KB. Turn it off with
 # `default-features = false` to keep egui's default face instead.
 bundled-font = []
-# Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends).
-serde = ["dep:serde"]
+# Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends),
+# and `platform::LayoutStore`, which saves them under keys as one JSON document.
+serde = ["dep:serde", "dep:serde_json"]
 # TerminalView and its VT grid model (`data::terminal`). Not a Fluent component, so off by
 # default; it adds the `vte` parser. See docs/ARCHITECTURE.md "Optional features".
 terminal = ["dep:vte", "dep:unicode-width"]
@@ -60,6 +63,12 @@ markdown = ["dep:pulldown-cmark"]
 # links and images through app policies, a few inline styles) tokenised by `html5gum`. Built for
 # HTML mail. Not a Fluent component, so off by default.
 html = ["dep:html5gum"]
+# Lets `data::find::capture_browser_find` cancel the browser's own find on Ctrl+F (wasm only), so
+# the FindBar gets the key. No effect on native targets.
+web-find = []
+# LineChart (`controls::LineChart`, `ChartSeries`, `TimeRange`): a multi-series time-series chart
+# with axes, legend, hover read-out and time-range chips, painted with egui only. Off by default.
+chart = []
 # `From` conversions between the calendar types (`CalendarDate`, `TimeOfDay`) and `chrono`'s
 # `NaiveDate` and `NaiveTime`.
 chrono = ["dep:chrono"]
@@ -81,7 +90,8 @@ pollster = { version = "0.4", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 # FileDropZone reads a dropped file's size before reading it (already in the tree through egui).
 # The URL hash (`platform::hash_state`) reads and replaces `location.hash` through History.
-web-sys = { version = "0.3", features = ["Blob", "File", "History", "Location", "Window"] }
+# The capturing keydown listener of `web-find` uses wasm-bindgen (already in the tree through eframe).
+web-sys = { version = "0.3", features = ["Blob", "File", "EventTarget", "History", "KeyboardEvent", "Location", "Window"] }
 wasm-bindgen = "0.2"
 
 [target.'cfg(windows)'.dependencies]

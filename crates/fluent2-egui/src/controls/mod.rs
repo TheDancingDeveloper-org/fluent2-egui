@@ -23,7 +23,7 @@ mod badge;
 mod breadcrumb;
 pub(crate) mod button;
 mod calendar;
-mod checkbox;
+pub(crate) mod checkbox;
 mod combobox;
 mod compound_button;
 mod date_picker;
@@ -32,10 +32,14 @@ mod dropdown;
 mod field;
 mod file_card;
 mod input;
+#[cfg(feature = "chart")]
+mod line_chart;
 mod link;
 mod menu_button;
 mod mini_bars;
 mod pager;
+mod piece_bar;
+mod piece_map;
 mod progress_bar;
 mod radio;
 mod rich_text_editor;
@@ -134,6 +138,17 @@ pub use input::{
     InputAppearance,
     accent_open_for_test,
 };
+#[cfg(feature = "chart")]
+#[rustfmt::skip]
+pub use line_chart::{
+    ChartHover,
+    ChartSeries,
+    LineChart,
+    LineChartResponse,
+    TimeRange,
+    bytes_per_second,
+    time_ago,
+};
 pub use link::Link;
 pub use menu_button::MenuButton;
 pub use mini_bars::MiniBars;
@@ -145,6 +160,12 @@ pub use pager::{
     page_count,
     page_window,
 };
+#[rustfmt::skip]
+pub use piece_bar::{
+    PieceBar,
+    PieceState,
+};
+pub use piece_map::PieceMap;
 #[rustfmt::skip]
 pub use progress_bar::{
     ProgressBar,

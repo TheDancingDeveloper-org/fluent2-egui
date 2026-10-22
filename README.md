@@ -89,10 +89,12 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `FileCard` | Attachment (file card) | | Surfaces |
 | `Input` | Input | | Basic controls |
 | `InteractionTag` | InteractionTag | | Basic controls |
+| `LineChart` (`ChartSeries`, `TimeRange`, `ChartHover`, `LineChartResponse`) | egui-only (charts, `chart` feature) | | Charts |
 | `Link` | Link | | Basic controls |
 | `MenuButton` | MenuButton | | Basic controls |
 | `Pager` | egui-only (pagination) | | Pager |
 | `Persona` | Persona | | Avatars |
+| `PieceBar`, `PieceMap` | egui-only (charts) | | Charts |
 | `ProgressBar` | ProgressBar | | Basic controls |
 | `RadioGroup` | RadioGroup | | Basic controls |
 | `RichTextEditor` (`RichText`, `CharStyle`, `BlockKind`, `InlineFormat`, `RichTextEditorResponse`) | egui-only (rich text compose) | | Rich text editor |
@@ -125,6 +127,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `MenuItem`, `context_menu`, `submenu` | Menu | | Surfaces |
 | `MessageBar` | MessageBar | | Surfaces |
 | `Popover` | Popover | | Surfaces |
+| `ShortcutOverlay`, `foundation::shortcuts::Shortcuts` | egui-only (shortcut registry and help) | | Shortcuts |
 | `TabList` | TabList | | Surfaces |
 | `TabStrip` | egui-only (document tabs) | | Tab strip |
 | `Toaster` | Toast | | Surfaces |
@@ -136,6 +139,8 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `code::CodeView` | egui-only (code view) | `highlight` | Code view |
 | `DataGrid` | DataGrid, Table | | DataGrid |
 | `diff::DiffView` | egui-only (diff) | `diff` | Diff |
+| `find::FindBar` (`FindState`, `FindProvider`, `FindItems`, `TextLines`) | egui-only (in-app find, Ctrl+F) | | Find |
+| `editable_list::EditableList` | egui-only (inline list editing) | | Editable list |
 | `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
 | `list::List` | List | | List rows |
 | `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
@@ -152,6 +157,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `office::backstage::Backstage` | File page | | Backstage |
 | `office::command_bar::CommandBar` | command bar | | — |
 | `office::keytips` | KeyTips and F6 region cycling | | Ribbon |
+| `office::menu_bar::MenuBar` | classic menu bar (File, Edit, …) with Alt, F10 and mnemonics | | Menu bar |
 | `office::qat::Qat` | quick access toolbar | | Ribbon |
 | `office::ribbon::Ribbon` | ribbon with groups, galleries and adaptive scaling | | Ribbon |
 | `platform::file_dialog::FileDialog` | async open and save dialogs | `file-dialog` | File dialog |

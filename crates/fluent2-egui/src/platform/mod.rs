@@ -12,6 +12,11 @@ pub mod file_dialog;
 #[cfg(feature = "file-dialog")]
 pub mod file_drop;
 pub mod hash_state;
+#[cfg(feature = "serde")]
+pub mod layout_store;
+
+#[cfg(feature = "serde")]
+pub use layout_store::LayoutStore;
 
 #[cfg(not(any(
     all(feature = "system-preferences", windows),
