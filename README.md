@@ -93,6 +93,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `MenuButton` | MenuButton | | Basic controls |
 | `Pager` | egui-only (pagination) | | Pager |
 | `Persona` | Persona | | Avatars |
+| `PieceBar`, `PieceMap` | egui-only (charts) | | Charts |
 | `ProgressBar` | ProgressBar | | Basic controls |
 | `RadioGroup` | RadioGroup | | Basic controls |
 | `RichTextEditor` (`RichText`, `CharStyle`, `BlockKind`, `InlineFormat`, `RichTextEditorResponse`) | egui-only (rich text compose) | | Rich text editor |

@@ -36,6 +36,8 @@ mod link;
 mod menu_button;
 mod mini_bars;
 mod pager;
+mod piece_bar;
+mod piece_map;
 mod progress_bar;
 mod radio;
 mod rich_text_editor;
@@ -145,6 +147,12 @@ pub use pager::{
     page_count,
     page_window,
 };
+#[rustfmt::skip]
+pub use piece_bar::{
+    PieceBar,
+    PieceState,
+};
+pub use piece_map::PieceMap;
 #[rustfmt::skip]
 pub use progress_bar::{
     ProgressBar,

@@ -21,6 +21,7 @@ mod html_view;
 mod icons;
 mod markdown;
 mod pager;
+mod pieces;
 mod reorder;
 mod ribbon;
 mod rich_text_editor;
@@ -50,6 +51,7 @@ pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
 pub use pager::PagerPage;
+pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
 pub use rich_text_editor::RichTextEditorPage;
@@ -95,6 +97,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
         Box::new(PagerPage::default()),
+        Box::new(PiecesPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
         Box::new(RichTextEditorPage::default()),
