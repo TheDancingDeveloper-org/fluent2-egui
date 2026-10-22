@@ -314,6 +314,10 @@ fn theme_id() -> egui::Id {
 /// Both of egui's built-in themes receive the same visuals, so a later egui theme switch does
 /// not drop the Fluent mapping. High contrast is treated as egui's dark theme when its
 /// `neutral_background_1` is dark.
+///
+/// Read-only text is selectable across labels: a drag or Shift+arrows select it and Ctrl+C
+/// copies it. Install turns that on in both egui themes, so an app that turned it off does not
+/// lose it here. Lists and grids switch it off per cell, where a click selects a row.
 pub fn install(ctx: &egui::Context, theme: &Theme) {
     text::install_system_fonts(ctx);
     text::install_text_styles(ctx);
@@ -323,6 +327,8 @@ pub fn install(ctx: &egui::Context, theme: &Theme) {
         ctx.style_mut_of(egui_theme, |style| {
             style.visuals = visuals.clone();
             style.spacing = spacing.clone();
+            style.interaction.selectable_labels = true;
+            style.interaction.multi_widget_text_select = true;
         });
     }
     ctx.set_theme(egui_preference(theme));
