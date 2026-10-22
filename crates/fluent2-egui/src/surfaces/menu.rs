@@ -211,6 +211,9 @@ impl Widget for MenuItem<'_> {
             // `on_hover_text` only shows on an enabled widget. This reason is for a disabled item.
             response = response.on_disabled_hover_text(reason);
         }
+        if ui.is_enabled() && take_focus_request(ui.ctx()) {
+            response.request_focus();
+        }
         if response.clicked() && self.closes_menu {
             ui.close();
         }
@@ -273,6 +276,26 @@ impl Widget for MenuItem<'_> {
         });
         response
     }
+}
+
+fn focus_request_id() -> Id {
+    Id::new("fluent2_menu_focus_first_item")
+}
+
+/// Ask the next enabled [`MenuItem`] drawn this frame to take keyboard focus. The menu bar
+/// uses it when a menu opens from the keyboard.
+pub(crate) fn focus_first_item(ctx: &egui::Context) {
+    ctx.data_mut(|data| data.insert_temp(focus_request_id(), true));
+}
+
+/// Drop a [`focus_first_item`] request that no item took.
+pub(crate) fn cancel_focus_request(ctx: &egui::Context) {
+    ctx.data_mut(|data| data.remove::<bool>(focus_request_id()));
+}
+
+fn take_focus_request(ctx: &egui::Context) -> bool {
+    ctx.data_mut(|data| data.remove_temp::<bool>(focus_request_id()))
+        .unwrap_or(false)
 }
 
 /// A menu row that opens a submenu. Wraps [`Ui::menu_button`].
@@ -412,7 +435,7 @@ fn first_shadow(theme: &Theme) -> egui::Shadow {
         .unwrap_or(egui::Shadow::NONE)
 }
 
-fn menu_contents_style(style: &mut egui::Style) {
+pub(crate) fn menu_contents_style(style: &mut egui::Style) {
     egui::menu::menu_style(style);
     style.spacing.item_spacing = Vec2::ZERO;
     style.spacing.button_padding = Vec2::new(H_PADDING, 0.0);

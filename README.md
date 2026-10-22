@@ -156,6 +156,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `office::backstage::Backstage` | File page | | Backstage |
 | `office::command_bar::CommandBar` | command bar | | — |
 | `office::keytips` | KeyTips and F6 region cycling | | Ribbon |
+| `office::menu_bar::MenuBar` | classic menu bar (File, Edit, …) with Alt, F10 and mnemonics | | Menu bar |
 | `office::qat::Qat` | quick access toolbar | | Ribbon |
 | `office::ribbon::Ribbon` | ribbon with groups, galleries and adaptive scaling | | Ribbon |
 | `platform::file_dialog::FileDialog` | async open and save dialogs | `file-dialog` | File dialog |
