@@ -1,4 +1,5 @@
-//! Data views: DataGrid, TreeView, List, NavigationView, SplitView and the Reorder drag helper
+//! Data views: DataGrid, TreeView, List, NavigationView, SplitView, the Reorder drag helper and row
+//! drag onto external targets
 //! (see `docs/specs/data-views.md`), TerminalView behind the `terminal` feature, MarkdownView
 //! behind `markdown`, DiffView behind `diff` and CodeView behind `highlight`.
 
@@ -14,6 +15,7 @@ pub mod list;
 pub mod markdown;
 pub mod nav_view;
 pub mod reorder;
+pub mod row_drag;
 pub(crate) mod rows;
 pub mod split_view;
 #[cfg(feature = "terminal")]
@@ -48,6 +50,14 @@ pub use reorder::{
     ReorderMove,
     ReorderResponse,
     Slot,
+};
+#[rustfmt::skip]
+pub use row_drag::{
+    DropChoice,
+    DropTarget,
+    DropTargetResponse,
+    RowDrag,
+    RowDrop,
 };
 #[rustfmt::skip]
 pub use split_view::{

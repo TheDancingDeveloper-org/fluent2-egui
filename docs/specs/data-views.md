@@ -325,6 +325,26 @@ linear search of visible rows). If found, the hint updates. If not found, focus 
 `min(row_index_hint, row_count − 1)`. Selected ids that no longer exist stay in the set; the
 app prunes them if it wants to. This is the only lookup cost of D3.
 
+### 3.5 Drag rows onto an external target (GH #112, 2026-10-22)
+
+`DataGrid::drag_source(true)` lets rows be dragged out of the grid; `data::row_drag` holds the
+rest. Past egui's drag threshold a drag on a selected row carries every selected row (ascending
+`RowId`); a drag on an unselected row selects it and carries it alone. The payload is a
+`RowDrag { source, rows }` in egui's `DragAndDrop`, so egui ends it on release and on Escape.
+A ghost in `brand_background` / `neutral_foreground_on_brand` follows the pointer with
+`drag_label(|n| …)` text (default "3 rows"). `DataGridResponse::dragging` reports the drag.
+
+`DropTarget::new(&response)` turns any drawn widget (a sidebar label, a nav item) into a target.
+Under a drag an accepting target gets a `brand_background_2` fill and a 2 pt
+`compound_brand_stroke` border; a refusing one (`accepts(false)` or a disabled `Ui`) shows
+`CursorIcon::NotAllowed` and takes no drop. Release reports a `RowDrop`; nothing changes app
+data. `source(id_salt)` limits a target to one grid.
+
+Keyboard alternative: drag has no keyboard form, so the app opens a menu from
+`DataGridResponse::context_menu` (secondary click, Shift+F10) and lists the same targets with
+`drop_menu(ui, "Move to", &choices)` or `drop_choices`. Refusing targets are disabled entries.
+The app builds the `RowDrop` with `MoveSource::Keyboard` from the selection.
+
 ## 4. Accessibility
 
 AccessKit nodes via `ctx.accesskit_node_builder` (rule 8). Verify the exact names in the pinned
