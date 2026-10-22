@@ -78,6 +78,10 @@ one test file. Do not reorganise folders as part of a component item.
   brand ramp, not any Office product colour.
 - `theme::install(ctx, &theme)` writes egui `Visuals` and `Spacing` and stores the `Theme` in
   `ctx.data`. `Theme::get(ctx)` reads it back, falling back to `Theme::light(default)`.
+- `install` turns on egui's text selection in both egui themes. Read-only text (labels in cards,
+  detail panes, markdown and HTML views) can be selected with the mouse or Shift+arrows across
+  labels, and Ctrl+C copies it. Lists and grids switch selection off per cell, where a click
+  selects a row. `tests/text_selection.rs` covers it.
 - Field names mirror Fluent token names in snake_case (`colorNeutralForeground1` becomes
   `color.neutral_foreground_1`), so a token can be found in Fluent's documentation by name.
 

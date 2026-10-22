@@ -90,5 +90,8 @@ zbus = { version = "5", optional = true, default-features = false, features = ["
 
 [dev-dependencies]
 egui_kittest = "0.36"
+# Text layout needs a font: without egui's default fonts every galley is empty and has no size,
+# so selection tests (tests/text_selection.rs) could not drag across glyphs.
+egui = { workspace = true, features = ["default_fonts"] }
 # Round-trips the serde state in tests (the `serde` feature).
 serde_json = "1"
