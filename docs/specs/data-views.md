@@ -262,6 +262,33 @@ means rows in the current viewport only (item §2); rows never shown are not mea
 measured by calling the cell closure in a sizing pass (`UiBuilder::new().sizing_pass()
 .invisible()`) and reading `min_rect().width()`. The header width includes the sort icon slot.
 
+### 2.4 Column layout (issue #109)
+
+`DataGridState::layout` is a `ColumnLayout { order: Vec<String>, hidden: BTreeSet<String> }`,
+serde-gated like `widths` and `#[serde(default)]`, so state saved before it existed still loads.
+Each frame the grid applies it before anything else: hidden columns drop out and the rest take
+`order`, then definition order for ids `order` does not name (a column added by a new app version
+shows, last). Ids that no longer name a column are ignored. Everything after that, `CellCtx::
+column_index`, focus and the AccessKit `column_index` of headers and cells included, is in
+display order. `Column::required(true)` columns ignore `hidden`.
+
+- **Header menu.** A secondary click on a header cell, or Shift+F10 on a focused one, sets
+  `DataGridResponse::header_context_menu` to the column id. A secondary click never sorts. The
+  app opens a menu and draws `column_menu(ui, columns, &mut state, Some(id))` in it: one
+  `MenuItemCheckBox` per non-required column in display order (checked = shown), a divider,
+  "Resize to fit" (resizable columns only; it sets `state.autofit_request`, which the next
+  `show` takes and autofits as §2.3) and "Reset columns" (clears the layout and `widths`).
+- **Drag to reorder.** Dragging a header cell past egui's drag threshold shows a 2 pt
+  `brand_stroke_1` insertion line at the nearest column boundary; dropping moves the column
+  there. A drag never sorts. Resize handles keep priority at column edges.
+- **Keyboard.** Alt+Left / Alt+Right on a focused header cell move its column one place; focus
+  follows it. Both set `columns_reordered`.
+
+**Frame budget.** A 10 000 × 20 grid, scrolling each frame, lays out in under 4 ms per frame in a
+release build on a desktop CPU (only visible cells are laid out; applying the layout is O(columns²)
+on 20 columns). `tests/data_grid_layout.rs` asserts under 100 ms per frame, a bound that holds
+for unoptimised builds on a loaded CI runner, so a regression to per-row work fails it.
+
 ## 3. Selection and keyboard
 
 ### 3.1 Modes

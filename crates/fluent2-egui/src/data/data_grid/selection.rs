@@ -45,6 +45,8 @@ pub(super) struct KeyOutcome {
     pub resize: f32,
     /// Ctrl+Enter on a header cell: autofit it (§2.3).
     pub autofit: bool,
+    /// Alt+Left or Alt+Right on a header cell: move its column one place (§2.4).
+    pub reorder: isize,
     /// Left or Right in row focus: scroll the grid by this many points (signed).
     pub scroll_x: f32,
     /// The selection changed.
@@ -146,6 +148,9 @@ pub(super) fn handle_key(
                 };
                 move_to(state, layout, row, target, column, extend, &mut out);
             }
+        }
+        Key::ArrowLeft | Key::ArrowRight if row.is_none() && modifiers.alt => {
+            out.reorder = if key == Key::ArrowLeft { -1 } else { 1 };
         }
         Key::ArrowLeft | Key::ArrowRight if row.is_none() && extend.ctrl => {
             out.resize = if key == Key::ArrowLeft {
