@@ -1,20 +1,47 @@
-//! Sparkline and MiniBars: live and degenerate series. Switch the theme in the header to see
-//! them in light, dark and high contrast.
+//! LineChart, Sparkline and MiniBars: a 6 h speed graph, live and degenerate series. Switch
+//! the theme in the header to see them in light, dark and high contrast.
 
-use fluent2_egui::controls::{Button, MiniBars, Sparkline};
+use fluent2_egui::controls::{
+    Button, ChartSeries, LineChart, MiniBars, Sparkline, TimeRange, bytes_per_second,
+};
 
 use super::Page;
 
 pub struct ChartsPage {
     series: Vec<f32>,
     tick: u32,
+    speed: [ChartSeries; 2],
+    range: TimeRange,
+}
+
+/// Six hours at 1 Hz.
+const SPEED_SAMPLES: u32 = 21_600;
+
+/// Deterministic download and upload speeds (bytes per second) for second `t`.
+fn speed_at(t: u32) -> (f32, f32) {
+    let x = t as f32;
+    let wave = (x / 900.0).sin() * 0.5 + 0.5;
+    let ripple = (x / 37.0).sin() * 0.15 + 0.85;
+    let down = 4.0e6 * wave * ripple;
+    // A stall of two minutes every hour.
+    let down = if t % 3600 < 120 { 0.0 } else { down };
+    (down, 2.5e5 + 3.0e5 * (x / 410.0).cos().abs())
 }
 
 impl Default for ChartsPage {
     fn default() -> Self {
+        let mut down = ChartSeries::new("Download", SPEED_SAMPLES as usize).fill(true);
+        let mut up = ChartSeries::new("Upload", SPEED_SAMPLES as usize);
+        for t in 0..SPEED_SAMPLES {
+            let (d, u) = speed_at(t);
+            down.push(f64::from(t), d);
+            up.push(f64::from(t), u);
+        }
         let mut page = Self {
             series: Vec::new(),
             tick: 0,
+            speed: [down, up],
+            range: TimeRange::SixHours,
         };
         for _ in 0..24 {
             page.step();
@@ -50,8 +77,16 @@ impl Page for ChartsPage {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.heading("LineChart");
+        ui.label("Download and upload at 1 Hz over 6 h. Hover for values; the chips pick the range.");
+        ui.add_space(8.0);
+        LineChart::new("speed", &self.speed)
+            .label("Speed")
+            .value_format(bytes_per_second)
+            .show(ui, &mut self.range);
+        ui.add_space(16.0);
         ui.heading("Sparkline and MiniBars");
-        ui.label("Small charts for cells and tiles. Larger charts belong to egui_plot in the app.");
+        ui.label("Small charts for cells and tiles, without axes.");
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             ui.label("Requests per minute");

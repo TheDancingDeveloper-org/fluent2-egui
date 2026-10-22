@@ -89,6 +89,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `FileCard` | Attachment (file card) | | Surfaces |
 | `Input` | Input | | Basic controls |
 | `InteractionTag` | InteractionTag | | Basic controls |
+| `LineChart` (`ChartSeries`, `TimeRange`, `ChartHover`, `LineChartResponse`) | egui-only (charts, `chart` feature) | | Charts |
 | `Link` | Link | | Basic controls |
 | `MenuButton` | MenuButton | | Basic controls |
 | `Pager` | egui-only (pagination) | | Pager |
