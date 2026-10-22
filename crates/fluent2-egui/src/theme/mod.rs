@@ -201,7 +201,7 @@ impl Theme {
     pub fn light(brand: BrandRamp) -> Self {
         Self {
             kind: ThemeKind::Light,
-            color: fluent2_tokens::light(&brand),
+            color: light_aa_overrides(fluent2_tokens::light(&brand)),
             shadow: fluent2_tokens::generated::web_light::SHADOWS,
             brand,
             chrome: ChromeMetrics::default(),
@@ -273,17 +273,30 @@ impl Default for Theme {
 /// `neutral_foreground_2_hover` instead. Fluent's dark `status_danger_foreground_inverted` is
 /// the fill's own red (177,14,28) on `status_danger_background_3` (197,15,31), so a filled
 /// danger Badge is unreadable (issue #124). It takes white, about 6:1 on that fill.
-/// Light and high contrast keep Fluent's values.
+/// High contrast keeps Fluent's values.
 fn dark_aa_overrides(mut color: AliasColors) -> AliasColors {
     color.status_danger_foreground_1 = color.status_danger_foreground_3;
-    color.status_danger_foreground_inverted = Rgba {
+    color.status_danger_foreground_inverted = white();
+    color.neutral_foreground_2_brand_hover = color.neutral_foreground_2_hover;
+    color
+}
+
+/// Light-theme departure from Fluent's tokens (issue #124). Fluent's light
+/// `status_danger_foreground_inverted` is (220,98,109) on `status_danger_background_3`
+/// (197,15,31), about 1.7:1, so a filled danger Badge's label fails AA. It takes white,
+/// about 6:1 on that fill, as the dark theme does.
+fn light_aa_overrides(mut color: AliasColors) -> AliasColors {
+    color.status_danger_foreground_inverted = white();
+    color
+}
+
+fn white() -> Rgba {
+    Rgba {
         r: 255,
         g: 255,
         b: 255,
         a: 255,
-    };
-    color.neutral_foreground_2_brand_hover = color.neutral_foreground_2_hover;
-    color
+    }
 }
 
 /// `Rgba` as an unmultiplied [`egui::Color32`].

@@ -60,34 +60,37 @@ fn contrast(a: Color32, b: Color32) -> f64 {
 }
 
 #[test]
-fn filled_danger_badge_text_meets_aa_on_its_fill_in_dark_mode() {
-    let theme = Theme::dark(FLUENT);
-    let fill = c(theme.color.status_danger_background_3);
-    let painted = shapes(&theme, |ui| {
-        ui.add(
-            Badge::new("Failed")
-                .appearance(BadgeAppearance::Filled)
-                .color(BadgeColor::Danger),
+fn filled_danger_badge_text_meets_aa_on_its_fill_in_both_themes() {
+    for theme in [Theme::light(FLUENT), Theme::dark(FLUENT)] {
+        let fill = c(theme.color.status_danger_background_3);
+        let painted = shapes(&theme, |ui| {
+            ui.add(
+                Badge::new("Failed")
+                    .appearance(BadgeAppearance::Filled)
+                    .color(BadgeColor::Danger),
+            );
+        });
+
+        assert!(
+            painted
+                .iter()
+                .any(|shape| matches!(shape, Shape::Rect(r) if r.fill == fill)),
+            "the badge paints its danger fill {fill:?} in {:?}",
+            theme.kind,
         );
-    });
-
-    assert!(
-        painted
+        let text = painted
             .iter()
-            .any(|shape| matches!(shape, Shape::Rect(r) if r.fill == fill)),
-        "the badge paints its danger fill {fill:?}",
-    );
-    let text = painted
-        .iter()
-        .find_map(|shape| match shape {
-            Shape::Text(t) if t.galley.text() == "Failed" => Some(t.fallback_color),
-            _ => None,
-        })
-        .unwrap_or_else(|| panic!("the badge paints its label \"Failed\""));
+            .find_map(|shape| match shape {
+                Shape::Text(t) if t.galley.text() == "Failed" => Some(t.fallback_color),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("the badge paints its label \"Failed\" in {:?}", theme.kind));
 
-    let ratio = contrast(text, fill);
-    assert!(
-        ratio >= 4.5,
-        "filled danger badge text {text:?} on {fill:?} is {ratio:.2}:1, below 4.5:1 (dark)",
-    );
+        let ratio = contrast(text, fill);
+        assert!(
+            ratio >= 4.5,
+            "filled danger badge text {text:?} on {fill:?} is {ratio:.2}:1, below 4.5:1 ({:?})",
+            theme.kind,
+        );
+    }
 }
