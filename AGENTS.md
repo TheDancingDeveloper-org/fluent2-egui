@@ -20,6 +20,18 @@ module layout, the component API, theming, testing and gates.
    (`land-pr`, or `gh pr merge --auto`), never by rebasing a queued PR. See
    [`docs/ci.md`](docs/ci.md).
 
+## Before you push
+
+1. **Gallery screenshots.** The required `gallery-screenshots` check fails if a change adds or
+   alters a gallery page (`crates/gallery/`, `gallery/`) without updating `docs/images/gallery/*.png`.
+   Run `CARGO_BUILD_JOBS=4 scripts/gallery-screenshots.sh --update` and commit only the PNGs that
+   changed. Check that each image change is intended. If the images look wrong because of a bug on
+   `main`, stop and report rather than committing them.
+2. **Stale or conflicting branches.** Merge `origin/main` into the branch and push normally. Don't
+   rebase or force-push; the merge queue rebases on landing.
+3. **Shared registration lists** (README component index, `mod.rs`, `Cargo.toml` features) conflict
+   often. Keep entries one per line, in sorted order.
+
 ## Rules that are never broken
 
 - **Language:** the library and everything that ships or builds into it is Rust. Dev-only
