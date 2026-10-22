@@ -16,6 +16,7 @@ mod date_time;
 mod diff;
 mod docking;
 mod drawer;
+mod editable_list;
 mod file_dialog;
 mod html_view;
 mod icons;
@@ -48,6 +49,7 @@ pub use date_time::DateTimePage;
 pub use diff::DiffPage;
 pub use docking::DockingPage;
 pub use drawer::DrawerPage;
+pub use editable_list::EditableListPage;
 pub use file_dialog::FileDialogPage;
 pub use html_view::HtmlPage;
 pub use icons::IconsPage;
@@ -95,6 +97,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DiffPage::default()),
         Box::new(DockingPage::default()),
         Box::new(DrawerPage::default()),
+        Box::new(EditableListPage::default()),
         Box::new(FileDialogPage::default()),
         Box::new(HtmlPage::default()),
         Box::new(IconsPage::default()),

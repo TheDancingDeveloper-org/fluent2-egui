@@ -139,6 +139,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `code::CodeView` | egui-only (code view) | `highlight` | Code view |
 | `DataGrid` | DataGrid, Table | | DataGrid |
 | `diff::DiffView` | egui-only (diff) | `diff` | Diff |
+| `editable_list::EditableList` | egui-only (inline list editing) | | Editable list |
 | `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
 | `list::List` | List | | List rows |
 | `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
