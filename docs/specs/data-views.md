@@ -262,6 +262,33 @@ means rows in the current viewport only (item §2); rows never shown are not mea
 measured by calling the cell closure in a sizing pass (`UiBuilder::new().sizing_pass()
 .invisible()`) and reading `min_rect().width()`. The header width includes the sort icon slot.
 
+### 2.4 Column layout (issue #109)
+
+`DataGridState::layout` is a `ColumnLayout { order: Vec<String>, hidden: BTreeSet<String> }`,
+serde-gated like `widths` and `#[serde(default)]`, so state saved before it existed still loads.
+Each frame the grid applies it before anything else: hidden columns drop out and the rest take
+`order`, then definition order for ids `order` does not name (a column added by a new app version
+shows, last). Ids that no longer name a column are ignored. Everything after that, `CellCtx::
+column_index`, focus and the AccessKit `column_index` of headers and cells included, is in
+display order. `Column::required(true)` columns ignore `hidden`.
+
+- **Header menu.** A secondary click on a header cell, or Shift+F10 on a focused one, sets
+  `DataGridResponse::header_context_menu` to the column id. A secondary click never sorts. The
+  app opens a menu and draws `column_menu(ui, columns, &mut state, Some(id))` in it: one
+  `MenuItemCheckBox` per non-required column in display order (checked = shown), a divider,
+  "Resize to fit" (resizable columns only; it sets `state.autofit_request`, which the next
+  `show` takes and autofits as §2.3) and "Reset columns" (clears the layout and `widths`).
+- **Drag to reorder.** Dragging a header cell past egui's drag threshold shows a 2 pt
+  `brand_stroke_1` insertion line at the nearest column boundary; dropping moves the column
+  there. A drag never sorts. Resize handles keep priority at column edges.
+- **Keyboard.** Alt+Left / Alt+Right on a focused header cell move its column one place; focus
+  follows it. Both set `columns_reordered`.
+
+**Frame budget.** A 10 000 × 20 grid, scrolling each frame, lays out in under 4 ms per frame in a
+release build on a desktop CPU (only visible cells are laid out; applying the layout is O(columns²)
+on 20 columns). `tests/data_grid_layout.rs` asserts under 100 ms per frame, a bound that holds
+for unoptimised builds on a loaded CI runner, so a regression to per-row work fails it.
+
 ## 3. Selection and keyboard
 
 ### 3.1 Modes
@@ -310,7 +337,12 @@ the focus ring; in **cell** focus a single cell is. The header row is always cel
 | Enter | `activated` | if the cell has an interactive child, focus moves into it (Escape returns); else `activated` |
 | F2 | `edit_requested` | `edit_requested` |
 | Shift+F10, Menu | `context_menu` | `context_menu` |
+| Ctrl+C | copies the selected rows (else the focused row) as TSV | copies the focused cell's text |
 | Escape | clears nothing; releases focus lock | from inside a cell child: back to the cell |
+
+Ctrl+C copies only when the grid has `cell_text` (its text per cell), and returns what it copied
+in `DataGridResponse::copied`. The text goes to the clipboard through `Context::copy_text`, which
+on wasm uses the browser Clipboard API. Issue #105.
 
 On a focused header cell: Left/Right move between header cells, Down goes to row 0, Enter or
 Space sorts (§2.1), Ctrl+Left/Ctrl+Right resize the column by 8 pt, Ctrl+Enter autofits.
@@ -438,6 +470,14 @@ Each row: indentation `(depth) × spacingHorizontalXXL`, then a 24 pt chevron sl
 (`ChevronRight`, rotated to `ChevronDown` when expanded, `duration::FAST`; empty for
 `Children::None`), optional 20 pt icon, label. Clicking the chevron toggles without selecting.
 
+**Checks and cells (issue #110).** `TreeNode::checked(CheckState)` draws a 16 pt checkbox in a
+24 pt slot after the chevron. A click on it, or Space on the focused node, reports
+`TreeViewResponse::check_toggled(key)` without selecting; the app sets the new states and does
+the tri-state propagation (a folder is `Mixed` when its children are partly checked).
+`TreeView::columns(&[TreeColumn], cell)` adds fixed-width trailing columns with a header row
+("Name", then each title); `cell(ui, key, column)` is called for visible rows only, so a
+5,000-node tree with size, progress and priority cells stays virtualised.
+
 ### 5.2 Keyboard
 
 One Tab stop. Up/Down previous/next visible row; Home/End first/last. **Right:** collapsed →
@@ -453,6 +493,8 @@ Type-ahead is not in 0.1.
 depth + 1`, `expanded` (absent for leaves), `selected`, `position_in_set` and `size_of_set`
 among its siblings, and the label. The Loading row is a `TreeItem` labelled "Loading" with
 `busy`.
+A checked node's `TreeItem` carries `toggled` (`True`, `False` or `Mixed`, read as "checked",
+"not checked", "partially checked"), and its checkbox is a `CheckBox` labelled "Check <label>".
 
 ## 6. List
 

@@ -25,6 +25,7 @@ const SUPPORTING: &[&str] = &[
     "FileCardResponse",
     "InputAppearance",
     "PageItem",
+    "PieceState",
     "PagerResponse",
     "PickerResponse",
     "Presence",

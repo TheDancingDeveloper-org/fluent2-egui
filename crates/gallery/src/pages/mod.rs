@@ -16,20 +16,25 @@ mod date_time;
 mod diff;
 mod docking;
 mod drawer;
+mod editable_list;
 mod file_dialog;
 mod html_view;
 mod icons;
 mod markdown;
+mod menu_bar;
 mod pager;
+mod pieces;
 mod reorder;
 mod ribbon;
 mod rich_text_editor;
 mod row_drag;
+mod shortcuts;
 mod skeleton;
 mod surfaces;
 mod tab_strip;
 mod terminal;
 mod tokens;
+mod tree_view;
 mod typography;
 mod variable_list;
 
@@ -46,20 +51,25 @@ pub use date_time::DateTimePage;
 pub use diff::DiffPage;
 pub use docking::DockingPage;
 pub use drawer::DrawerPage;
+pub use editable_list::EditableListPage;
 pub use file_dialog::FileDialogPage;
 pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
+pub use menu_bar::MenuBarPage;
 pub use pager::PagerPage;
+pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
 pub use rich_text_editor::RichTextEditorPage;
 pub use row_drag::RowDragPage;
+pub use shortcuts::ShortcutsPage;
 pub use skeleton::SkeletonPage;
 pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
 pub use tokens::TokensPage;
+pub use tree_view::TreeViewPage;
 pub use typography::TypographyPage;
 pub use variable_list::VariableListPage;
 
@@ -91,21 +101,26 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DiffPage::default()),
         Box::new(DockingPage::default()),
         Box::new(DrawerPage::default()),
+        Box::new(EditableListPage::default()),
         Box::new(FileDialogPage::default()),
         Box::new(HtmlPage::default()),
         Box::new(IconsPage::default()),
         Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
+        Box::new(MenuBarPage::default()),
         Box::new(PagerPage::default()),
+        Box::new(PiecesPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
         Box::new(RichTextEditorPage::default()),
         Box::new(RowDragPage::default()),
+        Box::new(ShortcutsPage::default()),
         Box::new(SkeletonPage),
         Box::new(SurfacesPage::default()),
         Box::new(TabStripPage::default()),
         Box::new(TerminalPage::default()),
         Box::new(TokensPage),
+        Box::new(TreeViewPage::default()),
         Box::new(TypographyPage),
     ]
 }
