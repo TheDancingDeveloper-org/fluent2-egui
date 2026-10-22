@@ -17,7 +17,7 @@ fn main() {
     if let Err(error) = eframe::run_native(
         "fluent2-egui gallery",
         native,
-        Box::new(|cc| Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))),
+        Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
     ) {
         eprintln!("gallery: {error}");
     }
@@ -48,7 +48,7 @@ async fn start_web() -> Result<(), String> {
         .start(
             canvas,
             eframe::WebOptions::default(),
-            Box::new(|cc| Ok(Box::new(GalleryApp::new(&cc.egui_ctx)))),
+            Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
         )
         .await
         .map_err(|error| format!("{error:?}"))

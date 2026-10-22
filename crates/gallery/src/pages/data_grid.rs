@@ -2,6 +2,8 @@
 
 use fluent2_egui::data::data_grid::{Column, ColumnWidth, DataGrid, DataGridSize, DataGridState};
 
+use fluent2_egui::platform::LayoutStore;
+
 use super::Page;
 
 const ROWS: usize = 100_000;
@@ -15,6 +17,17 @@ pub struct DataGridPage {
 impl Page for DataGridPage {
     fn name(&self) -> &'static str {
         "DataGrid"
+    }
+
+    // The whole grid state persists: widths, sort and, with #109, the column layout.
+    fn save_layout(&self, store: &mut LayoutStore) {
+        store.put("data_grid", &self.state);
+        store.put("data_grid_size", &self.size);
+    }
+
+    fn load_layout(&mut self, store: &LayoutStore) {
+        store.restore("data_grid", &mut self.state);
+        store.restore("data_grid_size", &mut self.size);
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {

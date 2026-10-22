@@ -94,6 +94,7 @@ pub struct CellCtx {
 
 /// Row height class of a DataGrid (§10).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataGridSize {
     /// 24 pt rows, `Caption1` text.
     ExtraSmall,
