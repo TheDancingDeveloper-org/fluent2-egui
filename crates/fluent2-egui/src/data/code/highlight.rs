@@ -139,9 +139,8 @@ impl std::fmt::Debug for Highlighter {
 }
 
 /// Language names that the bundled set lacks, mapped to the closest syntax it has.
-const ALIASES: [(&str, &str); 5] = [
+const ALIASES: [(&str, &str); 4] = [
     ("typescript", "ts"),
-    ("tsx", "js"),
     ("jsx", "js"),
     ("yml", "yaml"),
     ("patch", "diff"),
@@ -252,13 +251,18 @@ impl Highlighter {
 /// TypeScript-Sublime-Plugin grammar (Apache-2.0); see `syntaxes/` and NOTICE.
 const TYPESCRIPT: &str = include_str!("../../../syntaxes/TypeScript.sublime-syntax");
 
-/// The bundled syntaxes plus TypeScript. A TypeScript definition that fails to load is logged
-/// and skipped; `ts` then highlights as plain text.
+/// TSX, from the same plugin's TypeScriptReact grammar, converted the same way.
+const TYPESCRIPT_REACT: &str = include_str!("../../../syntaxes/TypeScriptReact.sublime-syntax");
+
+/// The bundled syntaxes plus TypeScript and TSX. A definition that fails to load is logged
+/// and skipped; that language then highlights as plain text.
 fn syntax_set() -> SyntaxSet {
     let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
-    match SyntaxDefinition::load_from_str(TYPESCRIPT, true, Some("TypeScript")) {
-        Ok(def) => builder.add(def),
-        Err(e) => log::warn!("TypeScript syntax did not load: {e}"),
+    for (src, name) in [(TYPESCRIPT, "TypeScript"), (TYPESCRIPT_REACT, "TypeScriptReact")] {
+        match SyntaxDefinition::load_from_str(src, true, Some(name)) {
+            Ok(def) => builder.add(def),
+            Err(e) => log::warn!("{name} syntax did not load: {e}"),
+        }
     }
     builder.build()
 }
