@@ -52,6 +52,8 @@ pub mod office;
 pub mod platform;
 pub mod surfaces;
 pub mod theme;
+#[cfg(all(target_arch = "wasm32", feature = "web-a11y"))]
+pub mod web_a11y;
 
 #[rustfmt::skip]
 pub use controls::{
