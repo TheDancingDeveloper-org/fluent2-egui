@@ -247,8 +247,8 @@ impl Highlighter {
     }
 }
 
-/// TypeScript, which syntect's bundled set lacks. Converted by bat from Microsoft's
-/// TypeScript-Sublime-Plugin grammar (Apache-2.0); see `syntaxes/` and NOTICE.
+/// TypeScript, which syntect's bundled set lacks. Converted from Microsoft's
+/// TypeScript-TmLanguage grammar (MIT); see `syntaxes/` and NOTICE.
 const TYPESCRIPT: &str = include_str!("../../../syntaxes/TypeScript.sublime-syntax");
 
 /// TSX, from the same plugin's TypeScriptReact grammar, converted the same way.
