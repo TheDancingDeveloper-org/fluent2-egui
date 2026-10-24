@@ -5,7 +5,8 @@
 # Copyright (c) Microsoft Corporation. Licensed MIT (LICENSE-TYPESCRIPT-TMLANGUAGE.txt).
 # Conversion copyright (c) 2015 Allen A. Bargi (aziz/SublimeSyntaxConvertor @ 8af296b4), MIT.
 # Locally regenerated with that converter and byte-identical to the published file, apart from
-# this header and the .mts and .cts extensions kept from the previous vendored grammar.
+# this header, the .mts and .cts extensions kept from the previous vendored grammar, and
+# `await\s+using` written `await\susing` in lookbehinds: fancy-regex needs fixed-length lookbehinds.
 # Loaded by data/code/highlight.rs behind the `highlight` feature.
 # http://www.sublimetext.com/docs/3/syntax.html
 name: TypeScript
@@ -3279,7 +3280,7 @@ contexts:
         3: storage.type.ts
       push:
         - meta_scope: meta.var.expr.ts
-        - match: '(?!(?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(?:(\bexport)\s+)?(?:(\bdeclare)\s+)?\b((?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)|(?:\bawait\s+(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)\b))(?![_$[:alnum:]])(?:(?=\.\.\.)|(?!\.)))((?=;|}|((?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(of|in)\s+)|;|^\s*$|(?:^\s*(?:abstract|async|(?:\bawait\s+(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)|var|while)\b))|((?<!^using|[^\._$[:alnum:]]using|^await\s+using|[^\._$[:alnum:]]await\s+using)(?=\s*$)))'
+        - match: '(?!(?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(?:(\bexport)\s+)?(?:(\bdeclare)\s+)?\b((?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)|(?:\bawait\s+(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)\b))(?![_$[:alnum:]])(?:(?=\.\.\.)|(?!\.)))((?=;|}|((?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(of|in)\s+)|;|^\s*$|(?:^\s*(?:abstract|async|(?:\bawait\s+(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)|var|while)\b))|((?<!^using|[^\._$[:alnum:]]using|^await\susing|[^\._$[:alnum:]]await\susing)(?=\s*$)))'
           pop: true
         - match: '(?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(?:(\bexport)\s+)?(?:(\bdeclare)\s+)?\b((?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)|(?:\bawait\s+(?:\busing(?=\s+(?!in\b|of\b(?!\s*(?:of\b|=)))[_$[:alpha:]])\b)\b))(?![_$[:alnum:]])(?:(?=\.\.\.)|(?!\.))\s*'
           captures:
