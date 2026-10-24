@@ -114,8 +114,8 @@ rev = "ba45efd058df5111837e30fb9598cfc8cbd51095"
 reviewed = "2026-10-19"
 licence = "Apache-2.0"
 role = "adapted"
-watch = ["TypeScript.tmLanguage"]
-notes = "Origin of the TypeScript grammar that bat converted (bat's submodule pin). Licence copy: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt."
+watch = ["TypeScript.tmLanguage", "TypeScriptReact.tmLanguage"]
+notes = "Origin of the TypeScript grammar that bat converted (bat's submodule pin), and of the TypeScriptReact grammar converted the same way (bat ships no TSX syntax). Licence copy: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt."
 
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
@@ -300,3 +300,17 @@ source   = "typescript-sublime-plugin"
 path     = "TypeScript.tmLanguage"
 rev      = "ba45efd058df5111837e30fb9598cfc8cbd51095"
 notes    = "Converted to sublime-syntax by bat; the grammar rules are Microsoft's."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/syntaxes/TypeScriptReact.sublime-syntax"
+source   = "typescript-sublime-plugin"
+path     = "TypeScriptReact.tmLanguage"
+rev      = "ba45efd058df5111837e30fb9598cfc8cbd51095"
+notes    = "Converted to sublime-syntax the same way bat converted TypeScript.tmLanguage. TypeScript rules are bat's conversion with the scope suffix retargeted to .tsx; JSX rules and the cast-to-JSX change are Microsoft's."
+
+[[adaptation]]
+ours     = "crates/fluent2-egui/syntaxes/TypeScriptReact.sublime-syntax"
+source   = "bat"
+path     = "assets/syntaxes/02_Extra/TypeScript.sublime-syntax"
+rev      = "f748c1a467ae161682849949a7d036ab8362f9ba"
+notes    = "Conversion method and the TypeScript rule text. bat has no TypeScriptReact syntax at this rev."
