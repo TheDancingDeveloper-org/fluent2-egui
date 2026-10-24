@@ -51,7 +51,11 @@ async fn start_web() -> Result<(), String> {
         .start(
             canvas,
             eframe::WebOptions::default(),
-            Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
+            Box::new(|cc| {
+                cc.egui_ctx
+                    .add_plugin(fluent2_egui::web_a11y::WebAccessibilityPlugin);
+                Ok(Box::new(GalleryApp::from_creation(cc)))
+            }),
         )
         .await
         .map_err(|error| format!("{error:?}"))?;
