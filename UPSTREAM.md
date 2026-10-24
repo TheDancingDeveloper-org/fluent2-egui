@@ -67,20 +67,18 @@ sample PNGs in laststudio/fluent-egui).
 ## Vendored syntax grammars
 
 `crates/fluent2-egui/syntaxes/*.sublime-syntax` is loaded by the `highlight` feature because
-syntect's bundled set has no TypeScript. The entries are `bat` and `typescript-sublime-plugin`
-in [`upstream.toml`](upstream.toml): bat converts Microsoft's `TypeScript.tmLanguage` to
-sublime-syntax, and we vendor that conversion.
+syntect's bundled set has no TypeScript.
 
-To re-sync a grammar:
+TypeScript (`TypeScript.sublime-syntax`) comes from `typescript-tmlanguage`
+(microsoft/TypeScript-TmLanguage `TypeScript.tmLanguage`) converted by `sublime-syntax-convertor`
+and published by rushsinging/aemeath. To re-sync it: take that published file (or regenerate it
+with the pinned converter and confirm the bytes match), keep the provenance header and the
+`.mts` / `.cts` extensions, keep `LICENSE-TYPESCRIPT-TMLANGUAGE.txt`, and bump both pins and
+their `[[adaptation]]` revisions in the same commit.
 
-1. Take the file at the pinned bat revision (`watch` path under `assets/syntaxes/`).
-2. Keep the provenance header already at the top of the vendored file (bat path and short SHA,
-   the TypeScript-Sublime-Plugin path and short SHA, both copyrights). Change nothing else in
-   the grammar.
-3. Keep the Apache-2.0 copy at `crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt`
-   beside it. Do not drop that file when replacing the syntax.
-4. Bump the `bat` and `typescript-sublime-plugin` pins, and their `[[adaptation]]` revisions,
-   in the same commit, and say what was reviewed.
+TSX (`TypeScriptReact.sublime-syntax`) still comes from `bat` and `typescript-sublime-plugin`:
+bat's conversion method applied to `TypeScriptReact.tmLanguage`. Re-sync that file from those
+pins, and keep `LICENSE-TYPESCRIPT-SUBLIME.txt`.
 
 ## Review log
 

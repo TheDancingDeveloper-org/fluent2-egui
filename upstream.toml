@@ -93,7 +93,7 @@ reviewed = "2026-10-24"
 licence = "MIT"
 role = "dependency"
 watch = ["CHANGELOG.md", "Cargo.toml"]
-notes = "Cargo dependency of fluent2-egui behind the `highlight` feature (crates.io syntect 5.3.0, tag v5.3.0), with its bundled default syntaxes (plus a vendored TypeScript grammar, see the bat source) and the fancy-regex engine. tree-sitter was spiked and rejected: its grammars do not build for wasm32-unknown-unknown (docs/specs/code-view.md). Zed's crates/editor, language, rope and text are GPL-3.0: design reference only, no code copied."
+notes = "Cargo dependency of fluent2-egui behind the `highlight` feature (crates.io syntect 5.3.0, tag v5.3.0), with its bundled default syntaxes (plus a vendored TypeScript grammar, see typescript-tmlanguage) and the fancy-regex engine. tree-sitter was spiked and rejected: its grammars do not build for wasm32-unknown-unknown (docs/specs/code-view.md). Zed's crates/editor, language, rope and text are GPL-3.0: design reference only, no code copied."
 
 [[source]]
 name = "bat"
@@ -104,7 +104,7 @@ reviewed = "2026-10-24"
 licence = "MIT OR Apache-2.0"
 role = "adapted"
 watch = ["assets/syntaxes/02_Extra/TypeScript.sublime-syntax"]
-notes = "bat's sublime-syntax conversion of the TypeScript grammar, vendored as crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax for the `highlight` feature (WI-1798), because syntect's bundled set has no TypeScript."
+notes = "bat's sublime-syntax conversion of the older TypeScript grammar. The TypeScript file was refreshed from TypeScript-TmLanguage (#103). TSX still uses this conversion method and rule text (bat ships no TSX syntax)."
 
 [[source]]
 name = "typescript-sublime-plugin"
@@ -115,7 +115,30 @@ reviewed = "2026-10-19"
 licence = "Apache-2.0"
 role = "adapted"
 watch = ["TypeScript.tmLanguage", "TypeScriptReact.tmLanguage"]
-notes = "Origin of the TypeScript grammar that bat converted (bat's submodule pin), and of the TypeScriptReact grammar converted the same way (bat ships no TSX syntax). Licence copy: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt."
+notes = "Origin of the older TypeScript grammar that bat converted, and of the TypeScriptReact grammar converted the same way (bat ships no TSX syntax). The TypeScript file now comes from typescript-tmlanguage (#103). Licence copy for the TSX grammar: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt."
+
+
+[[source]]
+name = "typescript-tmlanguage"
+repo = "microsoft/TypeScript-TmLanguage"
+branch = "master"
+rev = "48f608692aa6d6ad7bd65b478187906c798234a8"
+reviewed = "2026-10-24"
+licence = "MIT"
+role = "adapted"
+watch = ["TypeScript.tmLanguage"]
+notes = "Newer TypeScript grammar (2024-10-24), superseding TypeScript-Sublime-Plugin's TypeScript.tmLanguage for the vendored TypeScript syntax (#103). Licence copy: crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt. TSX stays on the older plugin grammar."
+
+[[source]]
+name = "sublime-syntax-convertor"
+repo = "aziz/SublimeSyntaxConvertor"
+branch = "master"
+rev = "8af296b42c7497455bb495bcc43bcbe60b1c464f"
+reviewed = "2026-10-24"
+licence = "MIT"
+role = "adapted"
+watch = ["ssconvert.py"]
+notes = "Converter used to turn TypeScript.tmLanguage into sublime-syntax. The published result is rushsinging/aemeath apps/cli/assets/syntaxes/TypeScript.sublime-syntax @ 186137abdefb3b8fa7575ab48ed3e90f99818581, reproduced locally and byte-identical before the provenance header and .mts/.cts extensions."
 
 # [[adaptation]] entries list every file of ours that contains adapted upstream code, so a
 # change to the upstream file can be traced to the file here that may need the same fix.
@@ -289,17 +312,17 @@ notes    = "Score tiers and fields (label, subtitle, group, keywords), whitespac
 
 [[adaptation]]
 ours     = "crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax"
-source   = "bat"
-path     = "assets/syntaxes/02_Extra/TypeScript.sublime-syntax"
-rev      = "f748c1a467ae161682849949a7d036ab8362f9ba"
-notes    = "Verbatim apart from a provenance header comment."
+source   = "typescript-tmlanguage"
+path     = "TypeScript.tmLanguage"
+rev      = "48f608692aa6d6ad7bd65b478187906c798234a8"
+notes    = "Grammar rules. Converted to sublime-syntax; the file also keeps .mts and .cts and a provenance header."
 
 [[adaptation]]
 ours     = "crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax"
-source   = "typescript-sublime-plugin"
-path     = "TypeScript.tmLanguage"
-rev      = "ba45efd058df5111837e30fb9598cfc8cbd51095"
-notes    = "Converted to sublime-syntax by bat; the grammar rules are Microsoft's."
+source   = "sublime-syntax-convertor"
+path     = "ssconvert.py"
+rev      = "8af296b42c7497455bb495bcc43bcbe60b1c464f"
+notes    = "Conversion of TypeScript.tmLanguage. Published copy: rushsinging/aemeath @ 186137abdefb3b8fa7575ab48ed3e90f99818581. Unchanged apart from the provenance header and .mts/.cts extensions."
 
 [[adaptation]]
 ours     = "crates/fluent2-egui/syntaxes/TypeScriptReact.sublime-syntax"
