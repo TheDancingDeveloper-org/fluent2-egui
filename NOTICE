@@ -41,12 +41,14 @@ upstream repository, path, revision and copyright holder.
   syntect source is copied. Its bundled syntax definitions (from sublimehq/Packages and others)
   are compiled into binaries that turn the feature on; their licences are listed in the syntect
   repository.
-- TypeScript grammar (microsoft/TypeScript-Sublime-Plugin `TypeScript.tmLanguage` @
-  ba45efd058df5111837e30fb9598cfc8cbd51095, Apache-2.0, Copyright (c) Microsoft Corporation), as
-  converted by bat (sharkdp/bat `assets/syntaxes/02_Extra/TypeScript.sublime-syntax` @
-  f748c1a467ae161682849949a7d036ab8362f9ba, MIT OR Apache-2.0, Copyright (c) 2018-2021
-  bat-developers), vendored as `crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax`. Licence
-  copy: `crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt`.
+- TypeScript grammar (microsoft/TypeScript-TmLanguage `TypeScript.tmLanguage` @
+  48f608692aa6d6ad7bd65b478187906c798234a8, MIT, Copyright (c) Microsoft Corporation), converted
+  to sublime-syntax by aziz/SublimeSyntaxConvertor @ 8af296b42c7497455bb495bcc43bcbe60b1c464f
+  (MIT, Copyright (c) 2015 Allen A. Bargi) and published in rushsinging/aemeath
+  `apps/cli/assets/syntaxes/TypeScript.sublime-syntax` @ 186137abdefb3b8fa7575ab48ed3e90f99818581.
+  Vendored as `crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax`, with a provenance header
+  and `.mts` / `.cts` extensions. Licence copy:
+  `crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt`.
 - TypeScriptReact grammar (microsoft/TypeScript-Sublime-Plugin `TypeScriptReact.tmLanguage` @
   ba45efd058df5111837e30fb9598cfc8cbd51095, Apache-2.0, Copyright (c) Microsoft Corporation),
   converted to sublime-syntax the same way as the TypeScript grammar above (bat @
