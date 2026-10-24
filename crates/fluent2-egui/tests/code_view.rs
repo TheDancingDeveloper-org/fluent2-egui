@@ -63,6 +63,9 @@ fn python_keywords_strings_decorators() {
 #[test]
 fn typescript_highlights_types_and_interfaces() {
     assert!(Highlighter::shared().supports("ts"));
+    assert!(Highlighter::shared().supports("mts"));
+    assert!(Highlighter::shared().supports("cts"));
+    assert!(Highlighter::shared().supports("typescript"));
     assert!(Highlighter::shared().supports("TypeScript"));
     let r = runs(
         "ts",
