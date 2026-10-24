@@ -37,6 +37,9 @@ default = ["bundled-font"]
 # every non-Windows target, and Windows without Segoe UI. Adds about 830 KB. Turn it off with
 # `default-features = false` to keep egui's default face instead.
 bundled-font = []
+# Mirror egui's AccessKit output into an invisible DOM layer on wasm so browser accessibility
+# tools can discover widget roles, names and focus. No effect on native targets.
+web-a11y = []
 # Serde for the state structs of the data views (`data::data_grid::DataGridState` and friends),
 # and `platform::LayoutStore`, which saves them under keys as one JSON document.
 serde = ["dep:serde", "dep:serde_json"]
@@ -91,7 +94,7 @@ wasm-bindgen-futures = { version = "0.4", optional = true }
 # FileDropZone reads a dropped file's size before reading it (already in the tree through egui).
 # The URL hash (`platform::hash_state`) reads and replaces `location.hash` through History.
 # The capturing keydown listener of `web-find` uses wasm-bindgen (already in the tree through eframe).
-web-sys = { version = "0.3", features = ["Blob", "File", "EventTarget", "History", "KeyboardEvent", "Location", "Window"] }
+web-sys = { version = "0.3", features = ["Blob", "CssStyleDeclaration", "Document", "DomRect", "Element", "File", "EventTarget", "History", "HtmlElement", "KeyboardEvent", "Location", "Window"] }
 wasm-bindgen = "0.2"
 
 [target.'cfg(windows)'.dependencies]
