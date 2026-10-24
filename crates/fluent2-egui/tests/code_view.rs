@@ -80,6 +80,15 @@ fn typescript_highlights_types_and_interfaces() {
 }
 
 #[test]
+fn tsx_highlights_as_typescript() {
+    assert!(Highlighter::shared().supports("tsx"));
+    let r = runs("tsx", "const x: string = name;\nconst view = <Item id={x}/>;");
+    assert!(has(&r, 0, "const", SyntaxToken::Keyword), "{r:?}");
+    assert!(has(&r, 0, "string", SyntaxToken::Type), "type annotation: {r:?}");
+    assert!(has(&r, 1, "Item", SyntaxToken::Type), "jsx tag: {r:?}");
+}
+
+#[test]
 fn json_keys_differ_from_string_values() {
     let r = runs("json", "{\"key\": \"value\", \"n\": 1, \"b\": true}");
     assert!(has(&r, 0, "\"key\"", SyntaxToken::Key), "{r:?}");
