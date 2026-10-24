@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>fluent2-egui gallery</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #1b1b1b; }
+      html, body { margin: 0; height: 100%; background: #1b1b1b; color: #f3f3f3; font-family: sans-serif; }
       canvas { margin: auto; }
+      #gallery_status { margin: 1.5rem; }
     </style>
     <link data-trunk rel="rust" href="Cargo.toml" data-bin="gallery" data-cargo-profile="wasm-release" />
   </head>
   <body>
-    <canvas id="the_canvas_id"></canvas>
+    <canvas id="the_canvas_id" role="img" aria-label="fluent2-egui gallery"></canvas>
+    <p id="gallery_status">Loading the gallery…</p>
+    <noscript>
+      <p>The fluent2-egui gallery needs JavaScript to run.</p>
+    </noscript>
   </body>
 </html>

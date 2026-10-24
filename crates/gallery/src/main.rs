@@ -28,6 +28,7 @@ fn main() {
     wasm_bindgen_futures::spawn_local(async {
         if let Err(error) = start_web().await {
             log::error!("gallery failed to start: {error}");
+            set_gallery_status(&error);
         }
     });
 }
@@ -53,5 +54,28 @@ async fn start_web() -> Result<(), String> {
             Box::new(|cc| Ok(Box::new(GalleryApp::from_creation(cc)))),
         )
         .await
-        .map_err(|error| format!("{error:?}"))
+        .map_err(|error| format!("{error:?}"))?;
+    clear_gallery_status();
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn set_gallery_status(message: &str) {
+    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+        return;
+    };
+    let Some(status) = document.get_element_by_id("gallery_status") else {
+        return;
+    };
+    status.set_text_content(Some(message));
+}
+
+#[cfg(target_arch = "wasm32")]
+fn clear_gallery_status() {
+    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+        return;
+    };
+    if let Some(status) = document.get_element_by_id("gallery_status") {
+        status.remove();
+    }
 }
