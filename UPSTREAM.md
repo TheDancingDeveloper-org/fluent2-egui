@@ -64,6 +64,24 @@ Never copy: ArtCraft brand files or names (`docs/brand/` in storytold repos), Mi
 (Segoe *), Office artwork or logos, or images without a traceable licence (for example the
 sample PNGs in laststudio/fluent-egui).
 
+## Vendored syntax grammars
+
+`crates/fluent2-egui/syntaxes/*.sublime-syntax` is loaded by the `highlight` feature because
+syntect's bundled set has no TypeScript. The entries are `bat` and `typescript-sublime-plugin`
+in [`upstream.toml`](upstream.toml): bat converts Microsoft's `TypeScript.tmLanguage` to
+sublime-syntax, and we vendor that conversion.
+
+To re-sync a grammar:
+
+1. Take the file at the pinned bat revision (`watch` path under `assets/syntaxes/`).
+2. Keep the provenance header already at the top of the vendored file (bat path and short SHA,
+   the TypeScript-Sublime-Plugin path and short SHA, both copyrights). Change nothing else in
+   the grammar.
+3. Keep the Apache-2.0 copy at `crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt`
+   beside it. Do not drop that file when replacing the syntax.
+4. Bump the `bat` and `typescript-sublime-plugin` pins, and their `[[adaptation]]` revisions,
+   in the same commit, and say what was reviewed.
+
 ## Review log
 
 - **2026-10-24** (#100, WI-2425). Compared every pin to its branch head. No watched-path drift, and `reviewed` set to 2026-10-24, for rdpapp (`32e02d3a8d2c`), vte, pulldown-cmark (`61d95cedd740`; five commits, none on `pulldown-cmark/src/lib.rs` or its `Cargo.toml`), egui_commonmark, imara-diff, syntect, bat (`a9aa73d21545`; the vendored TypeScript syntax is unchanged), egui (still 0.36, no new minor), fluentui (`6d3e9d686434`; `packages/tokens/src` unchanged since `93e324f72f0e`), selawik, inter, winui-gallery, laststudio-fluent-egui and fluent-gpui. Left unbumped, because a watched path changed and the review is not finished: html5gum (`src/emitters/default.rs`, `Cargo.toml`; still crates.io 0.8.4, no new release), typescript-sublime-plugin (`TypeScript.tmLanguage`, last edit 2023, not yet re-vendored), fluentui-system-icons (298 files under `assets/`, metadata and RTL variants, generator not re-run), craft-libs (docking work in `crates/ui` on 2026-10-24; adapted `geometry.rs` / `resize.rs` not re-read), and the reference apps wordcraft, gridcraft and deckcraft (watched ui-egui files moved; behaviour we copy was not re-checked).
