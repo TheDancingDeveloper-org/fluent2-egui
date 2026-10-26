@@ -14,7 +14,7 @@ built on [`egui::Modal`](https://docs.rs/egui/0.36.2/egui/containers/struct.Moda
 
 - `DialogKind` sets the policy: `Modal` closes on Escape and on a backdrop click, `NonModal` on
   Escape only, `Alert` on neither. The header's Close button (`CLOSE_LABEL`) always closes, as
-  `CloseReason::Button("Close")`.
+  `CloseReason::Button("Close".to_owned())`.
 - A popup open before the body owns Escape.
 - Focus trap: on opening, focus moves to the surface. Tab and Shift+Tab cycle the Close button,
   the body's widgets and the surface, and never reach the page.

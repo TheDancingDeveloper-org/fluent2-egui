@@ -296,7 +296,7 @@ fn escape_returns_focus_to_a_keyboard_opener() {
             }
             let _ = Dialog::new("walk")
                 .title("Save changes?")
-                .actions(|actions| actions.secondary("Cancel"))
+                .actions(|actions| actions.secondary("cancel", "Cancel"))
                 .show(ui.ctx(), open, |ui| {
                     ui.label("Body");
                 });
@@ -381,7 +381,7 @@ fn dialog_is_described_by_its_body_on_open() {
         let _ = Dialog::new("described")
             .title("Save changes?")
             .description("Your document has unsaved changes.")
-            .actions(|actions| actions.primary("Save"))
+            .actions(|actions| actions.primary("save", "Save"))
             .show(ui.ctx(), &mut open, |ui| {
                 ui.label("Your document has unsaved changes.");
             });

@@ -57,8 +57,8 @@ impl eframe::App for Walk {
         let _ = Dialog::new("walk-dialog")
             .title("Save changes?")
             .actions(|actions| {
-                actions.primary("Save");
-                actions.secondary("Cancel");
+                actions.primary("save", "Save");
+                actions.secondary("cancel", "Cancel");
             })
             .show(ctx, &mut self.dialog, |ui| {
                 ui.label("Your document has unsaved changes.");

@@ -276,9 +276,9 @@ impl SurfacesPage {
             .title("Save changes?")
             .description("Your document has unsaved changes.")
             .actions(|actions| {
-                actions.primary("Save");
-                actions.secondary("Don't save");
-                actions.secondary("Cancel");
+                actions.primary("save", "Save");
+                actions.secondary("dont-save", "Don't save");
+                actions.secondary("cancel", "Cancel");
             })
             .show(ctx, &mut self.modal, |ui| {
                 ui.label("Your document has unsaved changes.");
@@ -291,7 +291,7 @@ impl SurfacesPage {
         let result = Dialog::new("surfaces_non_modal")
             .title("Find")
             .kind(DialogKind::NonModal)
-            .actions(|actions| actions.secondary("Close"))
+            .actions(|actions| actions.secondary("close", "Close"))
             .show(ctx, &mut self.non_modal, |ui| {
                 ui.label("Escape closes this dialog; the backdrop does not.");
             });
@@ -304,8 +304,8 @@ impl SurfacesPage {
             .title("Delete 3 files?")
             .kind(DialogKind::Alert)
             .actions(|actions| {
-                actions.primary("Delete");
-                actions.secondary("Cancel");
+                actions.primary("delete", "Delete");
+                actions.secondary("cancel", "Cancel");
             })
             .show(ctx, &mut self.alert, |ui| {
                 ui.label("Only a button closes an alert dialog.");
@@ -319,8 +319,8 @@ impl SurfacesPage {
         let result = Dialog::new("surfaces_tall")
             .title("Connection settings")
             .actions(|actions| {
-                actions.primary("OK");
-                actions.secondary("Cancel");
+                actions.primary("ok", "OK");
+                actions.secondary("cancel", "Cancel");
             })
             .show(ctx, &mut self.tall, |ui| {
                 ui.label("The body scrolls when it is taller than the window.");
