@@ -31,8 +31,6 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
 ### Fixed
-- Combobox filter cache for a plain slice (`Combobox::new`) was keyed only on the query, so a caller that rebuilt the option slice while the popup stayed open reused stale indexes and could panic. The cache now fingerprints the slice, and a cached index past the list is dropped. Closed popups still do not filter (gh:TheDancingDeveloper-org/fluent2-egui#152).
-
 - Tooltip text was only painted, so screen readers never read it. `fluent_tooltip` now sets it as the widget's AccessKit description (Fluent's `aria-describedby`), with no hover needed. A tooltip that only repeats the label adds nothing, and ribbon tooltips ("Paste\nCtrl+V") describe the control by its shortcut alone. Found by the 2026-10-20 audit (WI-1931).
 - KeyTips: once KeyTips are on, letters typed with Alt still held were dropped. They now continue the sequence, as in Office, and releasing Alt afterwards no longer toggles KeyTips off. Found in the 2026-10-20 upstream review (gridcraft 4ed93c3b) (WI-1927).
 - Opening Backstage from the keyboard left focus nowhere. Focus now moves to the selected entry, repeating the request until egui accepts it. A Dialog node is now described by its body (AccessKit `described_by`), so the body is announced on open while focus is on the primary button. Found by the WI-1586 Orca walk (WI-1850).
