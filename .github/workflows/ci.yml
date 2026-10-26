@@ -1,8 +1,6 @@
 name: ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
   # The merge queue runs everything; a PR runs only what its diff touches.
   # See docs/ci.md.
@@ -111,7 +109,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The Windows leg runs in the queue and on main only.
+        # The Windows leg runs in the merge queue only.
         os: ${{ fromJSON(needs.changes.outputs.full == 'true' && '["ubuntu-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
