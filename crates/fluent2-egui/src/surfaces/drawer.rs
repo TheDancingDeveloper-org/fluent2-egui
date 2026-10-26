@@ -218,7 +218,7 @@ impl Drawer {
         if header_closed {
             *open = false;
             ctx.data_mut(|data| data.insert_temp(seen_key, false));
-            return DialogResult::Closed(CloseReason::Button(CLOSE_LABEL));
+            return DialogResult::Closed(CloseReason::Button(CLOSE_LABEL.to_owned()));
         }
         DialogResult::Open(value)
     }
@@ -341,7 +341,7 @@ pub(crate) fn show_overlay<R>(
     let (value, header_closed) = shown.inner;
     let mut close = None;
     if header_closed {
-        close = Some(CloseReason::Button(CLOSE_LABEL));
+        close = Some(CloseReason::Button(CLOSE_LABEL.to_owned()));
     }
     if close.is_none() && shown.backdrop_response.clicked() && overlay.kind == DialogKind::Modal {
         close = Some(CloseReason::Backdrop);

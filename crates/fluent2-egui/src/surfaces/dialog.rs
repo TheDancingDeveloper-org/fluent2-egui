@@ -38,20 +38,24 @@ pub enum DialogKind {
 }
 
 /// Why a dialog closed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+///
+/// [`CloseReason::Button`] carries the action's stable id, not its display text, so two actions
+/// can share a label and a translated label still closes as the same action.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CloseReason {
     /// Escape, on a [`DialogKind::Modal`] or [`DialogKind::NonModal`] with no popup open.
     Escape,
     /// A click on the backdrop of a [`DialogKind::Modal`].
     Backdrop,
-    /// An action button. The label is the button's text.
-    Button(&'static str),
+    /// An action button. The string is the id passed to [`DialogActions::primary`] or
+    /// [`DialogActions::secondary`], never the label.
+    Button(String),
     /// `open` was cleared by the app, or [`DialogActions::close`] was called.
     Programmatic,
 }
 
 /// Whether the dialog is still open.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DialogResult<R> {
     /// The body ran. `R` is what the body closure returned.
     Open(R),
@@ -62,10 +66,16 @@ pub enum DialogResult<R> {
 /// The action declaration closure accepted by [`Dialog::actions`].
 type ActionBuild<'a> = Box<dyn FnOnce(&mut DialogActions<'_>) + 'a>;
 
+/// One footer button: a stable id and the text drawn on it.
+struct DialogAction {
+    id: String,
+    text: WidgetText,
+}
+
 /// Footer buttons declared by [`Dialog::actions`].
 pub struct DialogActions<'a> {
-    primary: Option<&'static str>,
-    secondary: Vec<&'static str>,
+    primary: Option<DialogAction>,
+    secondary: Vec<DialogAction>,
     close_requested: bool,
     dialog: Id,
     _lifetime: std::marker::PhantomData<&'a mut Ui>,
@@ -74,13 +84,23 @@ pub struct DialogActions<'a> {
 impl DialogActions<'_> {
     /// The primary action. Enter activates it unless focus is in a multiline field or on another
     /// button. Drawn first.
-    pub fn primary(&mut self, label: &'static str) {
-        self.primary = Some(label);
+    ///
+    /// `id` is stable across frames and languages. It is what [`CloseReason::Button`] returns and
+    /// what the button's widget id is derived from. `text` is only what the button shows, and may
+    /// be borrowed or owned.
+    pub fn primary(&mut self, id: impl Into<String>, text: impl Into<WidgetText>) {
+        self.primary = Some(DialogAction {
+            id: id.into(),
+            text: text.into(),
+        });
     }
 
-    /// A secondary action, drawn after the primary.
-    pub fn secondary(&mut self, label: &'static str) {
-        self.secondary.push(label);
+    /// A secondary action, drawn after the primary. `id` and `text` are as for [`Self::primary`].
+    pub fn secondary(&mut self, id: impl Into<String>, text: impl Into<WidgetText>) {
+        self.secondary.push(DialogAction {
+            id: id.into(),
+            text: text.into(),
+        });
     }
 
     /// Close without a button, as [`CloseReason::Programmatic`].
@@ -89,9 +109,11 @@ impl DialogActions<'_> {
     }
 
     /// The egui id of a button in this dialog, for example to focus it or drive it in a test.
+    ///
+    /// `id` is the action id passed to [`Self::primary`] or [`Self::secondary`], not the label.
     #[must_use]
-    pub fn button_id(&self, label: &'static str) -> egui::Id {
-        self.dialog.with("action").with(label)
+    pub fn button_id(&self, id: impl std::hash::Hash + std::fmt::Debug) -> egui::Id {
+        self.dialog.with("action").with(id)
     }
 }
 
@@ -104,8 +126,8 @@ impl DialogActions<'_> {
 ///     .title("Save")
 ///     .kind(DialogKind::Modal)
 ///     .actions(|actions| {
-///         actions.primary("Save");
-///         actions.secondary("Cancel");
+///         actions.primary("save", "Save");
+///         actions.secondary("cancel", "Cancel");
 ///     })
 ///     .show(ctx, open, |ui| {
 ///         ui.label("Save this document?");
@@ -259,7 +281,7 @@ impl<'a> Dialog<'a> {
                 if let Some(build) = self.actions {
                     build(&mut declared);
                 }
-                let primary = declared.primary;
+                let primary_id = declared.primary.as_ref().map(|action| action.id.clone());
                 let shown_actions = show_actions(ui, declared, stack_actions, opening);
                 // Measured from the layout cursor, not `min_rect`: the surface keeps last
                 // frame's size, so its rect would feed the old height back in and never shrink.
@@ -274,7 +296,7 @@ impl<'a> Dialog<'a> {
                 // A focusable surface, so Tab has a stop even when the body has no widgets.
                 // It is allocated last, which makes it the last stop; the title is not a stop.
                 let surface = ui.interact(ui.min_rect(), surface_id, Sense::focusable_noninteractive());
-                if opening && primary.is_none() {
+                if opening && primary_id.is_none() {
                     surface.request_focus();
                 }
 
@@ -295,13 +317,13 @@ impl<'a> Dialog<'a> {
                     }
                 });
 
-                (value, primary, shown_actions)
+                (value, primary_id, shown_actions)
             });
 
-        let (value, primary, action_state) = shown.inner;
+        let (value, primary_id, action_state) = shown.inner;
         let mut close = None;
-        if let Some(label) = action_state.clicked {
-            close = Some(CloseReason::Button(label));
+        if let Some(id) = action_state.clicked {
+            close = Some(CloseReason::Button(id));
         }
         if action_state.close_requested {
             close = Some(CloseReason::Programmatic);
@@ -339,9 +361,9 @@ impl<'a> Dialog<'a> {
             if enter
                 && !on_other
                 && !ctx.text_edit_focused()
-                && let Some(label) = primary
+                && let Some(id) = primary_id
             {
-                close = Some(CloseReason::Button(label));
+                close = Some(CloseReason::Button(id));
             }
         }
 
@@ -375,7 +397,7 @@ fn reveal_new_focus(ui: &Ui, key: Id) {
 }
 
 struct ActionState {
-    clicked: Option<&'static str>,
+    clicked: Option<String>,
     close_requested: bool,
 }
 
@@ -450,44 +472,65 @@ fn show_actions(ui: &mut Ui, actions: DialogActions<'_>, stack: bool, opening: b
     // Recomputed every frame: `note_button` sets it again if focus is on a non-primary button.
     ui.ctx()
         .data_mut(|data| data.insert_temp(dialog_scope.with("focus_other_button"), false));
-    let labels: Vec<(&'static str, Appearance)> = actions
+    let buttons: Vec<(DialogAction, Appearance)> = actions
         .primary
         .into_iter()
-        .map(|label| (label, Appearance::Primary))
+        .map(|action| (action, Appearance::Primary))
         .chain(
             actions
                 .secondary
-                .iter()
-                .copied()
-                .map(|label| (label, Appearance::Secondary)),
+                .into_iter()
+                .map(|action| (action, Appearance::Secondary)),
         )
         .collect();
     let mut clicked = None;
-    let primary_label = actions.primary;
+    let primary_id = buttons
+        .first()
+        .and_then(|(action, appearance)| (*appearance == Appearance::Primary).then(|| action.id.clone()));
     if stack {
         ui.vertical(|ui| {
-            for (label, appearance) in &labels {
+            for (action, appearance) in &buttons {
                 let response = ui.add_sized(
                     Vec2::new(ui.available_width(), 32.0),
-                    Button::new(*label).appearance(*appearance).id_salt(*label),
+                    Button::new(action.text.clone())
+                        .appearance(*appearance)
+                        .id_salt(&action.id),
                 );
-                note_button(ui, dialog_scope, response.id, label, primary_label, opening);
+                note_button(
+                    ui,
+                    dialog_scope,
+                    response.id,
+                    &action.id,
+                    primary_id.as_deref(),
+                    opening,
+                );
                 if response.clicked() {
-                    clicked = Some(*label);
+                    clicked = Some(action.id.clone());
                 }
             }
         });
-    } else if !labels.is_empty() {
+    } else if !buttons.is_empty() {
         // `Align::Min`, not `Center`: a centred cross axis spans all the height left in the
         // surface, which is last frame's height, so the row (and the surface) never shrank.
         // The buttons share one height, so top alignment looks the same (WI-1912).
         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
             ui.spacing_mut().item_spacing.x = spacing_horizontal::S;
-            for (label, appearance) in labels.iter().rev() {
-                let response = ui.add(Button::new(*label).appearance(*appearance).id_salt(*label));
-                note_button(ui, dialog_scope, response.id, label, primary_label, opening);
+            for (action, appearance) in buttons.iter().rev() {
+                let response = ui.add(
+                    Button::new(action.text.clone())
+                        .appearance(*appearance)
+                        .id_salt(&action.id),
+                );
+                note_button(
+                    ui,
+                    dialog_scope,
+                    response.id,
+                    &action.id,
+                    primary_id.as_deref(),
+                    opening,
+                );
                 if response.clicked() {
-                    clicked = Some(*label);
+                    clicked = Some(action.id.clone());
                 }
             }
         });
@@ -499,16 +542,23 @@ fn show_actions(ui: &mut Ui, actions: DialogActions<'_>, stack: bool, opening: b
 }
 
 /// Remember which button is focused so Enter can tell the primary from another button.
-fn note_button(ui: &Ui, dialog_scope: Id, button_id: Id, label: &str, primary: Option<&str>, opening: bool) {
+fn note_button(
+    ui: &Ui,
+    dialog_scope: Id,
+    button_id: Id,
+    action_id: &str,
+    primary: Option<&str>,
+    opening: bool,
+) {
     let ctx = ui.ctx();
-    if Some(label) == primary {
+    if Some(action_id) == primary {
         ctx.data_mut(|data| data.insert_temp(dialog_scope.with("primary_focus"), button_id));
         if opening {
             ui.memory_mut(|memory| memory.request_focus(button_id));
         }
     }
     let focused = ui.memory(|memory| memory.focused()) == Some(button_id);
-    if focused && Some(label) != primary {
+    if focused && Some(action_id) != primary {
         ctx.data_mut(|data| data.insert_temp(dialog_scope.with("focus_other_button"), true));
     }
 }
