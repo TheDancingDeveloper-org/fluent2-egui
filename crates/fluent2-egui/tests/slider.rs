@@ -2,10 +2,11 @@
 
 use std::cell::Cell;
 
+use egui::{Shape, Vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use fluent2_egui::controls::Slider;
-use fluent2_egui::theme::{self, Theme};
+use fluent2_egui::theme::{self, SliderMetrics, Theme, c};
 
 fn install(ui: &egui::Ui) {
     theme::install(ui.ctx(), &Theme::default());
@@ -145,4 +146,138 @@ fn renders_in_dark_and_high_contrast() {
         });
         harness.run();
     }
+}
+
+/// Run `build` for two frames and return the second frame's shapes, with every
+/// `Shape::Vec` expanded.
+fn shapes(theme: &Theme, build: impl Fn(&mut egui::Ui)) -> Vec<Shape> {
+    let ctx = egui::Context::default();
+    theme::install(&ctx, theme);
+    let mut last = Vec::new();
+    for _ in 0..2 {
+        let raw = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                Vec2::new(400.0, 200.0),
+            )),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(raw, |ui| build(ui));
+        last = flatten(output.shapes.into_iter().map(|clipped| clipped.shape));
+        output.textures_delta.clear();
+    }
+    last
+}
+
+fn flatten(shapes: impl Iterator<Item = Shape>) -> Vec<Shape> {
+    shapes
+        .flat_map(|shape| match shape {
+            Shape::Vec(inner) => flatten(inner.into_iter()),
+            other => vec![other],
+        })
+        .collect()
+}
+
+#[test]
+fn custom_slider_tokens_change_painted_geometry() {
+    let theme = Theme {
+        slider: SliderMetrics {
+            rail: 10.0,
+            thumb: 32.0,
+            dot: 8.0,
+        },
+        ..Theme::default()
+    };
+    let painted = shapes(&theme, |ui| {
+        let mut value = 50.0;
+        ui.add(Slider::new(&mut value, 0.0..=100.0));
+    });
+    let rails: Vec<_> = painted
+        .iter()
+        .filter_map(|shape| match shape {
+            Shape::Rect(rect) if (rect.rect.height() - 10.0).abs() < 0.01 => Some(rect.rect),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !rails.is_empty(),
+        "custom rail thickness 10 must appear in painted rects"
+    );
+    let thumbs: Vec<_> = painted
+        .iter()
+        .filter_map(|shape| match shape {
+            Shape::Circle(circle) if (circle.radius - 16.0).abs() < 0.01 => Some(circle.radius),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !thumbs.is_empty(),
+        "custom thumb diameter 32 must paint a 16 radius circle"
+    );
+    assert!(
+        painted.iter().any(|shape| matches!(
+            shape,
+            Shape::Circle(circle) if (circle.radius - 4.0).abs() < 0.01
+        )),
+        "custom inner dot diameter 8 must paint a 4 radius circle"
+    );
+}
+
+#[test]
+fn disabled_slider_uses_disabled_colours() {
+    let theme = Theme::default();
+    let rgb = |color: egui::Color32| (color.r(), color.g(), color.b());
+    let paint = |enabled: bool| {
+        shapes(&theme, |ui| {
+            ui.add_enabled_ui(enabled, |ui| {
+                let mut value = 50.0;
+                ui.add(Slider::new(&mut value, 0.0..=100.0));
+            });
+        })
+    };
+    let rects = |shapes: &[Shape]| {
+        shapes
+            .iter()
+            .filter_map(|shape| match shape {
+                Shape::Rect(rect) => Some(rgb(rect.fill)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let circles = |shapes: &[Shape]| {
+        shapes
+            .iter()
+            .filter_map(|shape| match shape {
+                Shape::Circle(circle) => Some(rgb(circle.fill)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let on = paint(true);
+    let off = paint(false);
+    // egui fades a disabled `Ui` after the widget chooses colours, so the pixels are not the
+    // raw alias. The outcome is that rail, fill and thumb no longer match the enabled frame.
+    assert_ne!(
+        rects(&on),
+        rects(&off),
+        "disabled rail and fill must not use the enabled colours"
+    );
+    assert_ne!(
+        circles(&on),
+        circles(&off),
+        "disabled thumb and dot must not use the enabled colours"
+    );
+    let enabled_rail = rgb(c(theme.color.neutral_stroke_accessible));
+    let enabled_brand = rgb(c(theme.color.compound_brand_background));
+    let enabled_thumb = rgb(c(theme.color.neutral_background_1));
+    assert!(
+        !rects(&off).contains(&enabled_rail) && !rects(&off).contains(&enabled_brand),
+        "disabled rail and fill are not the resting stroke or brand, got {:?}",
+        rects(&off)
+    );
+    assert!(
+        !circles(&off).contains(&enabled_thumb) && !circles(&off).contains(&enabled_brand),
+        "disabled thumb and dot are not the resting background or brand, got {:?}",
+        circles(&off)
+    );
 }

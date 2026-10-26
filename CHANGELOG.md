@@ -30,6 +30,9 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 - Accessible text for data views: `DataGrid::cell_text(|row, column_id| ..)` labels each GridCell, and each Row reads its cells joined with ", "; `List::row_label(|row| ..)` labels each option. AccessKit derives no name from these nodes' children, so Orca was silent as focus moved through a grid or list. `Column::id()` returns a column's id. Used in the gallery DataGrid and List pages and in `examples/a11y_walk.rs` (WI-1848).
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
+### Changed
+- Slider rail, thumb and inner-dot sizes come from `Theme.slider` (`SliderMetrics`). A disabled slider paints the disabled alias colours for the rail, fill and thumb (issue #151).
+
 ### Fixed
 - Tooltip text was only painted, so screen readers never read it. `fluent_tooltip` now sets it as the widget's AccessKit description (Fluent's `aria-describedby`), with no hover needed. A tooltip that only repeats the label adds nothing, and ribbon tooltips ("Paste\nCtrl+V") describe the control by its shortcut alone. Found by the 2026-10-20 audit (WI-1931).
 - KeyTips: once KeyTips are on, letters typed with Alt still held were dropped. They now continue the sequence, as in Office, and releasing Alt afterwards no longer toggles KeyTips off. Found in the 2026-10-20 upstream review (gridcraft 4ed93c3b) (WI-1927).

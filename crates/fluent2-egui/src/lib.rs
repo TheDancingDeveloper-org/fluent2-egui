@@ -136,6 +136,7 @@ pub use surfaces::{
 };
 #[rustfmt::skip]
 pub use theme::{
+    SliderMetrics,
     Theme,
     ThemeKind,
 };
