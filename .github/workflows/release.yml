@@ -49,17 +49,16 @@ jobs:
     needs: gates
     if: github.event_name == 'workflow_dispatch' && inputs.publish_crates && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    environment: crates-io
+    concurrency:
+      group: crates-io-publish
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
-      # Dependency order. crates.io indexes each crate before the next one resolves it; cargo
-      # publish waits for that by default.
-      - run: cargo publish -p fluent2-tokens
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      - run: cargo publish -p fluent2-icons
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      - run: cargo publish -p fluent2-egui
+      - uses: EmbarkStudios/cargo-deny-action@v2
+      # scripts/publish-crates.sh checks the tag, a clean tree, licences, and
+      # skips a crate whose version is already on crates.io.
+      - run: scripts/publish-crates.sh --publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
