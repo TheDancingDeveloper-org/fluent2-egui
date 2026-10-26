@@ -175,4 +175,28 @@ mod tests {
         assert!(parse("data:image/png,raw").is_none());
         assert!(parse("https://example.com/a.png").is_none());
     }
+
+    fn prop_config() -> proptest::test_runner::Config {
+        proptest::test_runner::Config {
+            cases: 64,
+            failure_persistence: None,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(0xF2E6_0158),
+            ..proptest::test_runner::Config::default()
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(prop_config())]
+
+        /// Arbitrary input never panics, and a successful decode never exceeds [`MAX_BYTES`].
+        #[test]
+        fn decode_never_panics_and_stays_within_max(
+            bytes in proptest::collection::vec(proptest::num::u8::ANY, 0..512),
+        ) {
+            let input = String::from_utf8_lossy(&bytes);
+            if let Some(out) = decode_base64(&input) {
+                proptest::prop_assert!(out.len() <= MAX_BYTES);
+            }
+        }
+    }
 }
