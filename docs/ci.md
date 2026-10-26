@@ -23,20 +23,28 @@ The `classify changes` job diffs the PR against its merge base and turns the cha
 into a package list. Anything that changes workspace resolution or builds takes the full
 workspace; an unrecognised `crates/*` path also falls back to full, never to "no check".
 
-| Changed paths | Runs on a PR |
+| Changed paths | Checks that depend on them |
 |---|---|
-| `.github/*`, `Cargo.toml`, `Cargo.lock`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows |
+| `.github/*`, `Cargo.toml`, `Cargo.lock`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including regeneration drift and the README index |
 | `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh` | `gallery` package plus the gallery jobs (`gallery-wasm`, `gallery-screenshots`) |
-| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them |
-| `crates/fluent2-icons/*` | `fluent2-icons` |
-| `crates/fluent2-tokens/*` | `fluent2-tokens` |
-| `xtask/*` | `xtask` |
-| anything else (docs, markdown, `scripts/`, `upstream.toml`) | nothing; the `ci` gate passes |
+| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui` |
+| `crates/fluent2-icons/*`, `assets/icons/*` | `fluent2-icons` plus the component interaction tests (`fluent2-egui` and `gallery`) |
+| `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui` and `gallery` |
+| `xtask/*` | `xtask`, regeneration drift, and the crates the generators write (`fluent2-tokens`, `fluent2-egui`, `gallery`) |
+| other `scripts/*` (generators) | regeneration drift and `xtask` plus `fluent2-tokens` |
+| `README.md` | the README component index (`cargo test -p fluent2-egui --test readme_index`) |
+| any other `crates/*` path | full workspace (an unrecognised crate is not safe to narrow) |
+| anything else (other docs, markdown, `upstream.toml`) | the full PR set. An unclassified path fails safe; it never skips every check |
 
 Clippy, nextest and the doctests run with `--workspace` or with one `-p <package>` per package
-in the scope. The extra `serde` feature test runs when `fluent2-egui` is in scope. The Windows
-leg and `gallery-wasm` for library-only changes run in the queue, never on a PR or on a
-push to `main`.
+in the scope. The extra `serde` feature test and the README index run when `fluent2-egui` is in
+scope, and the README index also runs for a README-only change. Regeneration drift
+(`cargo xtask gen-tokens && git diff --exit-code`, in the `fmt` job) runs when tokens, a
+generator or `xtask` changed, and on the full workspace. The Windows leg and `gallery-wasm` for
+library-only changes run in the queue, never on a PR or on a push to `main`.
+
+`scripts/ci-classify-test.sh` feeds sample changed-file lists through the same `case` and checks
+which jobs are selected. It does not need a checkout of history.
 
 ## Build cache and runner
 
