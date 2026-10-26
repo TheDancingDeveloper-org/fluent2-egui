@@ -1,17 +1,25 @@
 # Dialog
 
-A modal or non-modal surface built on [`egui::Modal`](https://docs.rs/egui/0.36.2/egui/containers/struct.Modal.html).
-The egui modal already paints a full-screen backdrop, blocks input to the UI behind it, tracks the
-topmost modal layer, and reports whether any popup was open at the start of the frame. Fluent
-chrome, focus, keyboard policy and accessibility sit on top of that. A custom area is not used.
+A modal surface built on [`egui::Modal`](https://docs.rs/egui/0.36.2/egui/containers/struct.Modal.html).
+Every dialog is modal. The egui modal paints a full-screen backdrop, blocks input to the UI behind
+it, tracks the topmost modal layer, and reports whether any popup was open at the start of the
+frame. That blocking does not depend on [`DialogKind`]: a click, hover or key meant for the page
+does not reach it while any dialog is open. Fluent chrome, focus, keyboard policy and
+accessibility sit on top of that. A custom area is not used.
 
 ## Kinds
+
+`DialogKind` is the dismissal policy, not modality. All three kinds block background input.
 
 | Kind | Backdrop click | Escape | Use |
 |---|---|---|---|
 | `Modal` (default) | closes (`CloseReason::Backdrop`) | closes (`CloseReason::Escape`) when this dialog is the top modal and no popup is open | ordinary dialog |
-| `NonModal` | does not close | same as Modal | a surface that stays open while the user clicks the dimmed page |
+| `Dismissible` | does not close | same as Modal | a modal surface that stays open when the dimmed page is clicked |
 | `Alert` | ignored | ignored | a choice the user must make with a button |
+
+`DialogKind::NonModal` is a deprecated alias of `Dismissible`. The old name described the
+dismissal policy as if the dialog were not modal. It was not: the backdrop always blocked the
+page. New code uses `Dismissible`.
 
 `Dialog::show` returns `DialogResult::Closed` only on the frame the dialog closes. While it stays
 open the body closure runs and its value is `DialogResult::Open`. Setting `open` to `false` from
@@ -40,7 +48,7 @@ Enter activates the primary action, unless:
 
 Escape follows the kind table above and is also swallowed when a popup is open, so a Dropdown
 inside the dialog can close itself first. The next Escape, with no popup open, closes a Modal or
-NonModal dialog. Alert never closes on Escape.
+Dismissible dialog. Alert never closes on Escape.
 
 ## Nested popups
 

@@ -12,7 +12,8 @@ copied.
 built on [`egui::Modal`](https://docs.rs/egui/0.36.2/egui/containers/struct.Modal.html), like
 [Dialog](dialog.md), and follow the same rules:
 
-- `DialogKind` sets the policy: `Modal` closes on Escape and on a backdrop click, `NonModal` on
+- `DialogKind` sets the dismissal policy, not modality. Every overlay blocks the page behind it.
+  `Modal` closes on Escape and on a backdrop click, `Dismissible` (the old name `NonModal`) on
   Escape only, `Alert` on neither. The header's Close button (`CLOSE_LABEL`) always closes, as
   `CloseReason::Button("Close".to_owned())`.
 - A popup open before the body owns Escape.

@@ -17,6 +17,8 @@ use fluent2_egui::{Theme, install};
 struct Probe {
     open: bool,
     closed_with: Option<CloseReason>,
+    /// Clicks that reached a control on the page behind the dialog.
+    behind_clicks: u32,
 }
 
 /// Store the dialog's open flag. The close reason is kept only on the frame that closed it:
@@ -61,6 +63,7 @@ fn open_probe() -> Rc<RefCell<Probe>> {
     Rc::new(RefCell::new(Probe {
         open: true,
         closed_with: None,
+        behind_clicks: 0,
     }))
 }
 
@@ -476,4 +479,74 @@ fn short_body_does_not_grow_the_surface() {
         "a two-row dialog stays short, got {}",
         surface.height()
     );
+}
+
+/// Page content under the dialog. `behind_clicks` counts clicks that got through the backdrop.
+fn page_behind(probe: Rc<RefCell<Probe>>, kind: DialogKind) -> Harness<'static> {
+    Harness::new_ui(move |ui| {
+        install_light(ui);
+        if ui.add(Button::new("Behind").id_salt("behind")).clicked() {
+            probe.borrow_mut().behind_clicks += 1;
+        }
+        let mut open = probe.borrow().open;
+        let was_open = open;
+        let result = Dialog::new("dialog")
+            .title("Dialog title")
+            .kind(kind)
+            .actions(|actions| {
+                actions.primary("save", "Save");
+            })
+            .show(ui.ctx(), &mut open, |ui| {
+                ui.label("Body");
+            });
+        record(&probe, was_open, open, result);
+    })
+}
+
+fn click_at(harness: &mut Harness<'_>, pos: egui::Pos2) {
+    harness.event(egui::Event::PointerMoved(pos));
+    for pressed in [true, false] {
+        harness.event(egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::default(),
+        });
+    }
+    harness.run();
+}
+
+#[test]
+fn every_kind_blocks_the_page_and_backdrop_dismiss_follows_the_kind() {
+    for kind in [DialogKind::Modal, DialogKind::Dismissible, DialogKind::Alert] {
+        let probe = open_probe();
+        let mut harness = page_behind(probe.clone(), kind);
+        harness.run();
+        let pos = harness.get_by_label("Behind").rect().center();
+        click_at(&mut harness, pos);
+        assert_eq!(
+            probe.borrow().behind_clicks,
+            0,
+            "{kind:?} let a click through to the page behind the dialog"
+        );
+        match kind {
+            DialogKind::Modal => {
+                assert!(!probe.borrow().open, "Modal closes on a backdrop click");
+                assert_eq!(probe.borrow().closed_with, Some(CloseReason::Backdrop));
+            }
+            DialogKind::Dismissible | DialogKind::Alert => {
+                assert!(probe.borrow().open, "{kind:?} stays open on a backdrop click");
+                assert_eq!(probe.borrow().closed_with, None, "{kind:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn deprecated_non_modal_alias_is_dismissible() {
+    #![allow(deprecated)]
+    assert_eq!(DialogKind::NonModal, DialogKind::Dismissible);
+    assert!(!DialogKind::NonModal.backdrop_dismiss());
+    assert!(DialogKind::Modal.backdrop_dismiss());
+    assert!(!DialogKind::Alert.backdrop_dismiss());
 }
