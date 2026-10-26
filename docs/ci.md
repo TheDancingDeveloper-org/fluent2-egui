@@ -25,16 +25,17 @@ workspace; an unrecognised `crates/*` path also falls back to full, never to "no
 
 | Changed paths | Checks that depend on them |
 |---|---|
-| `.github/*`, `Cargo.toml`, `Cargo.lock`, `deny.toml`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including regeneration drift, icon drift, `cargo deny` and the README index |
+| `.github/*`, `Cargo.toml`, `Cargo.lock`, `deny.toml`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including the downstream fixtures, regeneration drift, icon drift, `cargo deny` and the README index |
+| `fixtures/*` | the downstream fixture jobs (`fixtures`, `fixtures-wasm`, `msrv`) |
 | `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh` | `gallery` package plus the gallery jobs (`gallery-wasm`, `gallery-screenshots`) |
-| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui` |
+| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui`. Also the downstream fixtures: each optional feature on its own, a wasm consumer, and the MSRV consumer |
 | `crates/fluent2-icons/*`, `assets/icons/*`, `xtask/src/icons.rs` | icon drift (`cargo xtask check-icons`, offline) plus `fluent2-icons`, `fluent2-egui` and `gallery` |
 | `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui` and `gallery` |
 | `xtask/*` | `xtask`, regeneration drift, and the crates the generators write (`fluent2-tokens`, `fluent2-egui`, `gallery`) |
 | other `scripts/*` (generators) | regeneration drift and `xtask` plus `fluent2-tokens` |
 | `README.md` | the README component index (`cargo test -p fluent2-egui --test readme_index`) |
-| any other `crates/*` path | full workspace (an unrecognised crate is not safe to narrow) |
-| anything else (other docs, markdown, `upstream.toml`) | the full PR set. An unclassified path fails safe; it never skips every check |
+| any other `crates/*` path | full workspace (an unrecognised crate is not safe to narrow), including the downstream fixtures |
+| anything else (other docs, markdown, `upstream.toml`) | the full PR set, including the downstream fixtures. An unclassified path fails safe; it never skips every check |
 
 Clippy, nextest and the doctests run with `--workspace` or with one `-p <package>` per package
 in the scope. The extra `serde` feature test and the README index run when `fluent2-egui` is in
@@ -48,6 +49,37 @@ and on the full workspace. `cargo deny check` (advisories and licences, `deny.to
 runs when `Cargo.toml`, `Cargo.lock`, `deny.toml` or `.github/` change, and on the full
 workspace. `release.yml` uses the same `deny.toml` for its licence step. The Windows leg and `gallery-wasm` for
 library-only changes run in the queue, never on a PR or on a push to `main`.
+
+## Downstream fixtures
+
+`fixtures/consumer` is a workspace member with `publish = false`. It depends on
+`fluent2-egui` with `default-features = false`, so a check of that crate is a
+minimal consumer rather than the gallery (which turns most optional features on
+together).
+
+The `fixtures` job runs when `crates/fluent2-egui/`, `fixtures/`, `Cargo.toml`,
+`Cargo.lock` or `.github/` change, and whenever the classifier takes the full
+set. It is a matrix, one `cargo check -p fluent2-egui-consumer --no-default-features`
+per cell: no features, each optional feature on its own (`bundled-font`,
+`web-a11y`, `serde`, `terminal`, `diff`, `highlight`, `file-dialog`, `docking`,
+`markdown`, `html`, `web-find`, `chart`, `chrono`), and two pairs (`serde,docking`
+and `markdown,html`). `snapshots` and `system-preferences` stay out of the matrix:
+the first is a dev-only test feature, the second pulls platform bindings that do
+not resolve on every target. `fixtures-wasm` checks the same crate with
+`--target wasm32-unknown-unknown` and no features. `msrv` installs the declared
+`rust-version` (`1.95`) and checks the minimal consumer there, not the whole
+workspace on stable.
+
+Locally, from the workspace root:
+
+```sh
+cargo check -p fluent2-egui-consumer --no-default-features --locked
+cargo check -p fluent2-egui-consumer --no-default-features --features serde --locked
+cargo check -p fluent2-egui-consumer --no-default-features --locked --target wasm32-unknown-unknown
+```
+
+The wasm line needs the `wasm32-unknown-unknown` target installed. If it is not,
+that check is not run locally; CI still runs it.
 
 `scripts/ci-classify-test.sh` feeds sample changed-file lists through the same `case` and checks
 which jobs are selected. It does not need a checkout of history.
