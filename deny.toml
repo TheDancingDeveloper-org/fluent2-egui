@@ -1,3 +1,5 @@
+# Shared by ci.yml (advisories and licences) and release.yml (licences).
+
 # Licence allowlist checked before publish (audit L1).
 # MIT and Apache-2.0 are the workspace licences (LICENSE-MIT, LICENSE-APACHE).
 # The rest are permissive licences already in the published dependency tree
@@ -19,3 +21,18 @@ allow = [
     "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
+
+# Advisories. A vulnerability fails the check.
+# yanked stays at its default (warn): clipboard-win 5.4.1 is yanked and comes
+# in through egui-winit -> arboard -> eframe (the gallery only). Clearing it
+# means bumping egui, which a feature change must not do.
+# unmaintained is a scope, not a lint level. "none" turns the notices off.
+# They have no fixed release the egui 0.36 tree has adopted:
+#   RUSTSEC-2025-0141  bincode 1.3.3    via syntect (upstream calls 1.3.3 complete)
+#   RUSTSEC-2024-0320  yaml-rust 0.4.5  via syntect
+#   RUSTSEC-2026-0371  zbus_names       via accesskit (egui a11y)
+#   RUSTSEC-2026-0370  zvariant         via accesskit
+#   RUSTSEC-2026-0372  zvariant_derive  via accesskit
+[advisories]
+unmaintained = "none"
+ignore = []

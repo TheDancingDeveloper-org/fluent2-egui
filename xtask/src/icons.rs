@@ -20,6 +20,15 @@ struct Icon {
 }
 
 pub fn generate(refresh: bool) -> Result<(), String> {
+    generate_with(refresh, true)
+}
+
+/// Rebuild the committed catalogue from `icons.txt` and the committed SVGs.
+///
+/// `fetch` is what `gen-icons` uses: missing files are downloaded from the pinned
+/// Fluent System Icons revision. The drift check passes `false`, so a missing or
+/// stale committed SVG fails instead of touching the network.
+pub fn generate_with(refresh: bool, allow_fetch: bool) -> Result<(), String> {
     let root = repo_root();
     let list_path = root.join("crates/fluent2-icons/icons.txt");
     let svg_dir = root.join("crates/fluent2-icons/svg");
@@ -63,6 +72,11 @@ pub fn generate(refresh: bool) -> Result<(), String> {
                 let dest = svg_dir.join(&file);
                 if dest.exists() && !refresh {
                     continue;
+                }
+                if !allow_fetch {
+                    return Err(format!(
+                        "{file}: committed SVG missing; run cargo xtask gen-icons (network)"
+                    ));
                 }
                 let folder_enc = icon.folder.replace(' ', "%20");
                 let url = format!(
