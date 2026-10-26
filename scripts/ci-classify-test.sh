@@ -12,7 +12,7 @@ body="$(awk '
 
 classify() {
   local input="$1"
-  rust=false gallery=false full=false readme=false tokens=false
+  rust=false gallery=false full=false readme=false tokens=false icons=false deny=false
   packages=()
   add_package() {
     local pkg
@@ -28,8 +28,8 @@ classify() {
   if [[ "$rust" == true && "$full" == false && ${#packages[@]} -eq 0 ]]; then
     full=true
   fi
-  printf 'rust=%s gallery=%s full=%s readme=%s tokens=%s packages=%s\n' \
-    "$rust" "$gallery" "$full" "$readme" "$tokens" "${packages[*]:-}"
+  printf 'rust=%s gallery=%s full=%s readme=%s tokens=%s icons=%s deny=%s packages=%s\n' \
+    "$rust" "$gallery" "$full" "$readme" "$tokens" "$icons" "$deny" "${packages[*]:-}"
 }
 
 expect() {
@@ -45,15 +45,15 @@ expect() {
 }
 
 expect readme "README.md" \
-  "rust=true gallery=false full=false readme=true tokens=false packages=fluent2-egui"
+  "rust=true gallery=false full=false readme=true tokens=false icons=false deny=false packages=fluent2-egui"
 expect docs "docs/ARCHITECTURE.md" \
-  "rust=true gallery=true full=true readme=true tokens=true packages="
+  "rust=true gallery=true full=true readme=true tokens=true icons=true deny=true packages="
 expect generator "scripts/gen-icons.sh" \
-  "rust=true gallery=false full=false readme=false tokens=true packages=xtask fluent2-tokens"
+  "rust=true gallery=false full=false readme=false tokens=true icons=false deny=false packages=xtask fluent2-tokens"
 expect tokens "crates/fluent2-tokens/data/light.json" \
-  "rust=true gallery=false full=false readme=false tokens=true packages=fluent2-tokens fluent2-egui gallery"
+  "rust=true gallery=false full=false readme=false tokens=true icons=false deny=false packages=fluent2-tokens fluent2-egui gallery"
 expect icons "crates/fluent2-icons/src/lib.rs" \
-  "rust=true gallery=false full=false readme=false tokens=false packages=fluent2-icons fluent2-egui gallery"
+  "rust=true gallery=false full=false readme=false tokens=false icons=true deny=false packages=fluent2-icons fluent2-egui gallery"
 expect empty "" \
-  "rust=false gallery=false full=false readme=false tokens=false packages="
+  "rust=false gallery=false full=false readme=false tokens=false icons=false deny=false packages="
 echo "ci-classify-test: passed"

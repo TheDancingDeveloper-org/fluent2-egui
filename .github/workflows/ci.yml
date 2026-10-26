@@ -32,8 +32,10 @@ jobs:
       rust_packages: ${{ steps.c.outputs.rust_packages }}
       readme: ${{ steps.c.outputs.readme }}
       tokens: ${{ steps.c.outputs.tokens }}
+      icons: ${{ steps.c.outputs.icons }}
+      deny: ${{ steps.c.outputs.deny }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - id: c
@@ -44,11 +46,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT" != pull_request ]]; then
-            printf 'full=true\nrust=true\ngallery=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\n' >> "$GITHUB_OUTPUT"
+            printf 'full=true\nrust=true\ngallery=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           rust=false gallery=false full=false
-          readme=false tokens=false
+          readme=false tokens=false icons=false deny=false
           packages=()
           add_package() {
             local pkg
@@ -61,9 +63,9 @@ jobs:
             case "$f" in
               # Anything that changes how the workspace resolves or builds takes
               # the full workspace and the Windows matrix.
-              .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*)
+              .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*|deny.toml)
                 rust=true gallery=true full=true
-                readme=true tokens=true ;;
+                readme=true tokens=true icons=true deny=true ;;
               crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh)
                 rust=true gallery=true
                 add_package gallery ;;
@@ -73,8 +75,8 @@ jobs:
                 # The gallery enables every optional feature, so running its
                 # tests is what exercises the feature-gated components.
                 add_package gallery ;;
-              crates/fluent2-icons/*|assets/icons/*)
-                rust=true
+              crates/fluent2-icons/*|assets/icons/*|xtask/src/icons.rs)
+                rust=true icons=true
                 add_package fluent2-icons
                 # Icons feed the component interaction tests.
                 add_package fluent2-egui
@@ -105,7 +107,7 @@ jobs:
               *)
                 # An unclassified path fails safe: the full PR set, not nothing.
                 rust=true gallery=true full=true
-                readme=true tokens=true ;;
+                readme=true tokens=true icons=true deny=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
           # A Rust change we could not attribute to a package still needs the
@@ -113,16 +115,16 @@ jobs:
           if [[ "$rust" == true && "$full" == false && ${#packages[@]} -eq 0 ]]; then
             full=true
           fi
-          printf 'full=%s\nrust=%s\ngallery=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\n' \
-            "$full" "$rust" "$gallery" "$full" "${packages[*]}" "$readme" "$tokens" | tee -a "$GITHUB_OUTPUT"
+          printf 'full=%s\nrust=%s\ngallery=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\n' \
+            "$full" "$rust" "$gallery" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
         with:
           components: rustfmt
       - name: Regeneration drift
@@ -140,8 +142,8 @@ jobs:
         os: ${{ fromJSON(needs.changes.outputs.full == 'true' && '["ubuntu-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
@@ -220,8 +222,8 @@ jobs:
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
@@ -235,8 +237,8 @@ jobs:
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           shared-key: ci
@@ -250,8 +252,8 @@ jobs:
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@1.95
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
       - run: cargo check --workspace
 
   gallery-wasm:
@@ -259,15 +261,15 @@ jobs:
     if: needs.changes.outputs.gallery == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           shared-key: ci
           save-if: ${{ github.event_name != 'pull_request' }}
-      - uses: jetli/trunk-action@v0.5.0
+      - uses: jetli/trunk-action@69821d4eec12c308c4b811e459e37556cf920057 # v0.5.0
         with:
           version: v0.21.14
       - run: trunk build index.html --release
@@ -280,11 +282,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.gallery == 'true'
     runs-on: ubuntu-latest
-    container: rust:1.95-trixie
+    container: rust@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 # 1.95-trixie
     env:
       GALLERY_SHOTS_IN_CONTAINER: "1"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           key: gallery-screenshots
@@ -292,7 +294,7 @@ jobs:
       - id: shots
         run: scripts/gallery-screenshots.sh
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: gallery-screenshots
           path: docs/images/gallery/
@@ -300,11 +302,35 @@ jobs:
         run: |
           echo "::error::gallery snapshots changed: run scripts/gallery-screenshots.sh --update and commit the images"
 
+
+  # Offline: rebuild generated.rs from the committed SVGs and fail on drift.
+  # gen-icons itself fetches the pinned upstream revision; this job must not.
+  icon-drift:
+    needs: changes
+    if: needs.changes.outputs.icons == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
+      - run: cargo xtask check-icons
+
+  # Advisories and licences. deny.toml is the policy release.yml also uses.
+  cargo-deny:
+    needs: changes
+    if: needs.changes.outputs.deny == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
+        with:
+          command: check
+          arguments: ""
+          command-arguments: advisories bans licenses sources
   # The one context to require: passes when every job passed or was skipped
   # by path scope, fails on any failure or cancellation.
   ci:
     if: always()
-    needs: [changes, fmt, test, wasm, doc, msrv, gallery-wasm, gallery-screenshots]
+    needs: [changes, fmt, test, wasm, doc, msrv, gallery-wasm, gallery-screenshots, icon-drift, cargo-deny]
     runs-on: ubuntu-latest
     steps:
       - env:

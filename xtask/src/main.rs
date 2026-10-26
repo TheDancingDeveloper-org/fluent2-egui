@@ -4,6 +4,8 @@
 //!   `crates/fluent2-tokens/src/generated/`.
 //! - `cargo xtask gen-icons` downloads the Fluent System Icons subset and writes
 //!   `crates/fluent2-icons/src/generated.rs`.
+//! - `cargo xtask check-icons` rebuilds that file from the committed SVGs, with
+//!   no network, and fails when the committed output differs.
 
 mod icons;
 
@@ -49,8 +51,18 @@ fn run() -> Result<(), String> {
             }
             icons::generate(refresh)
         }
+        Some("check-icons") => {
+            if std::env::args().skip(2).next().is_some() {
+                return Err("usage: cargo xtask check-icons".to_string());
+            }
+            let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../crates/fluent2-icons/src/generated.rs");
+            let before = std::fs::read(&path).map_err(|e| format!("{path:?}: {e}"))?;
+            icons::generate_with(false, false)?;
+            unchanged(&path, &before)
+        }
         Some(other) => Err(format!("unknown task {other}")),
-        None => Err("usage: cargo xtask <gen-tokens|gen-icons>".to_string()),
+        None => Err("usage: cargo xtask <gen-tokens|gen-icons|check-icons>".to_string()),
     }
 }
 
@@ -662,5 +674,15 @@ mod tests {
         assert_eq!(snake("shadow16"), "shadow_16");
         assert_eq!(scream("Base300"), "BASE_300");
         assert_eq!(pascal("BrandBackground2Hover"), "BrandBackground2Hover");
+    }
+}
+
+fn unchanged(path: &std::path::Path, before: &[u8]) -> Result<(), String> {
+    let after = std::fs::read(path).map_err(|e| format!("{path:?}: {e}"))?;
+    if after == before {
+        Ok(())
+    } else {
+        std::fs::write(path, before).map_err(|e| format!("restore {path:?}: {e}"))?;
+        Err("icon catalogue drifted; run cargo xtask gen-icons and commit crates/fluent2-icons".to_string())
     }
 }
