@@ -30,6 +30,8 @@ jobs:
       full: ${{ steps.c.outputs.full }}
       rust_full: ${{ steps.c.outputs.rust_full }}
       rust_packages: ${{ steps.c.outputs.rust_packages }}
+      readme: ${{ steps.c.outputs.readme }}
+      tokens: ${{ steps.c.outputs.tokens }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,10 +44,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT" != pull_request ]]; then
-            printf 'full=true\nrust=true\ngallery=true\nrust_full=true\nrust_packages=\n' >> "$GITHUB_OUTPUT"
+            printf 'full=true\nrust=true\ngallery=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           rust=false gallery=false full=false
+          readme=false tokens=false
           packages=()
           add_package() {
             local pkg
@@ -59,7 +62,8 @@ jobs:
               # Anything that changes how the workspace resolves or builds takes
               # the full workspace and the Windows matrix.
               .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*)
-                rust=true gallery=true full=true ;;
+                rust=true gallery=true full=true
+                readme=true tokens=true ;;
               crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh)
                 rust=true gallery=true
                 add_package gallery ;;
@@ -69,18 +73,39 @@ jobs:
                 # The gallery enables every optional feature, so running its
                 # tests is what exercises the feature-gated components.
                 add_package gallery ;;
-              crates/fluent2-icons/*)
+              crates/fluent2-icons/*|assets/icons/*)
                 rust=true
-                add_package fluent2-icons ;;
-              crates/fluent2-tokens/*)
-                rust=true
-                add_package fluent2-tokens ;;
+                add_package fluent2-icons
+                # Icons feed the component interaction tests.
+                add_package fluent2-egui
+                add_package gallery ;;
+              crates/fluent2-tokens/*|design-tokens/*|scripts/gen-tokens*|scripts/snapshot-tokens*)
+                rust=true tokens=true
+                add_package fluent2-tokens
+                add_package fluent2-egui
+                add_package gallery ;;
               xtask/*)
-                rust=true
-                add_package xtask ;;
+                rust=true tokens=true
+                add_package xtask
+                add_package fluent2-tokens
+                add_package fluent2-egui
+                add_package gallery ;;
+              scripts/*)
+                # Generators rewrite committed sources; check that they still match.
+                rust=true tokens=true
+                add_package xtask
+                add_package fluent2-tokens ;;
+              README.md|README*)
+                # The component index is checked by fluent2-egui's readme test.
+                rust=true readme=true
+                add_package fluent2-egui ;;
               crates/*)
                 # A new or unrecognised crate is not safe to narrow.
                 rust=true full=true ;;
+              *)
+                # An unclassified path fails safe: the full PR set, not nothing.
+                rust=true gallery=true full=true
+                readme=true tokens=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
           # A Rust change we could not attribute to a package still needs the
@@ -88,8 +113,8 @@ jobs:
           if [[ "$rust" == true && "$full" == false && ${#packages[@]} -eq 0 ]]; then
             full=true
           fi
-          printf 'full=%s\nrust=%s\ngallery=%s\nrust_full=%s\nrust_packages=%s\n' \
-            "$full" "$rust" "$gallery" "$full" "${packages[*]}" | tee -a "$GITHUB_OUTPUT"
+          printf 'full=%s\nrust=%s\ngallery=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\n' \
+            "$full" "$rust" "$gallery" "$full" "${packages[*]}" "$readme" "$tokens" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     needs: changes
@@ -100,7 +125,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - run: cargo xtask gen-tokens && git diff --exit-code
+      - name: Regeneration drift
+        if: needs.changes.outputs.tokens == 'true' || needs.changes.outputs.full == 'true'
+        run: cargo xtask gen-tokens && git diff --exit-code
       - run: cargo fmt --all --check
 
   test:
@@ -184,6 +211,9 @@ jobs:
       - name: Serde feature tests
         if: steps.scope.outputs.full == 'true' || contains(format(' {0} ', needs.changes.outputs.rust_packages), ' fluent2-egui ')
         run: cargo test -p fluent2-egui --features serde
+      - name: README index
+        if: needs.changes.outputs.readme == 'true' || steps.scope.outputs.full == 'true' || contains(format(' {0} ', needs.changes.outputs.rust_packages), ' fluent2-egui ')
+        run: cargo test -p fluent2-egui --test readme_index --locked
 
   wasm:
     needs: changes
