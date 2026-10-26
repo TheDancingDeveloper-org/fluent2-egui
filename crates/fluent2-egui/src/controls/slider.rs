@@ -93,9 +93,6 @@ impl Widget for Slider<'_> {
         let label = label
             .or_else(|| super::field::enclosing_field_label(ui.ctx()))
             .unwrap_or_else(|| "Slider".to_owned());
-        let current = snap(clamp(*value, min, max), min, max, step);
-        *value = current;
-
         let length = if vertical {
             ui.available_height().clamp(80.0, 160.0)
         } else {
@@ -112,14 +109,17 @@ impl Widget for Slider<'_> {
         let enabled = ui.is_enabled();
         let span = (max - min).max(f64::EPSILON);
 
+        // Snap the incoming value, then apply this frame's drag or keys before paint
+        // and AccessKit see it. Reading the value before input paints and reports the
+        // previous frame's thumb (issue #143).
+        let before = *value;
+        let mut current = snap(clamp(*value, min, max), min, max, step);
+
         if enabled && response.dragged() {
             let pointer = response.interact_pointer_pos().unwrap_or(rect.center());
             let t = fraction_at(pointer, rect, vertical);
-            *value = snap(min + t * span, min, max, step);
-            response.mark_changed();
-        }
-
-        if enabled && response.has_focus() {
+            current = snap(min + t * span, min, max, step);
+        } else if enabled && response.has_focus() {
             let increment = step.unwrap_or(span * 0.01);
             let (home, end, left, right, up, down) = ui.input(|input| {
                 (
@@ -143,9 +143,16 @@ impl Widget for Slider<'_> {
                 None
             };
             if let Some(next) = next {
-                *value = snap(clamp(next, min, max), min, max, step);
-                response.mark_changed();
+                current = snap(clamp(next, min, max), min, max, step);
             }
+        }
+
+        *value = current;
+        // Changed only when the value the caller holds actually moved, including a snap
+        // of an out-of-range or off-step value they wrote in. A drag or key that lands
+        // on the same value is not a change.
+        if current != before {
+            response.mark_changed();
         }
 
         paint(
@@ -247,4 +254,108 @@ fn snap(value: f64, min: f64, max: f64, step: Option<f64>) -> f64 {
     };
     let steps = ((value - min) / step).round();
     clamp(min + steps * step, min, max)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Slider;
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    struct Frame {
+        value: f64,
+        reported: f64,
+        changed: bool,
+    }
+
+    fn slider_frame(start: f64, step: Option<f64>, drive: impl FnOnce(&Harness<Frame>)) -> Frame {
+        let mut harness = Harness::builder().build_ui_state(
+            |ui, frame: &mut Frame| {
+                let response = ui.add(Slider::new(&mut frame.value, 0.0..=100.0).step(step));
+                let mut reported = f64::NAN;
+                ui.ctx().accesskit_node_builder(response.id, |node| {
+                    if let Some(value) = node.numeric_value() {
+                        reported = value;
+                    }
+                });
+                frame.reported = reported;
+                frame.changed = response.changed();
+            },
+            Frame {
+                value: start,
+                reported: f64::NAN,
+                changed: false,
+            },
+        );
+        drive(&harness);
+        harness.step();
+        Frame {
+            value: harness.state().value,
+            reported: harness.state().reported,
+            changed: harness.state().changed,
+        }
+    }
+
+    #[test]
+    fn arrow_key_updates_value_and_a11y_in_the_same_frame() {
+        let frame = slider_frame(40.0, Some(10.0), |harness| {
+            harness.get_by_label("Slider").focus();
+            harness.key_down(egui::Key::ArrowRight);
+        });
+        assert_eq!(frame.value, 50.0);
+        assert_eq!(frame.reported, 50.0);
+        assert!(frame.changed);
+    }
+
+    #[test]
+    fn drag_updates_value_and_a11y_in_the_same_frame() {
+        let frame = slider_frame(0.0, None, |harness| {
+            let node = harness.get_by_label("Slider");
+            let rect = node.rect();
+            // Press at the rail start, then move to the far end in the same queued step.
+            let start = rect.left_center();
+            let end = rect.right_center();
+            harness.event(egui::Event::PointerMoved(start));
+            harness.event(egui::Event::PointerButton {
+                pos: start,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::default(),
+            });
+            harness.event(egui::Event::PointerMoved(end));
+        });
+        assert!(frame.value > 90.0, "dragged value {}", frame.value);
+        assert!((frame.reported - frame.value).abs() < 1e-9);
+        assert!(frame.changed);
+    }
+
+    #[test]
+    fn unchanged_drag_does_not_mark_changed() {
+        // A press that does not move the pointer stays at the snapped start.
+        let frame = slider_frame(0.0, Some(10.0), |harness| {
+            let rect = harness.get_by_label("Slider").rect();
+            let pos = rect.left_center();
+            harness.event(egui::Event::PointerMoved(pos));
+            harness.event(egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::default(),
+            });
+        });
+        assert_eq!(frame.value, 0.0);
+        assert_eq!(frame.reported, 0.0);
+        assert!(!frame.changed);
+    }
+
+    #[test]
+    fn key_that_does_not_move_does_not_mark_changed() {
+        let frame = slider_frame(0.0, Some(10.0), |harness| {
+            harness.get_by_label("Slider").focus();
+            harness.key_down(egui::Key::ArrowLeft);
+        });
+        assert_eq!(frame.value, 0.0);
+        assert_eq!(frame.reported, 0.0);
+        assert!(!frame.changed);
+    }
 }
