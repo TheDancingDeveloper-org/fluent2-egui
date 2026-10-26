@@ -128,7 +128,7 @@ fn renders_in_every_theme() {
 #[test]
 fn escape_closes_modal_and_non_modal_but_not_alert() {
     for surface in SURFACES {
-        for kind in [DialogKind::Modal, DialogKind::NonModal] {
+        for kind in [DialogKind::Modal, DialogKind::Dismissible] {
             let probe = open_probe();
             let mut harness = harness(probe.clone(), surface, kind, true);
             harness.run();
@@ -166,7 +166,7 @@ fn close_button_closes() {
 fn backdrop_click_closes_only_modal() {
     // The Start drawer is 320 wide in an 800 wide window: (700, 300) is on the backdrop.
     let backdrop = egui::pos2(700.0, 300.0);
-    for (kind, closes) in [(DialogKind::Modal, true), (DialogKind::NonModal, false)] {
+    for (kind, closes) in [(DialogKind::Modal, true), (DialogKind::Dismissible, false)] {
         let probe = open_probe();
         let mut harness = harness(probe.clone(), Surface::Drawer(DrawerPosition::Start), kind, true);
         harness.run();
