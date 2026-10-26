@@ -77,8 +77,8 @@ impl<'a> Combobox<'a> {
         self
     }
 
-    /// When set, Enter on a typed string that matches no active option keeps the typed text.
-    /// Otherwise Enter only accepts an option.
+    /// When set, Enter keeps the typed text unless the user has moved the highlight with the
+    /// arrow keys since the text last changed. Otherwise Enter only accepts an option.
     #[must_use]
     pub fn freeform(mut self, freeform: bool) -> Self {
         self.freeform = freeform;
@@ -102,6 +102,7 @@ impl Widget for Combobox<'_> {
         let id = ui.make_persistent_id(self.id_salt);
         let open_id = id.with("open");
         let active_id = id.with("active");
+        let navigated_id = id.with("navigated");
 
         let rect = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover()).0;
         let icon_px = icon_points(self.size);
@@ -146,11 +147,19 @@ impl Widget for Combobox<'_> {
             .data(|data| data.get_temp::<usize>(active_id))
             .unwrap_or(0)
             .min(filtered.len().saturating_sub(1));
+        // Set only by arrow keys, and cleared when the text changes, so a freeform Enter can
+        // tell a keyboard selection from the default highlight on the first filtered option.
+        let mut navigated = ui
+            .ctx()
+            .data(|data| data.get_temp::<bool>(navigated_id))
+            .unwrap_or(false)
+            && !filtered.is_empty();
 
         let focused = response.has_focus() && enabled;
         if response.changed() && enabled && !self.text.is_empty() {
             open = true;
             active = 0;
+            navigated = false;
         }
         if enabled && focused {
             let input = ui.input(|i| i.clone());
@@ -158,28 +167,39 @@ impl Widget for Combobox<'_> {
                 open = true;
             }
             if open && input.key_pressed(egui::Key::ArrowDown) {
-                active = step(Some(active), filtered.len(), 1);
+                // The first arrow selects the highlighted option; later arrows move it.
+                if navigated {
+                    active = step(Some(active), filtered.len(), 1);
+                }
+                navigated = !filtered.is_empty();
             }
             if open && input.key_pressed(egui::Key::ArrowUp) {
-                active = step(Some(active), filtered.len(), -1);
+                if navigated {
+                    active = step(Some(active), filtered.len(), -1);
+                }
+                navigated = !filtered.is_empty();
             }
             if input.key_pressed(egui::Key::Escape) {
                 open = false;
             }
             if enter {
                 if open {
-                    if self.freeform {
-                        // The typed text is already in `self.text`. Keep it.
-                        response.mark_changed();
-                    } else if let Some((_, label)) = filtered.get(active) {
-                        *self.text = (*label).to_owned();
-                        response.mark_changed();
+                    let commit_active = if self.freeform { navigated } else { true };
+                    if commit_active {
+                        if let Some((_, label)) = filtered.get(active) {
+                            *self.text = (*label).to_owned();
+                            response.mark_changed();
+                        } else if !self.freeform {
+                            self.text.clear();
+                            response.mark_changed();
+                        }
                     } else {
-                        self.text.clear();
+                        // The typed text is already in `self.text`. Keep it.
                         response.mark_changed();
                     }
                 }
                 open = false;
+                navigated = false;
             }
         }
 
@@ -195,13 +215,15 @@ impl Widget for Combobox<'_> {
             response.request_focus();
         }
         if open && !response.has_focus() && !chevron_response.clicked() {
-            let over_popup = ui.input(|input| {
-                input
-                    .pointer
-                    .interact_pos()
-                    .is_some_and(|pos| pos.y >= rect.bottom())
+            // A key press moves the pointer's interact position off the field. Close only on
+            // a press that is not over the popup (WI-145 / #145).
+            let pressed_outside = ui.input(|input| {
+                let pointer = &input.pointer;
+                let pressed = pointer.any_pressed() || pointer.any_click();
+                let over_popup = pointer.interact_pos().is_some_and(|pos| pos.y >= rect.bottom());
+                pressed && !over_popup
             });
-            if !over_popup {
+            if pressed_outside {
                 open = false;
             }
         }
@@ -277,7 +299,93 @@ impl Widget for Combobox<'_> {
         ui.ctx().data_mut(|data| {
             data.insert_temp(open_id, open);
             data.insert_temp(active_id, active);
+            data.insert_temp(navigated_id, navigated);
         });
         response
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    use super::Combobox;
+    use crate::theme::{self, Theme};
+    use fluent2_tokens::FLUENT;
+
+    fn install_egui_theme(ui: &egui::Ui) {
+        let theme = match ui.ctx().theme() {
+            egui::Theme::Light => Theme::light(FLUENT),
+            egui::Theme::Dark => Theme::dark(FLUENT),
+        };
+        theme::install(ui.ctx(), &theme);
+    }
+
+    fn freeform_city() -> (Rc<RefCell<String>>, Harness<'static, ()>) {
+        let text = Rc::new(RefCell::new(String::new()));
+        let shown = Rc::clone(&text);
+        let harness = Harness::new_ui(move |ui| {
+            install_egui_theme(ui);
+            let mut value = shown.borrow().clone();
+            let response = ui.add(
+                Combobox::new("city", &mut value, &["Perth", "Paris", "Padua"])
+                    .placeholder("City")
+                    .freeform(true)
+                    .width(160.0),
+            );
+            response.request_focus();
+            *shown.borrow_mut() = value;
+        });
+        (text, harness)
+    }
+
+    #[test]
+    fn freeform_enter_commits_the_arrow_key_option() {
+        let (text, mut harness) = freeform_city();
+        harness.run();
+        harness.run();
+        harness.get_by_label("City").type_text("pa");
+        harness.run();
+        harness.key_press(egui::Key::ArrowDown);
+        harness.run();
+        harness.key_press(egui::Key::Enter);
+        harness.run();
+        assert_eq!(text.borrow().as_str(), "Paris");
+    }
+
+    #[test]
+    fn freeform_second_arrow_commits_the_next_option() {
+        let (text, mut harness) = freeform_city();
+        harness.run();
+        harness.run();
+        harness.get_by_label("City").type_text("pa");
+        harness.run();
+        harness.key_press(egui::Key::ArrowDown);
+        harness.run();
+        harness.key_press(egui::Key::ArrowDown);
+        harness.run();
+        harness.key_press(egui::Key::Enter);
+        harness.run();
+        assert_eq!(text.borrow().as_str(), "Padua");
+    }
+
+    #[test]
+    fn freeform_typing_after_navigation_keeps_the_text() {
+        let (text, mut harness) = freeform_city();
+        harness.run();
+        harness.run();
+        harness.get_by_label("City").type_text("pa");
+        harness.run();
+        harness.key_press(egui::Key::ArrowDown);
+        harness.run();
+        harness.get_by_label("City").type_text("d");
+        harness.run();
+        harness.key_press(egui::Key::Enter);
+        harness.run();
+        assert_eq!(text.borrow().as_str(), "pad");
     }
 }
