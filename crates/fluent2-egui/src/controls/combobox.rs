@@ -4,12 +4,13 @@
 //! [`super::Dropdown`]. Metrics are the WI-1549 brief: 32 px rows, a check on the selected
 //! option, and [`egui::ScrollArea::show_rows`] past 50 options.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use egui::{Id, Rect, Response, Sense, TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
 
 use super::ButtonSize;
 use super::dropdown::{
-    PreviewFn, field_height, filter_options, finite, icon_points, icon_size, paint_outline, rounded_u8,
-    show_listbox, step,
+    PreviewFn, field_height, finite, icon_points, icon_size, paint_outline, rounded_u8, show_listbox, step,
 };
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
 use crate::foundation::icon::{IconName, IconStyle, paint_icon};
@@ -17,6 +18,71 @@ use crate::theme::{Theme, c};
 use egui::CornerRadius;
 
 use fluent2_tokens::generated::global::spacing_horizontal;
+
+/// Options the combobox filters without copying the list.
+///
+/// `revision` changes when the list changes. The filtered result is cached against it and the
+/// query, so a stable list is not scanned again while the popup stays open on the same text.
+pub trait ComboboxOptions {
+    /// How many options the list holds.
+    fn len(&self) -> usize;
+
+    /// Whether the list holds no options.
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// The option at `index`.
+    fn get(&self, index: usize) -> &str;
+
+    /// A value that changes when the list changes.
+    fn revision(&self) -> u64;
+}
+
+/// A borrowed option list with an explicit revision.
+///
+/// Bump `revision` when the list changes so the filter cache rebuilds. [`Combobox::new`] borrows
+/// a slice at revision 0 and does not copy the strings. [`ModelCombobox`] takes a model whose
+/// revision can change.
+pub struct SliceOptions<'a, T: AsRef<str>> {
+    options: &'a [T],
+    revision: u64,
+}
+
+impl<'a, T: AsRef<str>> SliceOptions<'a, T> {
+    /// Borrow `options`. `revision` is the cache key for this list.
+    pub fn new(options: &'a [T], revision: u64) -> Self {
+        Self { options, revision }
+    }
+}
+
+impl<T: AsRef<str>> ComboboxOptions for SliceOptions<'_, T> {
+    fn len(&self) -> usize {
+        self.options.len()
+    }
+
+    fn get(&self, index: usize) -> &str {
+        self.options[index].as_ref()
+    }
+
+    fn revision(&self) -> u64 {
+        self.revision
+    }
+}
+
+/// Counts how often the combobox actually filters. Tests read it; production code leaves it
+/// unset and pays nothing.
+#[derive(Clone, Copy)]
+pub struct FilterProbe(pub &'static AtomicU64);
+
+/// Filtered indexes stored on the widget id. Rebuilt only while the popup is open and the
+/// query or model revision changed.
+#[derive(Clone)]
+struct FilterCache {
+    query: String,
+    revision: u64,
+    indexes: Vec<usize>,
+}
 
 /// An editable field that filters a list of options.
 ///
@@ -26,36 +92,51 @@ use fluent2_tokens::generated::global::spacing_horizontal;
 /// let _ = ui.add(Combobox::new("city", text, &["Perth", "Paris"]).freeform(true));
 /// # }
 /// ```
-pub struct Combobox<'a> {
+pub struct Combobox<'a, T: AsRef<str> = &'a str> {
     id_salt: Id,
     text: &'a mut String,
-    options: Vec<String>,
+    options: &'a [T],
+    model: Option<&'a dyn ComboboxOptions>,
     placeholder: Option<String>,
     label: Option<String>,
     size: ButtonSize,
     width: Option<f32>,
     freeform: bool,
     preview: Option<PreviewFn<'a>>,
+    probe: Option<&'static AtomicU64>,
 }
 
-impl<'a> Combobox<'a> {
+impl<'a, T: AsRef<str>> Combobox<'a, T> {
     /// A combobox bound to `text`. `id_salt` names the widget.
+    ///
+    /// Borrows `options` for this frame. The strings are not copied into the widget. The cache
+    /// revision stays 0; use [`ModelCombobox`] with [`SliceOptions`] when the list can change
+    /// without the query changing.
     pub fn new(
         id_salt: impl std::hash::Hash + std::fmt::Debug,
         text: &'a mut String,
-        options: &[impl AsRef<str>],
+        options: &'a [T],
     ) -> Self {
         Self {
             id_salt: Id::new(id_salt),
             text,
-            options: options.iter().map(|option| option.as_ref().to_owned()).collect(),
+            options,
+            model: None,
             placeholder: None,
             label: None,
             size: ButtonSize::Medium,
             width: None,
             freeform: false,
             preview: None,
+            probe: None,
         }
+    }
+
+    /// Count real filter passes. For tests, not application code.
+    #[must_use]
+    pub fn filter_probe(mut self, probe: FilterProbe) -> Self {
+        self.probe = Some(probe.0);
+        self
     }
 
     /// Grey hint while `text` is empty. Not the accessible name.
@@ -103,7 +184,76 @@ impl<'a> Combobox<'a> {
     }
 }
 
-impl Widget for Combobox<'_> {
+/// Combobox over a reusable [`ComboboxOptions`] model.
+pub struct ModelCombobox<'a> {
+    id_salt: Id,
+    text: &'a mut String,
+    model: &'a dyn ComboboxOptions,
+    placeholder: Option<String>,
+    label: Option<String>,
+    size: ButtonSize,
+    width: Option<f32>,
+    freeform: bool,
+    preview: Option<PreviewFn<'a>>,
+    probe: Option<&'static AtomicU64>,
+}
+
+impl<'a> ModelCombobox<'a> {
+    /// A combobox over a reusable model. The model is not copied.
+    pub fn new(
+        id_salt: impl std::hash::Hash + std::fmt::Debug,
+        text: &'a mut String,
+        model: &'a dyn ComboboxOptions,
+    ) -> Self {
+        Self {
+            id_salt: Id::new(id_salt),
+            text,
+            model,
+            placeholder: None,
+            label: None,
+            size: ButtonSize::Medium,
+            width: None,
+            freeform: false,
+            preview: None,
+            probe: None,
+        }
+    }
+
+    /// Count real filter passes. For tests, not application code.
+    #[must_use]
+    pub fn filter_probe(mut self, probe: FilterProbe) -> Self {
+        self.probe = Some(probe.0);
+        self
+    }
+
+    /// Grey hint while `text` is empty. Not the accessible name.
+    #[must_use]
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.placeholder = Some(placeholder.into());
+        self
+    }
+}
+
+impl Widget for ModelCombobox<'_> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let combobox = Combobox {
+            id_salt: self.id_salt,
+            text: self.text,
+            options: &[] as &[&str],
+            model: Some(self.model),
+            placeholder: self.placeholder,
+            label: self.label,
+            size: self.size,
+            width: self.width,
+            freeform: self.freeform,
+            preview: self.preview,
+            probe: self.probe,
+        };
+        combobox.ui(ui)
+    }
+}
+
+impl<T: AsRef<str>> Widget for Combobox<'_, T> {
     fn ui(self, ui: &mut Ui) -> Response {
         let theme = Theme::get(ui.ctx());
         let enabled = ui.is_enabled();
@@ -151,7 +301,16 @@ impl Widget for Combobox<'_> {
         let mut open = ui
             .ctx()
             .data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
-        let filtered = filter_options(&self.options, self.text);
+        let filter_id = id.with("filter");
+        let view = OptionView {
+            slice: self.options,
+            model: self.model,
+        };
+        let filtered = if open {
+            cached_filter(ui, filter_id, &view, self.text, self.probe)
+        } else {
+            Vec::new()
+        };
         let mut active = ui
             .ctx()
             .data(|data| data.get_temp::<usize>(active_id))
@@ -326,9 +485,95 @@ impl Widget for Combobox<'_> {
             data.insert_temp(open_id, open);
             data.insert_temp(active_id, active);
             data.insert_temp(navigated_id, navigated);
+            if !open {
+                data.remove::<FilterCache>(filter_id);
+            }
         });
         response
     }
+}
+
+struct OptionView<'a, T: AsRef<str>> {
+    slice: &'a [T],
+    model: Option<&'a dyn ComboboxOptions>,
+}
+
+impl<T: AsRef<str>> ComboboxOptions for OptionView<'_, T> {
+    fn len(&self) -> usize {
+        if let Some(model) = self.model {
+            model.len()
+        } else {
+            self.slice.len()
+        }
+    }
+
+    fn get(&self, index: usize) -> &str {
+        if let Some(model) = self.model {
+            model.get(index)
+        } else {
+            self.slice[index].as_ref()
+        }
+    }
+
+    fn revision(&self) -> u64 {
+        self.model.map(|model| model.revision()).unwrap_or(0)
+    }
+}
+
+fn cached_filter<'b>(
+    ui: &Ui,
+    filter_id: Id,
+    options: &'b dyn ComboboxOptions,
+    query: &str,
+    probe: Option<&'static AtomicU64>,
+) -> Vec<(usize, &'b str)> {
+    let cached = ui.ctx().data(|data| data.get_temp::<FilterCache>(filter_id));
+    let indexes = if let Some(cache) =
+        cached.filter(|cache| cache.query == query && cache.revision == options.revision())
+    {
+        cache.indexes
+    } else {
+        if let Some(probe) = probe {
+            probe.fetch_add(1, Ordering::Relaxed);
+        }
+        let indexes = filter_indexes(options, query);
+        ui.ctx().data_mut(|data| {
+            data.insert_temp(
+                filter_id,
+                FilterCache {
+                    query: query.to_owned(),
+                    revision: options.revision(),
+                    indexes: indexes.clone(),
+                },
+            );
+        });
+        indexes
+    };
+    indexes
+        .into_iter()
+        .map(|index| (index, options.get(index)))
+        .collect()
+}
+
+fn filter_indexes(options: &dyn ComboboxOptions, query: &str) -> Vec<usize> {
+    let count = options.len();
+    if query.is_empty() {
+        return (0..count).collect();
+    }
+    let query = query.to_lowercase();
+    let mut prefix = Vec::new();
+    let mut rest = Vec::new();
+    for index in 0..count {
+        let label = options.get(index);
+        let lower = label.to_lowercase();
+        if lower.starts_with(&query) {
+            prefix.push(index);
+        } else if lower.contains(&query) {
+            rest.push(index);
+        }
+    }
+    prefix.append(&mut rest);
+    prefix
 }
 
 #[cfg(test)]
@@ -445,5 +690,132 @@ mod tests {
         harness.run();
         harness.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Destination");
         harness.get_by_role_and_label(egui::accesskit::Role::Label, "Home city");
+    }
+
+    use std::sync::atomic::AtomicU64;
+
+    use super::{ComboboxOptions, FilterProbe, ModelCombobox, SliceOptions};
+
+    struct Counting<'a> {
+        options: &'a [&'a str],
+        revision: u64,
+    }
+
+    impl ComboboxOptions for Counting<'_> {
+        fn len(&self) -> usize {
+            self.options.len()
+        }
+
+        fn get(&self, index: usize) -> &str {
+            self.options[index]
+        }
+
+        fn revision(&self) -> u64 {
+            self.revision
+        }
+    }
+
+    struct ProbeState {
+        text: String,
+        options: &'static [&'static str],
+        revision: u64,
+        open: bool,
+        probe: &'static AtomicU64,
+    }
+
+    #[test]
+    fn closed_popup_does_not_filter() {
+        static PROBE: AtomicU64 = AtomicU64::new(0);
+        let mut harness = Harness::new_ui_state(
+            |ui, state: &mut ProbeState| {
+                install_egui_theme(ui);
+                let model = Counting {
+                    options: state.options,
+                    revision: state.revision,
+                };
+                ui.add(
+                    ModelCombobox::new("city", &mut state.text, &model)
+                        .filter_probe(FilterProbe(state.probe)),
+                );
+            },
+            ProbeState {
+                text: "P".to_owned(),
+                options: &["Perth", "Paris"],
+                revision: 1,
+                open: false,
+                probe: &PROBE,
+            },
+        );
+        harness.run();
+        harness.run();
+        assert_eq!(PROBE.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn filter_reruns_when_the_query_or_model_changes_and_stays_cached() {
+        static PROBE: AtomicU64 = AtomicU64::new(0);
+        let mut harness = Harness::new_ui_state(
+            |ui, state: &mut ProbeState| {
+                install_egui_theme(ui);
+                let model = Counting {
+                    options: state.options,
+                    revision: state.revision,
+                };
+                let response = ui.add(
+                    ModelCombobox::new("city", &mut state.text, &model)
+                        .filter_probe(FilterProbe(state.probe))
+                        .placeholder("City"),
+                );
+                if state.open {
+                    ui.ctx()
+                        .data_mut(|data| data.insert_temp(response.id.with("open"), true));
+                }
+            },
+            ProbeState {
+                text: "P".to_owned(),
+                options: &["Perth", "Paris", "Rome"],
+                revision: 1,
+                open: true,
+                probe: &PROBE,
+            },
+        );
+        harness.run();
+        assert_eq!(
+            PROBE.load(std::sync::atomic::Ordering::Relaxed),
+            1,
+            "opening filters once"
+        );
+        harness.run();
+        assert_eq!(
+            PROBE.load(std::sync::atomic::Ordering::Relaxed),
+            1,
+            "same query stays cached"
+        );
+        harness.state_mut().text = "Pa".to_owned();
+        harness.run();
+        assert_eq!(
+            PROBE.load(std::sync::atomic::Ordering::Relaxed),
+            2,
+            "a new query filters again"
+        );
+        harness.state_mut().revision = 2;
+        harness.state_mut().options = &["Paris", "Padua", "Rome"];
+        harness.run();
+        assert_eq!(
+            PROBE.load(std::sync::atomic::Ordering::Relaxed),
+            3,
+            "a new revision filters again"
+        );
+        let options = harness.state().options;
+        let shown = SliceOptions::new(options, harness.state().revision);
+        assert_eq!(shown.get(0), "Paris");
+        harness.state_mut().open = false;
+        let before = PROBE.load(std::sync::atomic::Ordering::Relaxed);
+        harness.run();
+        assert_eq!(
+            PROBE.load(std::sync::atomic::Ordering::Relaxed),
+            before,
+            "closed does not filter"
+        );
     }
 }
