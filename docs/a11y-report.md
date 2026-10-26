@@ -2,12 +2,12 @@
 
 This audit covers high contrast, colour contrast, keyboard access, focus visibility, reduced motion and AccessKit semantics for every fluent2-egui component, ahead of 0.1. The tests are the source of truth for this report:
 
-- `crates/fluent2-egui/tests/a11y_contrast.rs` computes the WCAG ratio of every foreground/background token pair the components paint, in light, dark and high contrast (HC). It fails on any new failure, and on any listed failure that has since been fixed. Print the table with `cargo test -p fluent2-egui --test a11y_contrast -- --ignored --nocapture`.
+- `crates/fluent2-egui/tests/a11y_contrast.rs` computes the WCAG ratio of every foreground/background token pair the components paint, in light, dark and high contrast (HC). It fails when any required pair is below its threshold. Print the table with `cargo test -p fluent2-egui --test a11y_contrast -- --ignored --nocapture`.
 - `crates/fluent2-egui/tests/a11y_keyboard.rs` tabs through a page with every basic control in all three themes. It checks that each stop is a named AccessKit node with the right role and that the Fluent focus ring is painted. It also checks that toasts, the spinner and the indeterminate progress bar stay still under reduced motion.
 
 ## 1. Contrast table
 
-Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are reported but not required. Translucent backgrounds are composed over `neutral_background_1`. **✗** marks a failure.
+Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are reported but not required. Translucent backgrounds are composed over `neutral_background_1`. Every required pair passes. Section 2 records the pairs that used to fail and the colours they took.
 
 | component | part | kind | foreground | background | light | dark | hc |
 |---|---|---|---|---|---|---|---|
@@ -16,11 +16,11 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Button | label | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
 | Button | label, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_1_hover` | 14.24 | 10.86 | 14.37 |
 | Button | label, pressed | text 4.5 | `neutral_foreground_1_pressed` | `neutral_background_1_pressed` | 11.76 | 16.48 | 14.37 |
-| Button | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| Button | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | Button | primary label | text 4.5 | `neutral_foreground_on_brand` | `brand_background` | 5.38 | 6.66 | 21.00 |
 | Button | primary label, hover | text 4.5 | `neutral_foreground_on_brand` | `brand_background_hover` | 6.66 | 5.38 | 14.37 |
 | Button | primary label, pressed | text 4.5 | `neutral_foreground_on_brand` | `brand_background_pressed` | 11.65 | 11.65 | 14.37 |
-| Button | primary fill vs surface | non-text 3 | `brand_background` | `neutral_background_1` | 5.38 | **2.18 ✗** | 21.00 |
+| Button | primary fill vs surface | non-text 3 | `brand_background` | `neutral_background_1` | 5.38 | 3.02 | 21.00 |
 | Button | subtle label | text 4.5 | `neutral_foreground_2` | `subtle_background` | 10.05 | 10.01 | 21.00 |
 | Button | subtle label, hover | text 4.5 | `neutral_foreground_2_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
 | Button | subtle label, brand hover | text 4.5 | `neutral_foreground_2_brand_hover` | `subtle_background_hover` | 4.94 | 11.73 | 14.37 |
@@ -57,7 +57,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Menu | item | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
 | Menu | item, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_1_hover` | 14.24 | 10.86 | 14.37 |
 | Menu | secondary text | text 4.5 | `neutral_foreground_3` | `neutral_background_1` | 6.19 | 6.48 | 21.00 |
-| Menu / Popover | surface border | non-text 3 | `neutral_stroke_2` | `neutral_background_1` | **1.32 ✗** | **1.86 ✗** | 21.00 |
+| Menu / Popover | surface border | non-text 3 | `neutral_stroke_2` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | Tooltip | text | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
 | Tooltip | inverted text | text 4.5 | `neutral_foreground_static_inverted` | `neutral_background_static` | 12.63 | 10.86 | 21.00 |
 | TabList | selected label | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
@@ -69,7 +69,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Ribbon gallery | scroll button, hover | text 4.5 | `neutral_foreground_2_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
 | TabList | selected indicator | non-text 3 | `compound_brand_stroke` | `neutral_background_1` | 5.38 | 5.18 | 14.37 |
 | Card | text on filled-alternative | text 4.5 | `neutral_foreground_1` | `neutral_background_2` | 14.87 | 16.48 | 21.00 |
-| Card | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| Card | border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | Avatar | neutral initials | text 4.5 | `neutral_foreground_3` | `neutral_background_6` | 4.96 | 5.63 | 21.00 |
 | Avatar | brand initials | text 4.5 | `neutral_foreground_on_brand` | `brand_background` | 5.38 | 6.66 | 21.00 |
 | Card | content, hover | text 4.5 | `neutral_foreground_1_hover` | `neutral_background_1_hover` | 14.24 | 10.86 | 14.37 |
@@ -89,8 +89,8 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | MessageBar | success icon | non-text 3 | `status_success_foreground_1` | `status_success_background_1` | 5.89 | 6.06 | 21.00 |
 | MessageBar | warning icon | non-text 3 | `status_warning_foreground_1` | `status_warning_background_1` | 4.85 | 6.97 | 21.00 |
 | MessageBar | error icon | non-text 3 | `status_danger_foreground_1` | `status_danger_background_1` | 6.55 | 9.23 | 21.00 |
-| MessageBar | success border | non-text 3 | `status_success_border_1` | `neutral_background_1` | **1.64 ✗** | **2.71 ✗** | 21.00 |
-| MessageBar | error border | non-text 3 | `status_danger_border_1` | `neutral_background_1` | **1.88 ✗** | **2.40 ✗** | 21.00 |
+| MessageBar | success border | non-text 3 | `status_success_border_1` | `neutral_background_1` | 3.03 | 3.03 | 21.00 |
+| MessageBar | error border | non-text 3 | `status_danger_border_1` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | TitleBar | title | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
 | TitleBar | caption glyph, hover | text 4.5 | `neutral_foreground_1_hover` | `subtle_background_hover` | 14.24 | 11.73 | 14.37 |
 | TitleBar | close glyph, hover | text 4.5 | `neutral_foreground_on_brand` | `status_danger_background_3` | 6.07 | 6.07 | 21.00 |
@@ -106,7 +106,7 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | Ribbon gallery | item border, selected | non-text 3 | `brand_stroke_1` | `neutral_background_1` | 5.38 | 5.18 | 21.00 |
 | KeyTips | badge letter | text 4.5 | `neutral_foreground_1` | `neutral_background_1` | 15.52 | 14.55 | 21.00 |
 | KeyTips | typed prefix | text 4.5 | `brand_foreground_1` | `neutral_background_1` | 5.38 | 5.18 | 21.00 |
-| KeyTips | badge border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| KeyTips | badge border | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | Backstage | item, selected | text 4.5 | `neutral_foreground_1_selected` | `subtle_background_selected` | 13.02 | 12.63 | 14.37 |
 | Backstage | selected bar | non-text 3 | `brand_foreground_1` (hc: `neutral_foreground_1_selected`) | `subtle_background_selected` | 4.52 | 4.50 | 14.37 |
 | StatusBar | text | text 4.5 | `neutral_foreground_2` | `neutral_background_2` | 9.63 | 11.34 | 21.00 |
@@ -120,22 +120,33 @@ Thresholds: text 4.5:1 (WCAG 1.4.3), non-text 3:1 (1.4.11). Disabled pairs are r
 | NavigationView | item, hover | text 4.5 | `neutral_foreground_2_hover` | `neutral_background_4_hover` | 14.87 | 16.48 | 14.37 |
 | NavigationView | item, selected | text 4.5 | `neutral_foreground_2_brand_selected` | `neutral_background_4_selected` | 5.38 | 6.20 | 14.37 |
 | NavigationView | header | text 4.5 | `neutral_foreground_3` | `neutral_background_4` | 5.43 | 8.82 | 21.00 |
-| SplitView | splitter | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | **1.53 ✗** | **2.53 ✗** | 21.00 |
+| SplitView | splitter | non-text 3 | `neutral_stroke_1` | `neutral_background_1` | 3.03 | 3.02 | 21.00 |
 | SplitView | splitter, focused | non-text 3 | `brand_stroke_1` | `neutral_background_1` | 5.38 | 5.18 | 21.00 |
 
-## 2. Failures
+## 2. Recorded exceptions, now fixed (issue #150)
 
-### 2.1 Decorative 1 px edges (light and dark), accepted
+The operator decided (2026-10-26) to fix the recorded exceptions rather than classify them as decorative. `Theme::light` and `Theme::dark` move each token from Fluent's value toward the next accessible step on the same ramp, stopping at the first colour that clears 3:1 on `neutral_background_1`. High contrast already passed and is unchanged. `KNOWN_FAILURES` is gone; the contrast test requires the threshold for every pair.
 
-Fluent's `neutral_stroke_1`, `neutral_stroke_2` and `status_*_border_1` measure 1.3 to 2.7:1 against the surface. These are the borders of Button, Card, Menu/Popover, MessageBar, KeyTip badges and the SplitView splitter. WCAG 1.4.11 does not require them: each control is identified by its label, fill or icon, and the controls whose state depends on an edge (Checkbox, Radio, Switch, Input, Slider) use `neutral_stroke_accessible` (≥ 6:1). In HC all of these strokes are white (21:1). Listed in `KNOWN_FAILURES`.
+| token | themes | before | after | ratio before | ratio after | used by |
+|---|---|---|---|---|---|---|
+| `neutral_stroke_1` | light | (209, 209, 209) | (148, 148, 148) | 1.53 | 3.03 | Button, Card and KeyTip borders, SplitView splitter |
+| `neutral_stroke_1` | dark | (102, 102, 102) | (114, 114, 114) | 2.53 | 3.02 | the same |
+| `neutral_stroke_2` | light | (224, 224, 224) | (148, 148, 148) | 1.32 | 3.03 | Menu and Popover surface border |
+| `neutral_stroke_2` | dark | (82, 82, 82) | (114, 114, 114) | 1.86 | 3.02 | the same |
+| `status_success_border_1` | light | (159, 216, 159) | (82, 166, 82) | 1.64 | 3.03 | MessageBar success border |
+| `status_success_border_1` | dark | (16, 124, 16) | (28, 132, 28) | 2.71 | 3.03 | the same |
+| `status_danger_border_1` | light | (238, 172, 178) | (223, 116, 125) | 1.88 | 3.03 | MessageBar error border |
+| `status_danger_border_1` | dark | (197, 15, 31) | (209, 56, 70) | 2.40 | 3.02 | the same |
+| `brand_background` | dark | (17, 94, 163), brand step 70 | (22, 116, 199), blend of steps 80 and 90 | 2.18 | 3.02 | primary button fill against the surface |
 
-### 2.2 Dark-theme token values: overridden (WI-1844)
+No brand step keeps both 3:1 against the dark surface and 4.5:1 for the white label: step 80 is 2.70:1 and 5.38:1, step 90 is 3.85:1 and 3.78:1. The blend is the first colour on that line that clears 3:1. White text on it is about 4.82:1, still above 4.5. Light `brand_background` stays Fluent's (15, 108, 189) at 5.38:1.
 
-Fluent's dark values failed AA. On the operator's decision (2026-10-19), `Theme::dark` overrides both, and light and HC keep Fluent's values:
+### 2.1 Dark-theme text overrides (WI-1844)
+
+On the operator's decision (2026-10-19), `Theme::dark` also overrides two text tokens, and light and HC keep Fluent's values:
 
 - `status_danger_foreground_1` text on the surface was **4.16:1** (Field error message, danger contextual ribbon tab, and the other danger foregrounds). Dark now uses `status_danger_foreground_3`.
 - `neutral_foreground_2_brand_hover` on the subtle hover fill was **4.18:1** (subtle button, hover only). Dark now uses `neutral_foreground_2_hover`, so the dark hover label loses its brand tint.
-- The primary button fill against the dark surface is 2.18:1. It is not required, because the white label on the fill is 6.66:1.
 
 ### 2.3 Fixed in this PR
 

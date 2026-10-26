@@ -298,37 +298,51 @@ impl Default for Theme {
     }
 }
 
-/// Dark-theme departures from Fluent's tokens, so text passes WCAG AA (WI-1844, operator
-/// decision 2026-10-19). Fluent's dark `status_danger_foreground_1` is 4.16:1 on
-/// `neutral_background_1` and `neutral_foreground_2_brand_hover` is 4.18:1 on
-/// `subtle_background_hover`. They take `status_danger_foreground_3` (about 8:1) and
-/// `neutral_foreground_2_hover` instead. Fluent's dark `status_danger_foreground_inverted` is
-/// the fill's own red (177,14,28) on `status_danger_background_3` (197,15,31), so a filled
-/// danger Badge is unreadable (issue #124). It takes white, about 6:1 on that fill.
-/// High contrast keeps Fluent's values.
+/// Dark-theme departures from Fluent's tokens so text passes WCAG AA (WI-1844) and the
+/// recorded non-text pairs pass 3:1 (issue #150, operator decision 2026-10-26).
+///
+/// `status_danger_foreground_1` was 4.16:1 and `neutral_foreground_2_brand_hover` was 4.18:1;
+/// they take `status_danger_foreground_3` and `neutral_foreground_2_hover`.
+/// `status_danger_foreground_inverted` was the fill's own red on `status_danger_background_3`
+/// (issue #124); it takes white. The stroke and status-border overrides, and the brighter
+/// `brand_background`, are the #150 pairs. High contrast keeps Fluent's values.
 fn dark_aa_overrides(mut color: AliasColors) -> AliasColors {
     color.status_danger_foreground_1 = color.status_danger_foreground_3;
     color.status_danger_foreground_inverted = white();
     color.neutral_foreground_2_brand_hover = color.neutral_foreground_2_hover;
+    // Issue #150: recorded non-text pairs must reach 3:1. Values are the nearest step from
+    // Fluent's own token toward the next accessible step on the same ramp.
+    color.neutral_stroke_1 = rgba(114, 114, 114); // was (102, 102, 102), 2.53:1
+    color.neutral_stroke_2 = rgba(114, 114, 114); // was (82, 82, 82), 1.86:1
+    color.status_success_border_1 = rgba(28, 132, 28); // was (16, 124, 16), 2.71:1
+    color.status_danger_border_1 = rgba(209, 56, 70); // was (197, 15, 31), 2.40:1
+    // Fluent dark brand step 70 (17, 94, 163) is 2.18:1 on the surface. No ramp step keeps
+    // both 3:1 against the surface and 4.5:1 for white text; this blend of steps 80 and 90
+    // is the first that clears 3:1 (white label falls to about 4.82:1).
+    color.brand_background = rgba(22, 116, 199);
     color
 }
 
-/// Light-theme departure from Fluent's tokens (issue #124). Fluent's light
-/// `status_danger_foreground_inverted` is (220,98,109) on `status_danger_background_3`
-/// (197,15,31), about 1.7:1, so a filled danger Badge's label fails AA. It takes white,
-/// about 6:1 on that fill, as the dark theme does.
+/// Light-theme departures from Fluent's tokens. `status_danger_foreground_inverted` was
+/// (220,98,109) on `status_danger_background_3` (197,15,31), about 1.7:1 (issue #124); it
+/// takes white. The stroke and status-border overrides are the #150 pairs, moved toward
+/// Fluent's accessible step until each clears 3:1 on `neutral_background_1`.
 fn light_aa_overrides(mut color: AliasColors) -> AliasColors {
     color.status_danger_foreground_inverted = white();
+    // Issue #150. The same pairs, from Fluent's light tokens toward the accessible step.
+    color.neutral_stroke_1 = rgba(148, 148, 148); // was (209, 209, 209), 1.53:1
+    color.neutral_stroke_2 = rgba(148, 148, 148); // was (224, 224, 224), 1.32:1
+    color.status_success_border_1 = rgba(82, 166, 82); // was (159, 216, 159), 1.64:1
+    color.status_danger_border_1 = rgba(223, 116, 125); // was (238, 172, 178), 1.88:1
     color
 }
 
 fn white() -> Rgba {
-    Rgba {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 255,
-    }
+    rgba(255, 255, 255)
+}
+
+fn rgba(r: u8, g: u8, b: u8) -> Rgba {
+    Rgba { r, g, b, a: 255 }
 }
 
 /// `Rgba` as an unmultiplied [`egui::Color32`].
