@@ -1294,6 +1294,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluent2-egui-consumer"
+version = "0.2.0"
+dependencies = [
+ "fluent2-egui",
+]
+
+[[package]]
 name = "fluent2-icons"
 version = "0.2.0"
 
