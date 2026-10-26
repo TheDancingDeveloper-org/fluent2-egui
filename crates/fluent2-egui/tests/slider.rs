@@ -73,14 +73,66 @@ fn step_snaps() {
     assert_eq!(value.get(), 10.0);
 }
 
-#[test]
-fn inverted_range_does_not_panic() {
+fn finite_slider(
+    start: f64,
+    range: std::ops::RangeInclusive<f64>,
+    step: Option<f64>,
+    press: Option<egui::Key>,
+) -> f64 {
+    let value = Cell::new(start);
     let mut harness = Harness::new_ui(|ui| {
         install(ui);
-        let mut value = f64::NAN;
-        ui.add(Slider::new(&mut value, 8.0..=f64::NAN).vertical());
+        let mut current = value.get();
+        let response = ui.add(Slider::new(&mut current, range.clone()).step(step));
+        if press.is_some() {
+            response.request_focus();
+        }
+        value.set(current);
     });
     harness.run();
+    if let Some(key) = press {
+        harness.key_press(key);
+        harness.run();
+    }
+    value.get()
+}
+
+#[test]
+fn inverted_range_does_not_panic() {
+    let value = finite_slider(f64::NAN, 80.0..=10.0, None, None);
+    assert!(value.is_finite());
+    assert!((10.0..=80.0).contains(&value));
+}
+
+#[test]
+fn nan_bound_does_not_panic() {
+    let value = finite_slider(f64::NAN, 8.0..=f64::NAN, None, None);
+    assert!(value.is_finite());
+}
+
+#[test]
+fn extreme_finite_range_stays_finite() {
+    let value = finite_slider(-f64::MAX, -f64::MAX..=f64::MAX, None, None);
+    assert!(value.is_finite(), "value {value}");
+    assert_eq!(value, -f64::MAX);
+}
+
+#[test]
+fn degenerate_range_stays_finite() {
+    let value = finite_slider(4.0, 7.0..=7.0, None, None);
+    assert_eq!(value, 7.0);
+}
+
+#[test]
+fn tiny_step_stays_finite() {
+    let value = finite_slider(
+        0.0,
+        0.0..=1.0,
+        Some(f64::MIN_POSITIVE),
+        Some(egui::Key::ArrowRight),
+    );
+    assert!(value.is_finite(), "value {value}");
+    assert!((0.0..=1.0).contains(&value));
 }
 
 #[test]
