@@ -52,7 +52,7 @@ fn run() -> Result<(), String> {
             icons::generate(refresh)
         }
         Some("check-icons") => {
-            if std::env::args().skip(2).next().is_some() {
+            if std::env::args().nth(2).is_some() {
                 return Err("usage: cargo xtask check-icons".to_string());
             }
             let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -629,6 +629,16 @@ fn split_layers(text: &str) -> Vec<&str> {
     layers
 }
 
+fn unchanged(path: &std::path::Path, before: &[u8]) -> Result<(), String> {
+    let after = std::fs::read(path).map_err(|e| format!("{path:?}: {e}"))?;
+    if after == before {
+        Ok(())
+    } else {
+        std::fs::write(path, before).map_err(|e| format!("restore {path:?}: {e}"))?;
+        Err("icon catalogue drifted; run cargo xtask gen-icons and commit crates/fluent2-icons".to_string())
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -674,15 +684,5 @@ mod tests {
         assert_eq!(snake("shadow16"), "shadow_16");
         assert_eq!(scream("Base300"), "BASE_300");
         assert_eq!(pascal("BrandBackground2Hover"), "BrandBackground2Hover");
-    }
-}
-
-fn unchanged(path: &std::path::Path, before: &[u8]) -> Result<(), String> {
-    let after = std::fs::read(path).map_err(|e| format!("{path:?}: {e}"))?;
-    if after == before {
-        Ok(())
-    } else {
-        std::fs::write(path, before).map_err(|e| format!("restore {path:?}: {e}"))?;
-        Err("icon catalogue drifted; run cargo xtask gen-icons and commit crates/fluent2-icons".to_string())
     }
 }
