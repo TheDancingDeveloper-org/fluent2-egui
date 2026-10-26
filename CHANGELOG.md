@@ -42,6 +42,8 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 - Dialog bodies taller than the screen scroll inside the surface. The title and actions stay visible, every control stays inside the surface (so clicks no longer land on the backdrop and close a Modal), and a control that gains focus is scrolled into view. Found by the rdpapp port (WI-1815) (WI-1912).
 
 ### Changed
+- Dialogs are always modal. `DialogKind` only chooses what dismisses the surface: `Modal` closes on a backdrop click and on Escape, `Dismissible` on Escape only, `Alert` on neither. `DialogKind::NonModal` remains as a deprecated alias of `Dismissible`; it never let background input through (gh:TheDancingDeveloper-org/fluent2-egui#148).
+
 - Dark theme: two Fluent tokens failed WCAG AA for text. `Theme::dark` now sets `status_danger_foreground_1` to `status_danger_foreground_3` (danger text was 4.16:1; Field errors, the danger ribbon tab, danger badges and message bars) and `neutral_foreground_2_brand_hover` to `neutral_foreground_2_hover` (subtle button hover label was 4.18:1). Light and high contrast keep Fluent's values (WI-1844).
 
 ## [0.2.0] - 2026-10-19

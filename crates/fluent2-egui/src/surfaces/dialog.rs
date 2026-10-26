@@ -26,15 +26,46 @@ const CHROME_ESTIMATE: f32 = 96.0;
 const MIN_BODY_HEIGHT: f32 = 48.0;
 
 /// How the dialog reacts to the backdrop and to Escape.
+///
+/// Every dialog is modal: while one is open the backdrop blocks input to the UI behind it,
+/// whatever this variant is. The variant only chooses what dismisses the dialog. `Modal` is the
+/// default and is the only kind a backdrop click closes.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum DialogKind {
     /// A backdrop click and Escape both close the dialog. The default.
+    ///
+    /// The dialog still blocks the UI behind it, as every kind does.
     #[default]
     Modal,
     /// Escape closes the dialog. A backdrop click does not.
-    NonModal,
+    ///
+    /// The dialog is still modal: the backdrop blocks input to the UI behind it. The name is the
+    /// dismissal policy, not a non-modal window. [`DialogKind::NonModal`] is the old name.
+    Dismissible,
     /// Only a button closes the dialog. Backdrop clicks and Escape are ignored.
+    ///
+    /// The dialog is still modal: the backdrop blocks input to the UI behind it.
     Alert,
+}
+
+#[allow(non_upper_case_globals)]
+impl DialogKind {
+    /// The previous name of [`DialogKind::Dismissible`].
+    ///
+    /// It never meant the dialog let background input through. Prefer [`DialogKind::Dismissible`].
+    #[deprecated(
+        since = "0.3.0",
+        note = "renamed to DialogKind::Dismissible; every dialog is modal"
+    )]
+    pub const NonModal: Self = Self::Dismissible;
+
+    /// Whether a backdrop click closes a dialog of this kind. Only [`DialogKind::Modal`] does.
+    ///
+    /// Every kind blocks background input. This is the dismissal policy, not modality.
+    #[must_use]
+    pub const fn backdrop_dismiss(self) -> bool {
+        matches!(self, Self::Modal)
+    }
 }
 
 /// Why a dialog closed.
@@ -43,7 +74,7 @@ pub enum DialogKind {
 /// can share a label and a translated label still closes as the same action.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CloseReason {
-    /// Escape, on a [`DialogKind::Modal`] or [`DialogKind::NonModal`] with no popup open.
+    /// Escape, on a [`DialogKind::Modal`] or [`DialogKind::Dismissible`] with no popup open.
     Escape,
     /// A click on the backdrop of a [`DialogKind::Modal`].
     Backdrop,
@@ -163,7 +194,10 @@ impl<'a> Dialog<'a> {
         self
     }
 
-    /// Modality. The default is [`DialogKind::Modal`].
+    /// Dismissal policy. The default is [`DialogKind::Modal`].
+    ///
+    /// Every dialog is modal and blocks background input. The kind only chooses whether a
+    /// backdrop click or Escape closes it.
     #[must_use]
     pub fn kind(mut self, kind: DialogKind) -> Self {
         self.kind = kind;
@@ -302,7 +336,7 @@ impl<'a> Dialog<'a> {
 
                 let role = match self.kind {
                     DialogKind::Alert => egui::accesskit::Role::AlertDialog,
-                    DialogKind::Modal | DialogKind::NonModal => egui::accesskit::Role::Dialog,
+                    DialogKind::Modal | DialogKind::Dismissible => egui::accesskit::Role::Dialog,
                 };
                 ui.ctx().accesskit_node_builder(surface_id, |node| {
                     node.set_role(role);
