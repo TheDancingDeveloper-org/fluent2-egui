@@ -100,3 +100,22 @@ queue it merges once checks pass.
 `TheDancingDeveloper-org/fluent2-egui` is organisation-owned, so the merge queue is available
 and active: squash merges, up to three entries built and merged per run, all-green required,
 60-minute timeout. The `main` ruleset requires the `ci` context and allows no bypass actors.
+
+## Release publishing
+
+`.github/workflows/release.yml` runs the gates on a `v*` tag and never publishes
+from a tag push. Publishing is a manual `workflow_dispatch` on the tag, with
+`publish_crates` ticked, and the `publish` job uses the protected `crates-io`
+environment plus a `crates-io-publish` concurrency group so two publishes cannot
+run at once.
+
+`scripts/publish-crates.sh` refuses a dirty tree and a tag that is not
+`v<workspace version>`. It runs `cargo deny check licenses` (`deny.toml` allows MIT, Apache-2.0 and the other
+permissive licences already in the tree: BSD-2-Clause, BSD-3-Clause, BSL-1.0,
+ISC, Zlib, Unicode-3.0, OFL-1.1, Ubuntu-font-1.0, CDLA-Permissive-2.0; a
+copyleft or unknown licence fails) before any publish,
+then `cargo package` and checks the archive lists `LICENSE-MIT`,
+`LICENSE-APACHE` and `NOTICE`. Each of `fluent2-tokens`, `fluent2-icons` and
+`fluent2-egui` is skipped when that version is already on crates.io, so a
+re-run resumes after a partial failure. Without `--publish` the script dry-runs
+(`cargo publish --dry-run`) and uploads nothing.

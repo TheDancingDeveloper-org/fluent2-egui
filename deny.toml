@@ -1,0 +1,21 @@
+# Licence allowlist checked before publish (audit L1).
+# MIT and Apache-2.0 are the workspace licences (LICENSE-MIT, LICENSE-APACHE).
+# The rest are permissive licences already in the published dependency tree
+# (egui, resvg, rustls, unicode-ident). A copyleft or unknown licence fails.
+# Ubuntu-font-1.0 and OFL-1.1 are the font licences of epaint_default_fonts,
+# which ships with egui and is not code we relicense.
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
