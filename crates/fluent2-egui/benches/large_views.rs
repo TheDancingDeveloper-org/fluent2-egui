@@ -60,10 +60,7 @@ fn main() {
         .with_size(Vec2::new(640.0, 480.0))
         .build_ui(move |ui| {
             theme(ui);
-            let columns = [
-                Column::new("name", "Name"),
-                Column::new("value", "Value"),
-            ];
+            let columns = [Column::new("name", "Name"), Column::new("value", "Value")];
             let mut state = grid_state.borrow_mut();
             DataGrid::new("bench-grid", &columns, ROWS)
                 .label("Bench grid")
