@@ -23,6 +23,7 @@ use fluent2_tokens::generated::global::spacing_horizontal;
 ///
 /// `revision` changes when the list changes. The filtered result is cached against it and the
 /// query, so a stable list is not scanned again while the popup stays open on the same text.
+/// A plain slice has no revision of its own; its cache key is a fingerprint of the labels.
 pub trait ComboboxOptions {
     /// How many options the list holds.
     fn len(&self) -> usize;
@@ -109,9 +110,8 @@ pub struct Combobox<'a, T: AsRef<str> = &'a str> {
 impl<'a, T: AsRef<str>> Combobox<'a, T> {
     /// A combobox bound to `text`. `id_salt` names the widget.
     ///
-    /// Borrows `options` for this frame. The strings are not copied into the widget. The cache
-    /// revision stays 0; use [`ModelCombobox`] with [`SliceOptions`] when the list can change
-    /// without the query changing.
+    /// Borrows `options` for this frame. The strings are not copied into the widget. A changed
+    /// slice invalidates the filter cache even when the query stays the same.
     pub fn new(
         id_salt: impl std::hash::Hash + std::fmt::Debug,
         text: &'a mut String,
@@ -516,8 +516,33 @@ impl<T: AsRef<str>> ComboboxOptions for OptionView<'_, T> {
     }
 
     fn revision(&self) -> u64 {
-        self.model.map(|model| model.revision()).unwrap_or(0)
+        self.model
+            .map(|model| model.revision())
+            .unwrap_or_else(|| slice_fingerprint(self.slice))
     }
+}
+
+/// Cheap identity for a borrowed slice. Length plus a FNV-1a of every label, so a shorter list
+/// or a same-length list with different text does not reuse another slice's filtered indexes.
+fn slice_fingerprint<T: AsRef<str>>(slice: &[T]) -> u64 {
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut hash = OFFSET;
+    for label in slice {
+        for byte in label.as_ref().as_bytes() {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(PRIME);
+        }
+        hash ^= 0xff;
+        hash = hash.wrapping_mul(PRIME);
+    }
+    hash ^ (slice.len() as u64)
+}
+
+fn filter_matches(cache: &FilterCache, query: &str, options: &dyn ComboboxOptions) -> bool {
+    cache.query == query
+        && cache.revision == options.revision()
+        && cache.indexes.iter().all(|index| *index < options.len())
 }
 
 fn cached_filter<'b>(
@@ -528,9 +553,7 @@ fn cached_filter<'b>(
     probe: Option<&'static AtomicU64>,
 ) -> Vec<(usize, &'b str)> {
     let cached = ui.ctx().data(|data| data.get_temp::<FilterCache>(filter_id));
-    let indexes = if let Some(cache) =
-        cached.filter(|cache| cache.query == query && cache.revision == options.revision())
-    {
+    let indexes = if let Some(cache) = cached.filter(|cache| filter_matches(cache, query, options)) {
         cache.indexes
     } else {
         if let Some(probe) = probe {
@@ -551,6 +574,7 @@ fn cached_filter<'b>(
     };
     indexes
         .into_iter()
+        .filter(|index| *index < options.len())
         .map(|index| (index, options.get(index)))
         .collect()
 }
@@ -817,5 +841,113 @@ mod tests {
             before,
             "closed does not filter"
         );
+    }
+
+    struct SliceProbe {
+        text: String,
+        options: Vec<&'static str>,
+        open: bool,
+        shown: Vec<String>,
+    }
+
+    fn slice_harness(options: Vec<&'static str>) -> Harness<'static, SliceProbe> {
+        Harness::new_ui_state(
+            |ui, state: &mut SliceProbe| {
+                install_egui_theme(ui);
+                let response =
+                    ui.add(Combobox::new("city", &mut state.text, &state.options).placeholder("City"));
+                if state.open {
+                    ui.ctx()
+                        .data_mut(|data| data.insert_temp(response.id.with("open"), true));
+                }
+                let view = super::OptionView {
+                    slice: state.options.as_slice(),
+                    model: None,
+                };
+                state.shown = super::cached_filter(ui, response.id.with("filter"), &view, &state.text, None)
+                    .into_iter()
+                    .map(|(_, label)| label.to_owned())
+                    .collect();
+            },
+            SliceProbe {
+                text: "P".to_owned(),
+                options,
+                open: true,
+                shown: Vec::new(),
+            },
+        )
+    }
+
+    #[test]
+    fn shrinking_an_open_slice_with_the_same_query_shows_the_new_options() {
+        let mut harness = slice_harness(vec!["Perth", "Paris", "Padua", "Portland"]);
+        harness.run();
+        harness.run();
+        assert_eq!(harness.state().shown, ["Perth", "Paris", "Padua", "Portland"]);
+        harness.state_mut().options = vec!["Perth", "Paris"];
+        harness.run();
+        assert_eq!(harness.state().shown, ["Perth", "Paris"]);
+    }
+
+    #[test]
+    fn a_same_length_slice_with_new_contents_is_shown() {
+        let mut harness = slice_harness(vec!["Perth", "Paris", "Padua"]);
+        harness.run();
+        harness.run();
+        harness.state_mut().options = vec!["Pisa", "Prague", "Porto"];
+        harness.run();
+        assert_eq!(harness.state().shown, ["Pisa", "Prague", "Porto"]);
+    }
+
+    #[test]
+    fn time_picker_step_change_while_open_lists_the_new_times() {
+        use crate::controls::calendar::TimeOfDay;
+        use crate::controls::date_picker::TimePicker;
+
+        struct StepState {
+            value: Option<TimeOfDay>,
+            step: u16,
+            open: bool,
+            shown: Vec<String>,
+        }
+
+        let mut harness = Harness::new_ui_state(
+            |ui, state: &mut StepState| {
+                install_egui_theme(ui);
+                let built = TimePicker::new("start", &mut state.value).step_minutes(state.step);
+                let options: Vec<String> = built.options().iter().map(|time| time.format(false)).collect();
+                let response = TimePicker::new("start", &mut state.value)
+                    .step_minutes(state.step)
+                    .show(ui)
+                    .response;
+                if state.open {
+                    ui.ctx()
+                        .data_mut(|data| data.insert_temp(response.id.with("open"), true));
+                }
+                let view = super::OptionView {
+                    slice: options.as_slice(),
+                    model: None,
+                };
+                state.shown = super::cached_filter(ui, response.id.with("filter"), &view, "", None)
+                    .into_iter()
+                    .map(|(_, label)| label.to_owned())
+                    .collect();
+            },
+            StepState {
+                value: TimeOfDay::new(9, 0),
+                step: 60,
+                open: true,
+                shown: Vec::new(),
+            },
+        );
+        harness.run();
+        assert!(harness.state().shown.iter().any(|label| label == "09:00"));
+        assert!(!harness.state().shown.iter().any(|label| label == "09:30"));
+        let hourly = harness.state().shown.len();
+        harness.state_mut().step = 30;
+        harness.run();
+        assert!(harness.state().shown.iter().any(|label| label == "09:00"));
+        assert!(harness.state().shown.iter().any(|label| label == "09:30"));
+        assert!(harness.state().shown.len() > hourly);
     }
 }
