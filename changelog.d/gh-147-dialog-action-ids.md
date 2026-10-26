@@ -1,0 +1,2 @@
+### Changed
+- Dialog actions take a stable id and a display text (`DialogActions::primary(id, text)` and `secondary`). `CloseReason::Button` carries that id, and the button's widget id is derived from it, so two actions may share a label and a translated label still closes as the same action. This is a breaking change: call sites that passed only a label now pass an id as well, and `CloseReason` is no longer `Copy` (gh:TheDancingDeveloper-org/fluent2-egui#147).

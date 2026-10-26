@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use egui::accesskit::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use fluent2_egui::controls::{Button, Dropdown};
 use fluent2_egui::surfaces::{CloseReason, Dialog, DialogKind, DialogResult};
 use fluent2_egui::{Theme, install};
@@ -46,8 +46,8 @@ fn dialog_harness(probe: Rc<RefCell<Probe>>, kind: DialogKind) -> Harness<'stati
             .kind(kind)
             .width(600.0)
             .actions(|actions| {
-                actions.primary("Save");
-                actions.secondary("Cancel");
+                actions.primary("save", "Save");
+                actions.secondary("cancel", "Cancel");
             })
             .show(ui.ctx(), &mut open, |ui| {
                 ui.label("Body");
@@ -107,7 +107,58 @@ fn enter_triggers_primary() {
     harness.key_press(egui::Key::Enter);
     harness.run();
     assert!(!probe.borrow().open, "Enter should trigger the primary action");
-    assert_eq!(probe.borrow().closed_with, Some(CloseReason::Button("Save")));
+    assert_eq!(
+        probe.borrow().closed_with,
+        Some(CloseReason::Button("save".to_owned()))
+    );
+}
+
+#[test]
+fn same_label_actions_are_distinct_and_survive_a_language_switch() {
+    let label = Rc::new(RefCell::new("Save".to_owned()));
+    let probe = open_probe();
+    let label_for_ui = label.clone();
+    let probe_for_ui = probe.clone();
+    let mut harness = Harness::new_ui(move |ui| {
+        install_light(ui);
+        let text = label_for_ui.borrow().clone();
+        let mut open = probe_for_ui.borrow().open;
+        let was_open = open;
+        let result = Dialog::new("duplicate_labels")
+            .title("Save?")
+            .actions(|actions| {
+                actions.primary("save", text.clone());
+                actions.secondary("discard", text);
+            })
+            .show(ui.ctx(), &mut open, |_ui| {});
+        record(&probe_for_ui, was_open, open, result);
+    });
+    harness.run();
+    let english: Vec<_> = harness
+        .get_all_by_label("Save")
+        .map(|node| node.accesskit_node().id())
+        .collect();
+    assert_eq!(english.len(), 2, "both actions show the same label");
+    assert_ne!(
+        english[0], english[1],
+        "widget ids come from the action id, not the label"
+    );
+
+    *label.borrow_mut() = "Speichern".to_owned();
+    harness.run();
+    let translated: Vec<_> = harness
+        .get_all_by_label("Speichern")
+        .map(|node| node.accesskit_node().id())
+        .collect();
+    assert_eq!(translated.len(), 2, "both buttons show the translated label");
+    assert_eq!(translated, english, "a language switch keeps the widget ids");
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert_eq!(
+        probe.borrow().closed_with,
+        Some(CloseReason::Button("save".to_owned())),
+        "the close result is the action id, not the translated label"
+    );
 }
 
 #[test]
@@ -130,7 +181,10 @@ fn enter_on_another_button_does_not_trigger_primary() {
     harness.key_press(egui::Key::Enter);
     harness.run();
     assert!(!probe.borrow().open, "Cancel should close the dialog");
-    assert_eq!(probe.borrow().closed_with, Some(CloseReason::Button("Cancel")));
+    assert_eq!(
+        probe.borrow().closed_with,
+        Some(CloseReason::Button("cancel".to_owned()))
+    );
 }
 
 /// Which focus stop of the dialog has focus: one of Save, Cancel, Inside, or the surface.
@@ -215,7 +269,7 @@ fn focus_returns_to_opener() {
             }
             let result = Dialog::new("dialog")
                 .title("Dialog title")
-                .actions(|actions| actions.secondary("Cancel"))
+                .actions(|actions| actions.secondary("cancel", "Cancel"))
                 .show(ui.ctx(), &mut open, |ui| {
                     ui.label("Body");
                 });
@@ -259,8 +313,8 @@ fn dropdown_inside_dialog_escapes_first() {
             let result = Dialog::new("dialog")
                 .title("Dialog title")
                 .actions(|actions| {
-                    actions.primary("Save");
-                    actions.secondary("Cancel");
+                    actions.primary("save", "Save");
+                    actions.secondary("cancel", "Cancel");
                 })
                 .show(ui.ctx(), &mut open, |ui| {
                     let mut choice = *selected.borrow();
@@ -308,8 +362,8 @@ fn tall_harness(probe: Rc<RefCell<Probe>>, rows: usize) -> Harness<'static> {
                 .title("Tall dialog")
                 .width(400.0)
                 .actions(|actions| {
-                    actions.primary("Save");
-                    actions.secondary("Cancel");
+                    actions.primary("save", "Save");
+                    actions.secondary("cancel", "Cancel");
                 })
                 .show(ui.ctx(), &mut open, |ui| {
                     for row in 0..rows {
@@ -366,7 +420,7 @@ fn focusing_a_lower_control_scrolls_it_into_view_and_clicks_reach_it() {
             let result = Dialog::new("tall")
                 .title("Tall dialog")
                 .width(400.0)
-                .actions(|actions| actions.primary("Save"))
+                .actions(|actions| actions.primary("save", "Save"))
                 .show(ui.ctx(), &mut open, |ui| {
                     for row in 0..rows {
                         let button = ui.add(Button::new(format!("Row {row}")).id_salt(("row", row)));
