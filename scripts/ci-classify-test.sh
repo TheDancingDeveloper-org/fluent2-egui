@@ -57,6 +57,10 @@ expect icons "crates/fluent2-icons/src/lib.rs" \
 expect empty "" \
   "rust=false gallery=false fixtures=false full=false readme=false tokens=false icons=false deny=false packages="
 
+expect wasm_budget "ci/wasm-budget.txt" \
+  "rust=true gallery=true fixtures=false full=false readme=false tokens=false icons=false deny=false packages=gallery"
+expect wasm_doc "docs/wasm-size.md" \
+  "rust=true gallery=true fixtures=false full=false readme=false tokens=false icons=false deny=false packages=gallery"
 expect library "crates/fluent2-egui/src/lib.rs" \
   "rust=true gallery=false fixtures=true full=false readme=false tokens=false icons=false deny=false packages=fluent2-egui gallery"
 expect fixture "fixtures/consumer/src/lib.rs" \

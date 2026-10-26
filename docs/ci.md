@@ -27,7 +27,7 @@ workspace; an unrecognised `crates/*` path also falls back to full, never to "no
 |---|---|
 | `.github/*`, `Cargo.toml`, `Cargo.lock`, `deny.toml`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including the downstream fixtures, regeneration drift, icon drift, `cargo deny` and the README index |
 | `fixtures/*` | the downstream fixture jobs (`fixtures`, `fixtures-wasm`, `msrv`) |
-| `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh` | `gallery` package plus the gallery jobs (`gallery-wasm`, `gallery-screenshots`) |
+| `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh`, `scripts/wasm-size-check.sh`, `ci/wasm-budget.txt`, `docs/wasm-size.md` | `gallery` package plus the gallery jobs (`gallery-wasm`, which also enforces `ci/wasm-budget.txt`, and `gallery-screenshots`) |
 | `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui`. Also the downstream fixtures: each optional feature on its own, a wasm consumer, and the MSRV consumer |
 | `crates/fluent2-icons/*`, `assets/icons/*`, `xtask/src/icons.rs` | icon drift (`cargo xtask check-icons`, offline) plus `fluent2-icons`, `fluent2-egui` and `gallery` |
 | `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui` and `gallery` |

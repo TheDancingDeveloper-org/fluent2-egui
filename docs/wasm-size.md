@@ -111,14 +111,40 @@ measured here; the PR records it.
 4. Remove the `highlight` feature from the gallery: about 0.7 MB raw, but the CodeView page
    goes with it.
 
-**Budget (recommendation for maintainers to confirm):** gzip ≤ 4.5 MB for the gallery wasm.
-That leaves headroom over the 4.11 MB now, and it fails the build if a feature adds about 10%
-without a conscious decision. Pick `opt-level = "z"` only if the budget needs the extra margin.
+**Budget (enforced):** gzip ≤ 4,500,000 bytes and brotli ≤ 4,500,000 bytes for the gallery
+wasm (`*_bg.wasm` from `trunk build index.html --release`). The numbers live in
+`ci/wasm-budget.txt`. `scripts/wasm-size-check.sh` compares the build and exits 1 when either
+measured size is over its line (brotli is checked only when the `brotli` command is installed).
+The `gallery-wasm` job runs that script and uploads `wasm-size.txt` as the `wasm-size` artifact,
+including when the gate fails. The job runs on the gallery path class from the change classifier
+(`crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh`,
+`scripts/wasm-size-check.sh`, `ci/wasm-budget.txt`, `docs/wasm-size.md`) and on the full set.
+
+To raise the budget, change the number in `ci/wasm-budget.txt` in the same change that grows the
+wasm, and say why in this section. A raise is a conscious decision, not a silent one: the gate
+fails the build otherwise. 4,500,000 bytes is the previous recommendation (about 10% over the
+4,109,368 byte gzip of the size-profile build). Pick `opt-level = "z"` only if a raise would
+otherwise be needed.
+
+Frame time for a 10,000-row list, a 10,000-row data grid and a combobox of 10,000 options is
+`cargo bench -p fluent2-egui --bench large_views` (`crates/fluent2-egui/benches/large_views.rs`).
+It prints wall time per frame over 60 frames after a warm-up frame. It is not a required check
+and it does not fail CI. Allocation counts are not reported: a counting allocator needs `unsafe`,
+which the library forbids.
 
 ## Follow-ups
 
+Still not done:
+
+- Throttled time-to-first-frame (4× CPU, Fast 3G). A throttled headless run was started for the
+  original measurement and did not return; it is not part of this gate.
+- A scripted Open and Save pass of the gallery file dialog. It needs a file-chooser intercept
+  and a click into the egui canvas, which the gallery does not expose by URL.
+
+Done alongside the budget:
+
 - Measure throttled time-to-first-frame in a headless run that waits for the wasm download to
-  finish, then a scripted Open and Save pass.
+  finish, then a scripted Open and Save pass. (Kept as the original note; both stay open, see above.)
 - Measure the gallery trunk job's CI time before and after the profile lands.
 - Add the before and after table to the gallery docs and the README defaults, as the issue
   asks, once the budget is agreed.
