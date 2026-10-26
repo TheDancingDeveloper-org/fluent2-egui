@@ -500,6 +500,7 @@ pub(super) fn paint_outline(
 }
 
 /// Options whose text contains `query`, prefix matches first. An empty query returns every option.
+#[cfg(test)]
 pub(super) fn filter_options<'a>(options: &'a [String], query: &str) -> Vec<(usize, &'a str)> {
     if query.is_empty() {
         return options

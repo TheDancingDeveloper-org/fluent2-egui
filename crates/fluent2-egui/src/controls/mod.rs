@@ -109,7 +109,7 @@ pub use checkbox::{
     CheckState,
     Checkbox,
 };
-pub use combobox::Combobox;
+pub use combobox::{Combobox, ComboboxOptions, FilterProbe, ModelCombobox, SliceOptions};
 pub use compound_button::CompoundButton;
 #[rustfmt::skip]
 pub use date_picker::{
