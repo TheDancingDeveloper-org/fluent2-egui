@@ -42,6 +42,35 @@ pub struct Theme {
     /// Compact, medium or touch sizing (`docs/specs/density.md`). Medium by default. Change it
     /// with [`Self::with_density`], which also resizes [`Self::data`].
     pub density: Density,
+    /// Slider rail, thumb and inner-dot sizes. Component metrics, not Fluent global tokens.
+    pub slider: SliderMetrics,
+}
+
+/// Slider sizes, in points. Defaults match the Fluent 2 web slider (4 px rail, 20 px thumb,
+/// 12 px inner dot). They are component metrics: Fluent publishes no global token for them.
+///
+/// ```
+/// let metrics = fluent2_egui::theme::SliderMetrics::default();
+/// assert_eq!(metrics.thumb, 20.0);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SliderMetrics {
+    /// Rail thickness.
+    pub rail: f32,
+    /// Thumb diameter.
+    pub thumb: f32,
+    /// Inner brand dot diameter.
+    pub dot: f32,
+}
+
+impl Default for SliderMetrics {
+    fn default() -> Self {
+        Self {
+            rail: 4.0,
+            thumb: 20.0,
+            dot: 12.0,
+        }
+    }
 }
 
 /// Sizes of the Office chrome, in points. Fixed by `docs/specs/office-chrome.md` §10 (D2).
@@ -207,6 +236,7 @@ impl Theme {
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
             density: Density::Medium,
+            slider: SliderMetrics::default(),
         }
     }
 
@@ -221,6 +251,7 @@ impl Theme {
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
             density: Density::Medium,
+            slider: SliderMetrics::default(),
         }
     }
 
@@ -235,6 +266,7 @@ impl Theme {
             chrome: ChromeMetrics::default(),
             data: DataMetrics::default(),
             density: Density::Medium,
+            slider: SliderMetrics::default(),
         }
     }
 
