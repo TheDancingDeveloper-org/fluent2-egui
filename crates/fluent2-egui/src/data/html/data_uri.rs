@@ -53,10 +53,24 @@ fn extension(mime: &str) -> &'static str {
 }
 
 /// Standard or URL-safe base64, ignoring whitespace (mail wraps long lines) and padding.
+///
+/// The encoded length is checked before any allocation. Four encoded characters produce at most
+/// three bytes, so an input whose decoded size must exceed [`MAX_BYTES`] is rejected with no
+/// buffer. Whitespace is skipped, so a whitespace-heavy payload under the decoded limit still
+/// decodes. The initial buffer is capped at [`MAX_BYTES`]; that cap is the decoded-byte limit,
+/// not an image-pixel limit.
 pub(crate) fn decode_base64(input: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    // Four significant characters decode to three bytes. Reject before allocating when even a
+    // payload with no whitespace would exceed the decoded-byte limit.
+    let max_significant = MAX_BYTES.checked_mul(4)?.checked_div(3)?.saturating_add(2);
+    if input.len() > max_significant {
+        return None;
+    }
+    let capacity = input.len().checked_mul(3)?.checked_div(4)?.min(MAX_BYTES);
+    let mut out = Vec::with_capacity(capacity);
     let mut buffer: u32 = 0;
     let mut bits = 0;
+    let mut saw_padding = false;
     for byte in input.bytes() {
         let value = match byte {
             b'A'..=b'Z' => byte - b'A',
@@ -64,7 +78,10 @@ pub(crate) fn decode_base64(input: &str) -> Option<Vec<u8>> {
             b'0'..=b'9' => byte - b'0' + 52,
             b'+' | b'-' => 62,
             b'/' | b'_' => 63,
-            b'=' => break,
+            b'=' => {
+                saw_padding = true;
+                break;
+            }
             b' ' | b'\n' | b'\r' | b'\t' => continue,
             _ => return None,
         };
@@ -78,6 +95,17 @@ pub(crate) fn decode_base64(input: &str) -> Option<Vec<u8>> {
             }
         }
     }
+    if saw_padding {
+        let mut after = input.split('=').nth(1).unwrap_or("").bytes();
+        if after.any(|byte| !matches!(byte, b'=' | b' ' | b'\n' | b'\r' | b'\t')) {
+            return None;
+        }
+    }
+    // One significant character cannot complete a byte: truncated (`A`) or bad padding (`A===`).
+    // '=' alone never enters the sextet loop, so it stays an empty payload.
+    if bits == 6 {
+        return None;
+    }
     Some(out)
 }
 
@@ -90,6 +118,52 @@ mod tests {
         assert_eq!(decode_base64("aGVsbG8="), Some(b"hello".to_vec()));
         assert_eq!(decode_base64("aGVs\r\nbG8"), Some(b"hello".to_vec()));
         assert_eq!(decode_base64("a$b"), None);
+    }
+
+    #[test]
+    fn oversized_encoded_input_is_rejected_without_a_decoded_buffer() {
+        // Longer than any payload that can decode to MAX_BYTES, including padding slack.
+        let input = "A".repeat(MAX_BYTES.saturating_mul(4) / 3 + 3);
+        assert!(decode_base64(&input).is_none());
+    }
+
+    #[test]
+    fn whitespace_heavy_input_under_the_limit_decodes() {
+        let mut input = String::new();
+        for (index, byte) in b"aGVsbG8=".iter().enumerate() {
+            if index > 0 {
+                input.push_str(" \n\r\t");
+            }
+            input.push(*byte as char);
+        }
+        assert!(input.len() > 8);
+        assert_eq!(decode_base64(&input).as_deref(), Some(b"hello".as_slice()));
+    }
+
+    #[test]
+    fn malformed_padding_outcomes() {
+        // Extra '=' stops decoding and does not change a complete payload.
+        assert_eq!(decode_base64("aGVsbG8===").as_deref(), Some(b"hello".as_slice()));
+        // Non-alphabet after padding, or a single significant character, is an error.
+        assert!(decode_base64("aGVsbG8=!!!!").is_none());
+        assert_eq!(decode_base64("=").as_deref(), Some(b"".as_slice()));
+        assert!(decode_base64("A").is_none());
+        assert!(decode_base64("A===").is_none());
+    }
+
+    #[test]
+    fn decoded_length_at_and_one_byte_over_the_limit() {
+        // 'A' decodes to 0x00. The largest multiple of 3 that fits in MAX_BYTES is the exact
+        // boundary the quartet decoder can land on.
+        let exact = MAX_BYTES / 3 * 3;
+        let at_limit = "A".repeat(exact / 3 * 4);
+        let decoded = decode_base64(&at_limit);
+        let len = decoded.as_ref().map(Vec::len);
+        assert_eq!(len, Some(exact));
+        assert!(len.is_some_and(|len| len <= MAX_BYTES && MAX_BYTES - len < 3));
+        // One more quartet is three more bytes, which crosses MAX_BYTES.
+        let one_over = format!("{at_limit}AAAA");
+        assert!(decode_base64(&one_over).is_none());
     }
 
     #[test]
