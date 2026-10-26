@@ -69,7 +69,7 @@ jobs:
                 readme=true tokens=true icons=true deny=true ;;
               fixtures/*)
                 rust=true fixtures=true ;;
-              crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh)
+              crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh|scripts/wasm-size-check.sh|ci/wasm-budget.txt|docs/wasm-size.md)
                 rust=true gallery=true
                 add_package gallery ;;
               crates/fluent2-egui/*)
@@ -344,6 +344,13 @@ jobs:
           version: v0.21.14
       - run: trunk build index.html --release
         working-directory: crates/gallery
+      - name: compressed size budget
+        run: scripts/wasm-size-check.sh crates/gallery/dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: wasm-size
+          path: crates/gallery/dist/wasm-size.txt
 
   # The README gallery images (WI-1910): re-render every page in the pinned image the
   # script uses, and fail when a committed PNG differs. The rendered set is uploaded so a
