@@ -118,7 +118,7 @@ impl Widget for Slider<'_> {
         if enabled && response.dragged() {
             let pointer = response.interact_pointer_pos().unwrap_or(rect.center());
             let t = fraction_at(pointer, rect, vertical);
-            current = snap(min + t * span, min, max, step);
+            current = snap(value_at(t, min, max), min, max, step);
         } else if enabled && response.has_focus() {
             let increment = step.unwrap_or(span * 0.01);
             let (home, end, left, right, up, down) = ui.input(|input| {
@@ -159,7 +159,7 @@ impl Widget for Slider<'_> {
             ui,
             &theme,
             rect,
-            fraction(current, min, span),
+            fraction(current, min, max),
             vertical,
             enabled,
             response.has_focus(),
@@ -237,8 +237,66 @@ fn fraction_at(pointer: Pos2, rect: Rect, vertical: bool) -> f64 {
     (along as f64 / length as f64).clamp(0.0, 1.0)
 }
 
-fn fraction(value: f64, min: f64, span: f64) -> f32 {
-    ((value - min) / span).clamp(0.0, 1.0) as f32
+fn fraction(value: f64, min: f64, max: f64) -> f32 {
+    unit_position(value, min, max) as f32
+}
+
+/// Place `t` in `[0, 1]` onto `[min, max]` without forming `max - min`.
+///
+/// `max - min` overflows to infinity for extreme finite endpoints such as
+/// `-f64::MAX..=f64::MAX`, and a later division then becomes NaN.
+fn value_at(t: f64, min: f64, max: f64) -> f64 {
+    let t = t.clamp(0.0, 1.0);
+    if !min.is_finite() || !max.is_finite() || min == max {
+        return min;
+    }
+    let mixed = min * (1.0 - t) + max * t;
+    if mixed.is_finite() {
+        return mixed.clamp(min, max);
+    }
+    // Opposite-sign extremes overflow the weighted sum. Split at zero.
+    if min < 0.0 && max > 0.0 {
+        let zero = (-min) / (max + (-min));
+        if zero.is_finite() {
+            let placed = if t <= zero {
+                min * (1.0 - t / zero)
+            } else {
+                max * ((t - zero) / (1.0 - zero))
+            };
+            if placed.is_finite() {
+                return placed.clamp(min, max);
+            }
+        }
+    }
+    min
+}
+
+/// `(value - min) / (max - min)` without a subtraction that can overflow.
+fn unit_position(value: f64, min: f64, max: f64) -> f64 {
+    if !value.is_finite() || !min.is_finite() || !max.is_finite() || min == max {
+        return 0.0;
+    }
+    let value = value.clamp(min, max);
+    let direct = (value - min) / (max - min);
+    if direct.is_finite() {
+        return direct.clamp(0.0, 1.0);
+    }
+    if min < 0.0 && max > 0.0 {
+        if value <= 0.0 {
+            let to_zero = (-min) / (max + (-min));
+            let along = if value == min { 0.0 } else { 1.0 - value / min };
+            if to_zero.is_finite() && along.is_finite() {
+                return (to_zero * along).clamp(0.0, 1.0);
+            }
+        } else {
+            let from_zero = max / (max + (-min));
+            let along = value / max;
+            if from_zero.is_finite() && along.is_finite() {
+                return (1.0 - from_zero + from_zero * along).clamp(0.0, 1.0);
+            }
+        }
+    }
+    0.0
 }
 
 fn clamp(value: f64, min: f64, max: f64) -> f64 {
@@ -249,11 +307,19 @@ fn clamp(value: f64, min: f64, max: f64) -> f64 {
 }
 
 fn snap(value: f64, min: f64, max: f64, step: Option<f64>) -> f64 {
-    let Some(step) = step else {
+    let Some(step) = step.filter(|step| step.is_finite() && *step > 0.0) else {
         return clamp(value, min, max);
     };
+    let value = clamp(value, min, max);
     let steps = ((value - min) / step).round();
-    clamp(min + steps * step, min, max)
+    if !steps.is_finite() {
+        return value;
+    }
+    let snapped = min + steps * step;
+    if !snapped.is_finite() {
+        return value;
+    }
+    clamp(snapped, min, max)
 }
 
 #[cfg(test)]
