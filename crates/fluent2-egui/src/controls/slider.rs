@@ -8,10 +8,6 @@ use egui::{Key, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget, WidgetInf
 use crate::foundation::focus::paint_focus_ring;
 use crate::theme::{self, Theme};
 
-const RAIL: f32 = 4.0;
-const THUMB: f32 = 20.0;
-const DOT: f32 = 12.0;
-
 /// A continuous or stepped slider.
 ///
 /// ```
@@ -93,13 +89,15 @@ impl Widget for Slider<'_> {
         let label = label
             .or_else(|| super::field::enclosing_field_label(ui.ctx()))
             .unwrap_or_else(|| "Slider".to_owned());
+        let metrics = theme.slider;
         let length = if vertical {
             ui.available_height().clamp(80.0, 160.0)
         } else {
             ui.available_width().clamp(120.0, 240.0)
         };
-        // Density grows the cross axis only (44 in Touch); the thumb stays 20.
-        let cross = crate::theme::density_of(ui).height(THUMB);
+        // Density grows the cross axis only (44 in Touch); the thumb diameter stays a
+        // component token and is not scaled.
+        let cross = crate::theme::density_of(ui).height(metrics.thumb);
         let size = if vertical {
             Vec2::new(cross, length)
         } else {
@@ -117,7 +115,7 @@ impl Widget for Slider<'_> {
 
         if enabled && response.dragged() {
             let pointer = response.interact_pointer_pos().unwrap_or(rect.center());
-            let t = fraction_at(pointer, rect, vertical);
+            let t = fraction_at(pointer, rect, vertical, metrics.thumb);
             current = snap(value_at(t, min, max), min, max, step);
         } else if enabled && response.has_focus() {
             let increment = step.unwrap_or(span * 0.01);
@@ -181,12 +179,21 @@ impl Widget for Slider<'_> {
 fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enabled: bool, focused: bool) {
     let color = &theme.color;
     let painter = ui.painter();
+    let metrics = theme.slider;
+    let rail_size = metrics.rail;
+    let thumb_size = metrics.thumb;
+    let dot_size = metrics.dot;
     let rail = if vertical {
-        Rect::from_center_size(rect.center(), Vec2::new(RAIL, rect.height() - THUMB))
+        Rect::from_center_size(rect.center(), Vec2::new(rail_size, rect.height() - thumb_size))
     } else {
-        Rect::from_center_size(rect.center(), Vec2::new(rect.width() - THUMB, RAIL))
+        Rect::from_center_size(rect.center(), Vec2::new(rect.width() - thumb_size, rail_size))
     };
-    painter.rect_filled(rail, RAIL / 2.0, theme::c(color.neutral_stroke_accessible));
+    let rail_fill = if enabled {
+        color.neutral_stroke_accessible
+    } else {
+        color.neutral_stroke_disabled
+    };
+    painter.rect_filled(rail, rail_size / 2.0, theme::c(rail_fill));
     let filled = if vertical {
         Rect::from_min_max(
             Pos2::new(rail.left(), rail.bottom() - rail.height() * fraction),
@@ -198,38 +205,48 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
             Pos2::new(rail.left() + rail.width() * fraction, rail.bottom()),
         )
     };
+    let brand = if enabled {
+        color.compound_brand_background
+    } else {
+        color.neutral_foreground_disabled
+    };
     if fraction > 0.0 {
-        painter.rect_filled(filled, RAIL / 2.0, theme::c(color.compound_brand_background));
+        painter.rect_filled(filled, rail_size / 2.0, theme::c(brand));
     }
     let thumb_center = if vertical {
         Pos2::new(rect.center().x, rail.bottom() - rail.height() * fraction)
     } else {
         Pos2::new(rail.left() + rail.width() * fraction, rect.center().y)
     };
-    let thumb = Rect::from_center_size(thumb_center, Vec2::splat(THUMB));
-    painter.circle_filled(thumb.center(), THUMB / 2.0, theme::c(color.neutral_background_1));
+    let thumb = Rect::from_center_size(thumb_center, Vec2::splat(thumb_size));
+    let thumb_fill = if enabled {
+        color.neutral_background_1
+    } else {
+        color.neutral_background_disabled
+    };
+    let thumb_stroke = if enabled {
+        color.neutral_stroke_1
+    } else {
+        color.neutral_stroke_disabled
+    };
+    painter.circle_filled(thumb.center(), thumb_size / 2.0, theme::c(thumb_fill));
     painter.circle_stroke(
         thumb.center(),
-        THUMB / 2.0 - 0.5,
-        Stroke::new(1.0, theme::c(color.neutral_stroke_1)),
+        thumb_size / 2.0 - 0.5,
+        Stroke::new(1.0, theme::c(thumb_stroke)),
     );
-    painter.circle_filled(
-        thumb.center(),
-        DOT / 2.0,
-        theme::c(color.compound_brand_background),
-    );
+    painter.circle_filled(thumb.center(), dot_size / 2.0, theme::c(brand));
     if focused {
-        paint_focus_ring(ui, thumb, egui::CornerRadius::same((THUMB / 2.0) as u8));
+        paint_focus_ring(ui, thumb, egui::CornerRadius::same((thumb_size / 2.0) as u8));
     }
-    let _ = enabled;
 }
 
-fn fraction_at(pointer: Pos2, rect: Rect, vertical: bool) -> f64 {
+fn fraction_at(pointer: Pos2, rect: Rect, vertical: bool, thumb: f32) -> f64 {
     // The rail is inset by half a thumb on both ends, matching `paint`.
     let (along, length) = if vertical {
-        (rect.bottom() - THUMB / 2.0 - pointer.y, rect.height() - THUMB)
+        (rect.bottom() - thumb / 2.0 - pointer.y, rect.height() - thumb)
     } else {
-        (pointer.x - rect.left() - THUMB / 2.0, rect.width() - THUMB)
+        (pointer.x - rect.left() - thumb / 2.0, rect.width() - thumb)
     };
     if length <= f32::EPSILON {
         return 0.0;
