@@ -155,7 +155,10 @@ fn close_button_closes() {
         harness.get_by_label(CLOSE_LABEL).click();
         harness.run();
         assert!(!probe.borrow().open);
-        assert_eq!(probe.borrow().closed_with, Some(CloseReason::Button(CLOSE_LABEL)));
+        assert_eq!(
+            probe.borrow().closed_with,
+            Some(CloseReason::Button(CLOSE_LABEL.to_owned()))
+        );
     }
 }
 
