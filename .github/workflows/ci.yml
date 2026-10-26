@@ -27,6 +27,7 @@ jobs:
     outputs:
       rust: ${{ steps.c.outputs.rust }}
       gallery: ${{ steps.c.outputs.gallery }}
+      fixtures: ${{ steps.c.outputs.fixtures }}
       full: ${{ steps.c.outputs.full }}
       rust_full: ${{ steps.c.outputs.rust_full }}
       rust_packages: ${{ steps.c.outputs.rust_packages }}
@@ -46,10 +47,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT" != pull_request ]]; then
-            printf 'full=true\nrust=true\ngallery=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\n' >> "$GITHUB_OUTPUT"
+            printf 'full=true\nrust=true\ngallery=true\nfixtures=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          rust=false gallery=false full=false
+          rust=false gallery=false fixtures=false full=false
           readme=false tokens=false icons=false deny=false
           packages=()
           add_package() {
@@ -64,13 +65,15 @@ jobs:
               # Anything that changes how the workspace resolves or builds takes
               # the full workspace and the Windows matrix.
               .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*|deny.toml)
-                rust=true gallery=true full=true
+                rust=true gallery=true fixtures=true full=true
                 readme=true tokens=true icons=true deny=true ;;
+              fixtures/*)
+                rust=true fixtures=true ;;
               crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh)
                 rust=true gallery=true
                 add_package gallery ;;
               crates/fluent2-egui/*)
-                rust=true
+                rust=true fixtures=true
                 add_package fluent2-egui
                 # The gallery enables every optional feature, so running its
                 # tests is what exercises the feature-gated components.
@@ -103,20 +106,20 @@ jobs:
                 add_package fluent2-egui ;;
               crates/*)
                 # A new or unrecognised crate is not safe to narrow.
-                rust=true full=true ;;
+                rust=true fixtures=true full=true ;;
               *)
                 # An unclassified path fails safe: the full PR set, not nothing.
-                rust=true gallery=true full=true
+                rust=true gallery=true fixtures=true full=true
                 readme=true tokens=true icons=true deny=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
           # A Rust change we could not attribute to a package still needs the
           # full workspace rather than no check at all.
-          if [[ "$rust" == true && "$full" == false && ${#packages[@]} -eq 0 ]]; then
+          if [[ "$rust" == true && "$full" == false && "$fixtures" == false && ${#packages[@]} -eq 0 ]]; then
             full=true
           fi
-          printf 'full=%s\nrust=%s\ngallery=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\n' \
-            "$full" "$rust" "$gallery" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" | tee -a "$GITHUB_OUTPUT"
+          printf 'full=%s\nrust=%s\ngallery=%s\nfixtures=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\n' \
+            "$full" "$rust" "$gallery" "$fixtures" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     needs: changes
@@ -247,14 +250,81 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
-  msrv:
+  # Downstream fixtures: default features off, each optional feature alone, and wasm.
+  # Not the gallery (it turns most features on together). Runs when Cargo.toml,
+  # feature flags or the fixture itself change — the same class as a full resolve.
+  fixtures:
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.fixtures == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - bundled-font
+          - web-a11y
+          - serde
+          - terminal
+          - diff
+          - highlight
+          - file-dialog
+          - docking
+          - markdown
+          - html
+          - web-find
+          - chart
+          - chrono
+          - serde,docking
+          - markdown,html
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          shared-key: ci
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - name: Check the consumer
+        env:
+          FEATURES: ${{ matrix.features }}
+        run: |
+          set -euo pipefail
+          args=(-p fluent2-egui-consumer --no-default-features --locked)
+          if [[ -n "$FEATURES" ]]; then
+            args+=(--features "$FEATURES")
+          fi
+          cargo check "${args[@]}"
+
+  fixtures-wasm:
+    needs: changes
+    if: needs.changes.outputs.fixtures == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
-      - run: cargo check --workspace
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          shared-key: ci
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - run: cargo check -p fluent2-egui-consumer --no-default-features --locked --target wasm32-unknown-unknown
+
+  # The declared rust-version, on the minimal consumer rather than the workspace.
+  msrv:
+    needs: changes
+    if: needs.changes.outputs.fixtures == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves 1.95
+        with:
+          toolchain: "1.95"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          shared-key: ci
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - run: cargo check -p fluent2-egui-consumer --no-default-features --locked
 
   gallery-wasm:
     needs: changes
@@ -330,7 +400,7 @@ jobs:
   # by path scope, fails on any failure or cancellation.
   ci:
     if: always()
-    needs: [changes, fmt, test, wasm, doc, msrv, gallery-wasm, gallery-screenshots, icon-drift, cargo-deny]
+    needs: [changes, fmt, test, wasm, doc, fixtures, fixtures-wasm, msrv, gallery-wasm, gallery-screenshots, icon-drift, cargo-deny]
     runs-on: ubuntu-latest
     steps:
       - env:

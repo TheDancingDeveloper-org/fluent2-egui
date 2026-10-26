@@ -1,0 +1,26 @@
+[package]
+name = "fluent2-egui-consumer"
+description = "Downstream fixture: fluent2-egui with one feature set at a time"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+fluent2-egui = { path = "../../crates/fluent2-egui", default-features = false }
+
+[features]
+bundled-font = ["fluent2-egui/bundled-font"]
+web-a11y = ["fluent2-egui/web-a11y"]
+serde = ["fluent2-egui/serde"]
+terminal = ["fluent2-egui/terminal"]
+diff = ["fluent2-egui/diff"]
+highlight = ["fluent2-egui/highlight"]
+file-dialog = ["fluent2-egui/file-dialog"]
+docking = ["fluent2-egui/docking"]
+markdown = ["fluent2-egui/markdown"]
+html = ["fluent2-egui/html"]
+web-find = ["fluent2-egui/web-find"]
+chart = ["fluent2-egui/chart"]
+chrono = ["fluent2-egui/chrono"]
