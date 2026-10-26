@@ -6,7 +6,7 @@ the pieces desktop productivity apps need: title bar, quick access toolbar, ribb
 backstage/File view, command bar, status bar, data grid and tree view. It runs natively on
 Windows and Linux, and on the web through wasm.
 
-**Live gallery:** https://thedancingdeveloper.github.io/fluent2-egui/
+**Hosted gallery:** unavailable. GitHub Pages is not enabled on this repository, so there is no live site. Run the gallery locally with `cargo run -p gallery`. The wasm build in `.github/workflows/pages.yml` still runs; its deploy step is quarantined until Pages is turned on (see [`docs/ci.md`](docs/ci.md)).
 
 **Status: 0.2.0.** Milestones:
 
@@ -169,7 +169,6 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 
 | Fluent 2 | status |
 |---|---|
-| Accordion | WI-1937 |
 | Toolbar, Rating, InfoLabel, Image, Select, SwatchPicker, Carousel, TeachingPopover | not planned yet |
 
 ## Crates
@@ -185,6 +184,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | fluent2-egui | egui |
 |---|---|
 | 0.1.x | 0.36 |
+| 0.2.x | 0.36 |
 
 ## CI
 
