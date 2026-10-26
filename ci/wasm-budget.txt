@@ -1,0 +1,6 @@
+# Gallery wasm compressed-size budget (issue #153).
+# scripts/wasm-size-check.sh fails when a measured size is over its line.
+# Raise a number here in the same change that grows the wasm, and say why in
+# docs/wasm-size.md. Bytes, not megabytes.
+gzip 4500000
+brotli 4500000
