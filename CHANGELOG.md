@@ -30,9 +30,6 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 - Accessible text for data views: `DataGrid::cell_text(|row, column_id| ..)` labels each GridCell, and each Row reads its cells joined with ", "; `List::row_label(|row| ..)` labels each option. AccessKit derives no name from these nodes' children, so Orca was silent as focus moved through a grid or list. `Column::id()` returns a column's id. Used in the gallery DataGrid and List pages and in `examples/a11y_walk.rs` (WI-1848).
 - `SpinButton::label` sets the field's accessible name (AccessKit label), like `Textarea::label`. It is not drawn. Found by the rdpapp port (WI-1815) (WI-1918).
 
-### Changed
-- Slider rail, thumb and inner-dot sizes come from `Theme.slider` (`SliderMetrics`). A disabled slider paints the disabled alias colours for the rail, fill and thumb (issue #151).
-
 ### Fixed
 - Tooltip text was only painted, so screen readers never read it. `fluent_tooltip` now sets it as the widget's AccessKit description (Fluent's `aria-describedby`), with no hover needed. A tooltip that only repeats the label adds nothing, and ribbon tooltips ("Paste\nCtrl+V") describe the control by its shortcut alone. Found by the 2026-10-20 audit (WI-1931).
 - KeyTips: once KeyTips are on, letters typed with Alt still held were dropped. They now continue the sequence, as in Office, and releasing Alt afterwards no longer toggles KeyTips off. Found in the 2026-10-20 upstream review (gridcraft 4ed93c3b) (WI-1927).
@@ -42,8 +39,6 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 - Dialog bodies taller than the screen scroll inside the surface. The title and actions stay visible, every control stays inside the surface (so clicks no longer land on the backdrop and close a Modal), and a control that gains focus is scrolled into view. Found by the rdpapp port (WI-1815) (WI-1912).
 
 ### Changed
-- Dialogs are always modal. `DialogKind` only chooses what dismisses the surface: `Modal` closes on a backdrop click and on Escape, `Dismissible` on Escape only, `Alert` on neither. `DialogKind::NonModal` remains as a deprecated alias of `Dismissible`; it never let background input through (gh:TheDancingDeveloper-org/fluent2-egui#148).
-
 - Dark theme: two Fluent tokens failed WCAG AA for text. `Theme::dark` now sets `status_danger_foreground_1` to `status_danger_foreground_3` (danger text was 4.16:1; Field errors, the danger ribbon tab, danger badges and message bars) and `neutral_foreground_2_brand_hover` to `neutral_foreground_2_hover` (subtle button hover label was 4.18:1). Light and high contrast keep Fluent's values (WI-1844).
 
 ## [0.2.0] - 2026-10-19
