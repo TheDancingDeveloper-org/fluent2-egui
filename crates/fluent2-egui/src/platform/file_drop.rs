@@ -210,26 +210,72 @@ fn readable_size(bytes: u64) -> String {
     format!("{value:.1} {}", UNITS[unit])
 }
 
-/// Read one file, refusing it when it is larger than `max`: checked from the file's metadata
-/// before reading where there is a path, and on the bytes read otherwise.
+/// Read one file, refusing it when it is larger than `max`.
+///
+/// A regular file whose metadata reports a size over `max` is refused without being opened.
+/// Metadata that is missing, not a regular file, or under the limit is not trusted: the bytes
+/// are taken through [`take_bounded`], which stops after `max + 1` bytes. A file that grows
+/// between the metadata check and the read, or a pathless drop, cannot pass the limit.
+/// `max` itself is unchanged ([`FileDropZone::max_bytes`], default [`DEFAULT_MAX_BYTES`]).
 #[cfg(not(target_arch = "wasm32"))]
 fn read_one(file: &egui::DroppedFileHandle, max: u64) -> Result<PickedFile, (String, String)> {
     let name = file_name(file.path());
     let path = file.path().to_path_buf();
     if let Ok(meta) = std::fs::metadata(&path)
+        && meta.is_file()
         && meta.len() > max
     {
         return Err(too_large(&name, meta.len(), max));
     }
-    let bytes = file.bytes().map_err(|err| (name.clone(), err))?;
-    if bytes.len() as u64 > max {
-        return Err(too_large(&name, bytes.len() as u64, max));
+    let (bytes, continued) = take_bounded(file, max).map_err(|err| (name.clone(), err))?;
+    if continued || bytes.len() as u64 > max {
+        let size = if continued {
+            max.saturating_add(1)
+        } else {
+            bytes.len() as u64
+        };
+        return Err(too_large(&name, size, max));
     }
     Ok(PickedFile {
         name,
         path: (!path.as_os_str().is_empty()).then_some(path),
         bytes,
     })
+}
+
+/// Read at most `max + 1` bytes.
+///
+/// Returns the bytes kept and whether the stream had more. A path is read with
+/// [`std::io::Read::take`], then one further byte is probed and discarded, so a file that grows
+/// past the limit is cut off instead of read in full. A pathless drop (or a path that cannot be
+/// opened) uses [`egui::DroppedFile::bytes`], which has no reader; only `max + 1` bytes of that
+/// buffer are kept.
+#[cfg(not(target_arch = "wasm32"))]
+fn take_bounded(file: &egui::DroppedFileHandle, max: u64) -> Result<(Vec<u8>, bool), String> {
+    let limit = max.saturating_add(1);
+    let path = file.path();
+    if !path.as_os_str().is_empty()
+        && let Ok(mut reader) = std::fs::File::open(path)
+    {
+        return read_limited(&mut reader, limit);
+    }
+    let mut bytes = file.bytes()?;
+    let continued = bytes.len() as u64 > limit;
+    if continued {
+        bytes.truncate(limit as usize);
+    }
+    Ok((bytes, continued))
+}
+
+/// Read `limit` bytes through [`std::io::Read::take`], then probe one more byte.
+#[cfg(not(target_arch = "wasm32"))]
+fn read_limited(reader: &mut impl std::io::Read, limit: u64) -> Result<(Vec<u8>, bool), String> {
+    let mut bounded = std::io::Read::take(&mut *reader, limit);
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut bounded, &mut bytes).map_err(|err| err.to_string())?;
+    let mut extra = [0u8; 1];
+    let continued = std::io::Read::read(reader, &mut extra).map_err(|err| err.to_string())? > 0;
+    Ok((bytes, continued))
 }
 
 /// Read a drop's files one after another on one worker thread.
@@ -341,5 +387,46 @@ mod tests {
     fn names_from_paths() {
         assert_eq!(file_name(std::path::Path::new("/tmp/report.pdf")), "report.pdf");
         assert_eq!(file_name(std::path::Path::new("photo.jpg")), "photo.jpg");
+    }
+
+    /// A stream longer than the limit is cut off at `max + 1` bytes.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn an_oversize_stream_is_cut_off_at_the_limit() {
+        /// Counts bytes pulled. `read_to_end` on an unbounded reader would drain `available`.
+        struct Endless {
+            pulled: usize,
+            available: usize,
+        }
+
+        impl std::io::Read for Endless {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                if self.available == 0 || buf.is_empty() {
+                    return Ok(0);
+                }
+                let n = buf.len().min(self.available).min(16);
+                buf[..n].fill(9);
+                self.pulled += n;
+                self.available -= n;
+                Ok(n)
+            }
+        }
+
+        let max = 50 * 1024 * 1024u64;
+        assert_eq!(max, DEFAULT_MAX_BYTES, "the default limit is unchanged");
+        let mut stream = Endless {
+            pulled: 0,
+            available: (max as usize).saturating_mul(4),
+        };
+        let Ok((bytes, continued)) = read_limited(&mut stream, max + 1) else {
+            panic!("bounded read failed");
+        };
+        assert!(continued, "the stream had more than the limit");
+        assert_eq!(bytes.len() as u64, max + 1);
+        assert_eq!(
+            stream.pulled as u64,
+            max + 2,
+            "one byte past the cutoff was probed and not kept; the rest was never read"
+        );
     }
 }
