@@ -49,7 +49,7 @@ one test file. Do not reorganise folders as part of a component item.
 2. **Multi-part controls return a named struct**, never a tuple. Example: `SplitButton::show(ui)`
    returns `SplitButtonResponse { main: Response, menu: Response }`.
 3. **Containers take a closure** and return what it returns:
-   `Dialog::new(id).title("…").show(ctx, |ui| { … }) -> Option<R>` (`None` when closed).
+   `Dialog::new(id).title("…").show(ctx, &mut open, |ui| { … }) -> DialogResult<R>` (`DialogResult::Closed` when closed).
 4. **IDs are supplied by the caller** (`impl std::hash::Hash`) or derived from the parent `Ui`
    id. Never derive an id from a translated label.
 5. **No command dispatch.** Components return responses or values. The app decides what

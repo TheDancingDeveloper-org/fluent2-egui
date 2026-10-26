@@ -181,3 +181,36 @@ fn supporting_names_are_still_exported() {
         "SUPPORTING lists names no longer exported: {stale:?}"
     );
 }
+
+#[test]
+fn readme_does_not_list_a_shipped_widget_as_missing() {
+    let readme =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../README.md")).unwrap_or_default();
+    let components = readme
+        .split("## Components")
+        .nth(1)
+        .and_then(|rest| rest.split("### Not yet provided").next())
+        .unwrap_or("");
+    let missing = readme.split("### Not yet provided").nth(1).unwrap_or("");
+    let mut contradictions = Vec::new();
+    for line in missing.lines() {
+        let Some(name) = line
+            .trim()
+            .strip_prefix("| ")
+            .and_then(|rest| rest.split('|').next())
+        else {
+            continue;
+        };
+        let name = name.trim();
+        if name.is_empty() || name == "Fluent 2" || name.starts_with('-') {
+            continue;
+        }
+        if components.contains(&format!("`{name}`")) {
+            contradictions.push(name.to_owned());
+        }
+    }
+    assert!(
+        contradictions.is_empty(),
+        "README lists these as both shipped and not yet provided: {contradictions:?}"
+    );
+}

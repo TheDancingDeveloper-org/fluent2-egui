@@ -10,7 +10,7 @@ module layout, the component API, theming, testing and gates.
 1. Find the item in Vogt (index: `docs/BACKLOG.md`) and read it fully. It names the files to create or change, the upstream references
    (pinned URLs), the acceptance criteria and the commands to run.
 2. Branch `wi-<number>-<short-slug>` from `main`, or from the branch the item says it stacks on.
-3. Touch only the files the item lists, plus `CHANGELOG.md`. If you need to touch more, or need
+3. Touch only the files the item lists, plus a fragment in `changelog.d/` (see [`changelog.d/README.md`](changelog.d/README.md) and [`docs/ci.md`](docs/ci.md)). Do not edit `CHANGELOG.md`; the release PR folds fragments in. If you need to touch more, or need
    a design choice the item and `docs/ARCHITECTURE.md` don't settle, **stop and ask on the work
    item**. Do not guess.
 4. Run the gates in `docs/ARCHITECTURE.md` until they pass.

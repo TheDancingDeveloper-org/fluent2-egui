@@ -7,11 +7,11 @@
 //!
 //! # Accessible name
 //!
-//! egui 0.36's [`egui::Widget`] does not accept a name from its parent, and
-//! AccessKit node builders are not exposed on the public [`egui::Context`].
-//! The field therefore announces its own label (with the required marker) as
-//! a label widget. The child keeps the accessible name its own widget sets.
-//! Callers that need the child named should pass that label into the child.
+//! The field announces its own label (with the required marker) as a label
+//! widget. While the child runs, that label is stored on the context, and a
+//! child control with no label of its own reads it through
+//! [`enclosing_field_label`]. The previous value is restored afterwards, so
+//! nested fields keep their own names.
 
 use egui::{Sense, TextStyle, Ui, WidgetInfo, WidgetText, WidgetType};
 
