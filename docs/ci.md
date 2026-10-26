@@ -25,10 +25,10 @@ workspace; an unrecognised `crates/*` path also falls back to full, never to "no
 
 | Changed paths | Checks that depend on them |
 |---|---|
-| `.github/*`, `Cargo.toml`, `Cargo.lock`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including regeneration drift and the README index |
+| `.github/*`, `Cargo.toml`, `Cargo.lock`, `deny.toml`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including regeneration drift, icon drift, `cargo deny` and the README index |
 | `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh` | `gallery` package plus the gallery jobs (`gallery-wasm`, `gallery-screenshots`) |
 | `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui` |
-| `crates/fluent2-icons/*`, `assets/icons/*` | `fluent2-icons` plus the component interaction tests (`fluent2-egui` and `gallery`) |
+| `crates/fluent2-icons/*`, `assets/icons/*`, `xtask/src/icons.rs` | icon drift (`cargo xtask check-icons`, offline) plus `fluent2-icons`, `fluent2-egui` and `gallery` |
 | `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui` and `gallery` |
 | `xtask/*` | `xtask`, regeneration drift, and the crates the generators write (`fluent2-tokens`, `fluent2-egui`, `gallery`) |
 | other `scripts/*` (generators) | regeneration drift and `xtask` plus `fluent2-tokens` |
@@ -40,7 +40,13 @@ Clippy, nextest and the doctests run with `--workspace` or with one `-p <package
 in the scope. The extra `serde` feature test and the README index run when `fluent2-egui` is in
 scope, and the README index also runs for a README-only change. Regeneration drift
 (`cargo xtask gen-tokens && git diff --exit-code`, in the `fmt` job) runs when tokens, a
-generator or `xtask` changed, and on the full workspace. The Windows leg and `gallery-wasm` for
+generator or `xtask` changed, and on the full workspace. Icon drift
+(`cargo xtask check-icons`) rebuilds `crates/fluent2-icons/src/generated.rs` from the
+committed SVGs with no network and fails when that file or a committed SVG differs. It
+runs when icon sources change (`crates/fluent2-icons/`, `assets/icons/`, `xtask/src/icons.rs`)
+and on the full workspace. `cargo deny check` (advisories and licences, `deny.toml`)
+runs when `Cargo.toml`, `Cargo.lock`, `deny.toml` or `.github/` change, and on the full
+workspace. `release.yml` uses the same `deny.toml` for its licence step. The Windows leg and `gallery-wasm` for
 library-only changes run in the queue, never on a PR or on a push to `main`.
 
 `scripts/ci-classify-test.sh` feeds sample changed-file lists through the same `case` and checks
@@ -48,6 +54,12 @@ which jobs are selected. It does not need a checkout of history.
 
 ## Build cache and runner
 
+- Action uses in `ci.yml` are pinned to a commit SHA, with the version in a comment:
+  `actions/checkout` v4.2.2, `actions/upload-artifact` v4.6.2, `dtolnay/rust-toolchain`
+  (master, which resolves the `stable` and `1.95` toolchains), `taiki-e/install-action`,
+  `jetli/trunk-action` v0.5.0 and `EmbarkStudios/cargo-deny-action` v2. `release.yml`
+  still uses floating tags except the deny action, which shares the SHA above.
+- The screenshot job runs in `rust@sha256:f49565f1…` (`1.95-trixie` on the day it was pinned).
 - `Swatinem/rust-cache` is pinned by commit SHA (v2.9.3), with `shared-key: ci`, so every job
   and the queue share the build artefacts. `save-if` is false on `pull_request`: a PR reads
   the cache and only the queue writes it.
