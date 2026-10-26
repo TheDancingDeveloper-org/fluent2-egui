@@ -192,10 +192,13 @@ jobs:
           CARGO_PROFILE_TEST_DEBUG: 0
         run: |
           read -r -a args <<<"$SCOPE_ARGS"
+          # large_views is a custom harness (not libtest). --all-targets runs
+          # every [[bench]], and nextest refuses its timing lines (exit 104).
+          # --lib --tests --bins --examples is --all-targets without benches.
           if command -v cargo-nextest >/dev/null; then
-            cargo nextest run "${args[@]}" --all-targets --locked
+            cargo nextest run "${args[@]}" --lib --tests --bins --examples --locked
           else
-            cargo test "${args[@]}" --all-targets --locked
+            cargo test "${args[@]}" --lib --tests --bins --examples --locked
           fi
       - name: Documentation tests
         shell: bash
