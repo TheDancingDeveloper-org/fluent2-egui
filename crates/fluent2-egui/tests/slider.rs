@@ -2,6 +2,8 @@
 
 use std::cell::Cell;
 
+use proptest::strategy::Strategy;
+
 use egui::{Shape, Vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -280,4 +282,80 @@ fn disabled_slider_uses_disabled_colours() {
         "disabled thumb and dot are not the resting background or brand, got {:?}",
         circles(&off)
     );
+}
+
+/// The theme-render test must check painted outcomes, not only that the harness runs.
+#[test]
+fn theme_render_paints_token_colours_and_metrics() {
+    let theme = Theme::default();
+    let rgb = |color: egui::Color32| (color.r(), color.g(), color.b());
+    let painted = shapes(&theme, |ui| {
+        let mut value = 40.0;
+        ui.add(Slider::new(&mut value, 0.0..=100.0));
+    });
+    let rail_h = theme.slider.rail;
+    let thumb_r = theme.slider.thumb / 2.0;
+    let dot_r = theme.slider.dot / 2.0;
+    let rails: Vec<_> = painted
+        .iter()
+        .filter_map(|shape| match shape {
+            Shape::Rect(rect) if (rect.rect.height() - rail_h).abs() < 0.01 => Some(rect.clone()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !rails.is_empty(),
+        "rail thickness must come from SliderMetrics::rail ({rail_h})"
+    );
+    let rail_colour = rgb(c(theme.color.neutral_stroke_accessible));
+    let brand = rgb(c(theme.color.compound_brand_background));
+    assert!(
+        rails.iter().any(|rect| rgb(rect.fill) == rail_colour),
+        "resting rail fill must be neutral_stroke_accessible, got {rails:?}"
+    );
+    assert!(
+        rails.iter().any(|rect| rgb(rect.fill) == brand),
+        "brand fill must be compound_brand_background"
+    );
+    assert!(
+        painted.iter().any(|shape| matches!(
+            shape,
+            Shape::Circle(circle) if (circle.radius - thumb_r).abs() < 0.01
+                && rgb(circle.fill) == rgb(c(theme.color.neutral_background_1))
+        )),
+        "thumb radius and fill must come from the theme thumb token and neutral_background_1"
+    );
+    assert!(
+        painted.iter().any(|shape| matches!(
+            shape,
+            Shape::Circle(circle) if (circle.radius - dot_r).abs() < 0.01
+                && rgb(circle.fill) == brand
+        )),
+        "inner dot radius and fill must come from the theme dot token and brand"
+    );
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::test_runner::Config {
+        cases: 64,
+        failure_persistence: None,
+        ..proptest::test_runner::Config::default()
+    })]
+
+    /// Slider fraction and the value it stores stay finite for arbitrary finite ranges.
+    #[test]
+    fn slider_fraction_and_value_stay_finite(
+        value in proptest::num::f64::ANY.prop_filter("finite", |v| v.is_finite()),
+        min in proptest::num::f64::ANY.prop_filter("finite", |v| v.is_finite()),
+        max in proptest::num::f64::ANY.prop_filter("finite", |v| v.is_finite()),
+    ) {
+        let (lo, hi) = if min <= max { (min, max) } else { (max, min) };
+        let stored = finite_slider(value, lo..=hi, None, None);
+        proptest::prop_assert!(stored.is_finite(), "stored {stored}");
+        if lo == hi {
+            proptest::prop_assert_eq!(stored, lo);
+        } else {
+            proptest::prop_assert!((lo..=hi).contains(&stored), "{stored} not in {lo}..={hi}");
+        }
+    }
 }
