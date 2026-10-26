@@ -31,6 +31,7 @@ pub struct Combobox<'a> {
     text: &'a mut String,
     options: Vec<String>,
     placeholder: Option<String>,
+    label: Option<String>,
     size: ButtonSize,
     width: Option<f32>,
     freeform: bool,
@@ -49,6 +50,7 @@ impl<'a> Combobox<'a> {
             text,
             options: options.iter().map(|option| option.as_ref().to_owned()).collect(),
             placeholder: None,
+            label: None,
             size: ButtonSize::Medium,
             width: None,
             freeform: false,
@@ -56,10 +58,18 @@ impl<'a> Combobox<'a> {
         }
     }
 
-    /// Grey hint while `text` is empty.
+    /// Grey hint while `text` is empty. Not the accessible name.
     #[must_use]
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = Some(placeholder.into());
+        self
+    }
+
+    /// Accessible name, read by screen readers. Not drawn. Inside a [`super::Field`] the
+    /// Field's label is the default; otherwise the placeholder, then "Combobox".
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
         self
     }
 
@@ -258,12 +268,28 @@ impl Widget for Combobox<'_> {
             );
         }
 
-        let accessible_name = if hint.is_empty() {
-            "Combobox".to_owned()
-        } else {
-            hint
-        };
+        // Name, placeholder and value stay separate. TextEdit already wrote the AccessKit
+        // node (the placeholder as hint_text); a later widget_info does not replace it, so
+        // the name is set on that node. The value is the typed text, not the name.
+        let accessible_name = self
+            .label
+            .clone()
+            .filter(|label| !label.is_empty())
+            .or_else(|| super::field::enclosing_field_label(ui.ctx()).filter(|label| !label.is_empty()))
+            .or_else(|| {
+                let placeholder = hint.trim();
+                if placeholder.is_empty() {
+                    None
+                } else {
+                    Some(placeholder.to_owned())
+                }
+            })
+            .unwrap_or_else(|| "Combobox".to_owned());
         let value_text = self.text.clone();
+        ui.ctx().accesskit_node_builder(response.id, |builder| {
+            builder.set_label(accessible_name.clone());
+            builder.set_value(value_text.clone());
+        });
         response.widget_info(|| {
             let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
             info.current_text_value = Some(value_text.clone());
@@ -314,6 +340,7 @@ mod tests {
     use egui_kittest::kittest::Queryable;
 
     use super::Combobox;
+    use crate::controls::Field;
     use crate::theme::{self, Theme};
     use fluent2_tokens::FLUENT;
 
@@ -387,5 +414,36 @@ mod tests {
         harness.key_press(egui::Key::Enter);
         harness.run();
         assert_eq!(text.borrow().as_str(), "pad");
+    }
+
+    #[test]
+    fn field_label_names_a_combobox_without_a_placeholder() {
+        let mut harness = Harness::new_ui(|ui| {
+            install_egui_theme(ui);
+            let mut value = String::new();
+            Field::new("Home city").show(ui, |ui| {
+                ui.add(Combobox::new("city", &mut value, &["Perth", "Paris"]).width(160.0));
+            });
+        });
+        harness.run();
+        harness.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Home city");
+    }
+
+    #[test]
+    fn explicit_label_wins_over_the_field() {
+        let mut harness = Harness::new_ui(|ui| {
+            install_egui_theme(ui);
+            let mut value = String::new();
+            Field::new("Home city").show(ui, |ui| {
+                ui.add(
+                    Combobox::new("city", &mut value, &["Perth", "Paris"])
+                        .label("Destination")
+                        .width(160.0),
+                );
+            });
+        });
+        harness.run();
+        harness.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Destination");
+        harness.get_by_role_and_label(egui::accesskit::Role::Label, "Home city");
     }
 }
