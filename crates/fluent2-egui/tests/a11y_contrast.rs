@@ -3,8 +3,8 @@
 //! `cargo test -p fluent2-egui --test a11y_contrast -- --ignored --nocapture`.
 //!
 //! Text pairs need 4.5:1 (WCAG 1.4.3) and non-text pairs 3:1 (WCAG 1.4.11). Disabled pairs
-//! are listed but exempt, as WCAG exempts inactive components. A pair that fails is either
-//! in [`KNOWN_FAILURES`] (a Fluent token choice, written up in the report) or a bug.
+//! are listed but exempt, as WCAG exempts inactive components. Every other pair must pass:
+//! the theme overrides the Fluent values that used to fall short (issue #150).
 
 use fluent2_egui::theme::Theme;
 use fluent2_tokens::{AliasColors, FLUENT, Rgba};
@@ -180,29 +180,6 @@ fn pairs() -> Vec<Pair> {
     ]
 }
 
-/// (theme, component, part) pairs that fail because of Fluent's own token values. Each has a
-/// row in `docs/a11y-report.md`.
-const KNOWN_FAILURES: &[(&str, &str, &str)] = &[
-    // Decorative 1 px edges: Fluent's neutral and status strokes sit below 3:1 in light and
-    // dark. Each control is still identified by its text, fill or icon (report §2.1).
-    ("light", "Button", "border"),
-    ("dark", "Button", "border"),
-    ("light", "Menu / Popover", "surface border"),
-    ("dark", "Menu / Popover", "surface border"),
-    ("light", "Card", "border"),
-    ("dark", "Card", "border"),
-    ("light", "MessageBar", "success border"),
-    ("dark", "MessageBar", "success border"),
-    ("light", "MessageBar", "error border"),
-    ("dark", "MessageBar", "error border"),
-    ("light", "KeyTips", "badge border"),
-    ("dark", "KeyTips", "badge border"),
-    ("light", "SplitView", "splitter"),
-    ("dark", "SplitView", "splitter"),
-    // Dark-only token values (report §2.2).
-    ("dark", "Button", "primary fill vs surface"),
-];
-
 fn themes() -> [(&'static str, AliasColors); 3] {
     [
         ("light", Theme::light(FLUENT).color),
@@ -281,19 +258,22 @@ fn fails(row: &Row) -> bool {
 }
 
 #[test]
-fn every_failing_pair_is_a_known_token_failure() {
-    let failing: Vec<(&str, &str, &str)> = rows()
+fn every_pair_meets_its_threshold() {
+    let failing: Vec<String> = rows()
         .iter()
         .filter(|row| fails(row))
-        .map(|row| (row.theme, row.pair.component, row.pair.part))
+        .map(|row| {
+            format!(
+                "{} {} / {}: {:.2} (needs {:.1})",
+                row.theme,
+                row.pair.component,
+                row.pair.part,
+                row.ratio,
+                row.pair.kind.minimum()
+            )
+        })
         .collect();
-    let unexpected: Vec<_> = failing.iter().filter(|f| !KNOWN_FAILURES.contains(f)).collect();
-    let fixed: Vec<_> = KNOWN_FAILURES.iter().filter(|k| !failing.contains(k)).collect();
-    assert!(unexpected.is_empty(), "new contrast failures: {unexpected:#?}");
-    assert!(
-        fixed.is_empty(),
-        "no longer failing, drop from KNOWN_FAILURES: {fixed:#?}"
-    );
+    assert!(failing.is_empty(), "contrast failures: {failing:#?}");
 }
 
 #[test]
