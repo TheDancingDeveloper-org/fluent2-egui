@@ -245,11 +245,11 @@ fn read_one(file: &egui::DroppedFileHandle, max: u64) -> Result<PickedFile, (Str
 
 /// Read at most `max + 1` bytes.
 ///
-/// Returns the bytes kept and whether the stream had more. A path is read with
+/// Returns the bytes kept and whether the stream had more. An openable path is read with
 /// [`std::io::Read::take`], then one further byte is probed and discarded, so a file that grows
-/// past the limit is cut off instead of read in full. A pathless drop (or a path that cannot be
-/// opened) uses [`egui::DroppedFile::bytes`], which has no reader; only `max + 1` bytes of that
-/// buffer are kept.
+/// past the limit is cut off instead of read in full. A pathless drop, or a path that cannot be
+/// opened, has no stream: [`egui::DroppedFile::bytes`] returns the whole file. That buffer is
+/// copied through [`read_limited`] so only `max + 1` bytes are kept.
 #[cfg(not(target_arch = "wasm32"))]
 fn take_bounded(file: &egui::DroppedFileHandle, max: u64) -> Result<(Vec<u8>, bool), String> {
     let limit = max.saturating_add(1);
@@ -259,12 +259,8 @@ fn take_bounded(file: &egui::DroppedFileHandle, max: u64) -> Result<(Vec<u8>, bo
     {
         return read_limited(&mut reader, limit);
     }
-    let mut bytes = file.bytes()?;
-    let continued = bytes.len() as u64 > limit;
-    if continued {
-        bytes.truncate(limit as usize);
-    }
-    Ok((bytes, continued))
+    let bytes = file.bytes()?;
+    read_limited(&mut std::io::Cursor::new(bytes), limit)
 }
 
 /// Read `limit` bytes through [`std::io::Read::take`], then probe one more byte.
@@ -412,11 +408,15 @@ mod tests {
             }
         }
 
-        let max = 50 * 1024 * 1024u64;
-        assert_eq!(max, DEFAULT_MAX_BYTES, "the default limit is unchanged");
+        let max = 32u64;
+        assert_eq!(
+            DEFAULT_MAX_BYTES,
+            50 * 1024 * 1024,
+            "the default limit is unchanged"
+        );
         let mut stream = Endless {
             pulled: 0,
-            available: (max as usize).saturating_mul(4),
+            available: 10_000,
         };
         let Ok((bytes, continued)) = read_limited(&mut stream, max + 1) else {
             panic!("bounded read failed");
@@ -428,5 +428,101 @@ mod tests {
             max + 2,
             "one byte past the cutoff was probed and not kept; the rest was never read"
         );
+    }
+
+    /// A stream that outgrows a metadata size still under the limit is cut off and refused.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn metadata_under_the_limit_does_not_bypass_the_stream_limit() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("fluent2-drop-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        if std::fs::create_dir_all(&dir).is_err() {
+            return;
+        }
+        let path = dir.join("note.bin");
+        if std::fs::File::create(&path)
+            .and_then(|mut file| file.write_all(b"ok"))
+            .is_err()
+        {
+            return;
+        }
+        #[derive(Debug)]
+        struct OnDisk {
+            path: std::path::PathBuf,
+        }
+        impl egui::DroppedFile for OnDisk {
+            fn path(&self) -> &std::path::Path {
+                &self.path
+            }
+            fn bytes(&self) -> Result<Vec<u8>, String> {
+                panic!("an openable path must not fall back to bytes()");
+            }
+        }
+        let handle: egui::DroppedFileHandle = std::sync::Arc::new(OnDisk { path: path.clone() });
+        let Ok(meta) = std::fs::metadata(&path) else {
+            return;
+        };
+        let claimed = meta.len();
+        assert!(claimed <= 8, "metadata says the file is under the limit");
+        let Ok(picked) = read_one(&handle, 8) else {
+            panic!("accepted while the stream is under the limit");
+        };
+        assert_eq!(picked.bytes, b"ok");
+
+        if std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .and_then(|mut file| file.write_all(&[9u8; 64]))
+            .is_err()
+        {
+            return;
+        }
+        // The earlier metadata still says "under the limit"; the stream does not.
+        assert!(claimed <= 8);
+        let Ok((bytes, continued)) = take_bounded(&handle, 8) else {
+            panic!("bounded");
+        };
+        assert!(continued, "the stream is over the limit the metadata claimed");
+        assert_eq!(bytes.len(), 9);
+        let Err(err) = read_one(&handle, 8) else {
+            panic!("read_one refuses the grown stream");
+        };
+        assert!(err.1.contains("larger than"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A pathless drop is kept only up to `max + 1`, through the same bounded reader.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn pathless_drop_is_cut_off_by_the_bounded_reader() {
+        #[derive(Debug)]
+        struct Pathless {
+            len: usize,
+        }
+        impl egui::DroppedFile for Pathless {
+            fn path(&self) -> &std::path::Path {
+                std::path::Path::new("")
+            }
+            fn bytes(&self) -> Result<Vec<u8>, String> {
+                Ok(vec![4u8; self.len])
+            }
+        }
+        let handle: egui::DroppedFileHandle = std::sync::Arc::new(Pathless { len: 64 });
+        let Ok((bytes, continued)) = take_bounded(&handle, 8) else {
+            panic!("pathless drop is readable");
+        };
+        assert!(continued);
+        assert_eq!(bytes.len(), 9);
+        let Err(err) = read_one(&handle, 8) else {
+            panic!("read_one refuses a pathless drop over the limit");
+        };
+        assert!(err.1.contains("larger than"));
+        let small: egui::DroppedFileHandle = std::sync::Arc::new(Pathless { len: 3 });
+        let picked = match read_one(&small, 8) {
+            Ok(picked) => picked,
+            Err(err) => panic!("small pathless drop is kept: {}", err.1),
+        };
+        assert_eq!(picked.bytes, vec![4, 4, 4]);
     }
 }

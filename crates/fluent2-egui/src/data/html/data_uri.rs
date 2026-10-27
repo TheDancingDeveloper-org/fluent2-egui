@@ -33,7 +33,25 @@ pub(crate) fn parse(src: &str) -> Option<(String, Vec<u8>)> {
     let (meta, payload) = rest.split_once(',')?;
     let mut parts = meta.split(';');
     let mime = parts.next()?.trim().to_ascii_lowercase();
-    if !mime.starts_with("image/") || !parts.any(|p| p.trim().eq_ignore_ascii_case("base64")) {
+    let mut base64 = false;
+    let mut declared: Option<usize> = None;
+    for part in parts {
+        let part = part.trim();
+        if part.eq_ignore_ascii_case("base64") {
+            base64 = true;
+        } else if let Some(value) = part
+            .split_once('=')
+            .filter(|(key, _)| key.trim().eq_ignore_ascii_case("length"))
+            .map(|(_, value)| value.trim())
+        {
+            declared = value.parse().ok();
+        }
+    }
+    if !mime.starts_with("image/") || !base64 {
+        return None;
+    }
+    // A declared decoded length over the limit refuses the URI before any decode buffer exists.
+    if declared.is_some_and(|len| len > MAX_BYTES) {
         return None;
     }
     let bytes = decode_base64(payload)?;
@@ -118,6 +136,14 @@ mod tests {
         assert_eq!(decode_base64("aGVsbG8="), Some(b"hello".to_vec()));
         assert_eq!(decode_base64("aGVs\r\nbG8"), Some(b"hello".to_vec()));
         assert_eq!(decode_base64("a$b"), None);
+    }
+
+    #[test]
+    fn declared_length_over_the_limit_is_rejected_before_decode() {
+        let src = format!("data:image/png;length={};base64,aGVsbG8=", MAX_BYTES + 1);
+        assert!(parse(&src).is_none());
+        let under = format!("data:image/png;length={MAX_BYTES};base64,aGVsbG8=");
+        assert!(parse(&under).is_some());
     }
 
     #[test]
