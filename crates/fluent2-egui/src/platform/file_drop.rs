@@ -247,9 +247,12 @@ fn read_one(file: &egui::DroppedFileHandle, max: u64) -> Result<PickedFile, (Str
 ///
 /// Returns the bytes kept and whether the stream had more. An openable path is read with
 /// [`std::io::Read::take`], then one further byte is probed and discarded, so a file that grows
-/// past the limit is cut off instead of read in full. A pathless drop, or a path that cannot be
-/// opened, has no stream: [`egui::DroppedFile::bytes`] returns the whole file. That buffer is
-/// copied through [`read_limited`] so only `max + 1` bytes are kept.
+/// past the limit is cut off instead of read in full.
+///
+/// Pathless drops, and paths that cannot be opened, are a known limit: the platform's dropped-file
+/// trait fully buffers them before this limit applies. [`egui::DroppedFile::bytes`] returns the
+/// whole file. That buffer is then copied through [`read_limited`], so only `max + 1` bytes are
+/// kept, but the platform has already held the rest.
 #[cfg(not(target_arch = "wasm32"))]
 fn take_bounded(file: &egui::DroppedFileHandle, max: u64) -> Result<(Vec<u8>, bool), String> {
     let limit = max.saturating_add(1);
