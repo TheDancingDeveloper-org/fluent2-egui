@@ -144,10 +144,10 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
 | `list::List` | List | | List rows |
 | `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
-| `NavigationView` | Nav | | — |
+| `NavigationView` | Nav | | Navigation view |
 | `Reorder` | egui-only (drag reorder) | | Reorder |
 | `row_drag::DropTarget` | egui-only (drag rows onto a target) | | Row drag |
-| `SplitView` | egui-only (split panes) | | — |
+| `SplitView` | egui-only (split panes) | | Split view |
 | `terminal::TerminalView` | egui-only (terminal) | `terminal` | Terminal |
 | `tree_view::TreeView` | Tree | | — (`examples/a11y_walk.rs`) |
 

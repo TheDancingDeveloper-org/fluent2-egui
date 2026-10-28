@@ -25,6 +25,7 @@ mod html_view;
 mod icons;
 mod markdown;
 mod menu_bar;
+mod navigation_view;
 mod pager;
 mod pieces;
 mod reorder;
@@ -33,6 +34,7 @@ mod rich_text_editor;
 mod row_drag;
 mod shortcuts;
 mod skeleton;
+mod split_view;
 mod surfaces;
 mod tab_strip;
 mod terminal;
@@ -63,6 +65,7 @@ pub use html_view::HtmlPage;
 pub use icons::IconsPage;
 pub use markdown::MarkdownPage;
 pub use menu_bar::MenuBarPage;
+pub use navigation_view::NavigationViewPage;
 pub use pager::PagerPage;
 pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
@@ -71,6 +74,7 @@ pub use rich_text_editor::RichTextEditorPage;
 pub use row_drag::RowDragPage;
 pub use shortcuts::ShortcutsPage;
 pub use skeleton::SkeletonPage;
+pub use split_view::SplitViewPage;
 pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
 pub use terminal::TerminalPage;
@@ -124,6 +128,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(VariableListPage::default()),
         Box::new(MarkdownPage::default()),
         Box::new(MenuBarPage::default()),
+        Box::new(NavigationViewPage::default()),
         Box::new(PagerPage::default()),
         Box::new(PiecesPage::default()),
         Box::new(ReorderPage::default()),
@@ -132,6 +137,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(RowDragPage::default()),
         Box::new(ShortcutsPage::default()),
         Box::new(SkeletonPage),
+        Box::new(SplitViewPage::default()),
         Box::new(SurfacesPage::default()),
         Box::new(TabStripPage::default()),
         Box::new(TerminalPage::default()),
