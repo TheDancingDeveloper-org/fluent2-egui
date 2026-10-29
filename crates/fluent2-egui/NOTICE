@@ -1,0 +1,61 @@
+fluent2-egui
+Copyright (c) 2026 The fluent2-egui contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE). The Inter font files stay under the SIL Open Font License 1.1;
+the full text is fonts/LICENSE-INTER.txt.
+
+Not affiliated with or endorsed by Microsoft Corporation. Microsoft, Fluent, Office and Segoe are
+trademarks of the Microsoft group of companies.
+
+Third-party material
+
+Each asset is listed in ATTRIBUTION.md when it is added.
+
+Bundled:
+- Fluent 2 design token values generated from microsoft/fluentui packages/tokens
+  (npm @fluentui/tokens@1.0.0-alpha.24, microsoft/fluentui@93e324f72f0e), MIT License,
+  Copyright (c) Microsoft Corporation. See crates/fluent2-tokens/data/.
+- Fluent System Icons in `crates/fluent2-icons/svg/`, generated from microsoft/fluentui-system-icons
+  @ a347af95478f989038cccbf085978865264c048a, MIT License, Copyright (c) 2020 Microsoft Corporation.
+  See `crates/fluent2-icons/LICENSE-FLUENT-ICONS` and ATTRIBUTION.md.
+- Inter Regular and SemiBold (v4.1, rsms/inter, e3a3d4c5), Copyright (c) 2016 The Inter Project
+  Authors, SIL Open Font License 1.1. See `crates/fluent2-egui/fonts/LICENSE-INTER.txt` and
+  ATTRIBUTION.md.
+
+Source provenance
+
+Code adapted from other projects is listed here and in upstream.toml ([[adaptation]]), with the
+upstream repository, path, revision and copyright holder.
+
+- craft-libs (storytold/craft-libs, MIT OR Apache-2.0): `crates/ui/src/layout/geometry.rs` and
+  `resize.rs` @ 457a078809690994b22debdffb703ff36d3129df, adapted into
+  `crates/fluent2-egui/src/data/split_view.rs`. Copyright (c) 2026 ArtCraft Team and the
+  craft-libs contributors. The licence text is in the upstream repository.
+- rdpapp (TheDancingDeveloper-org/rdpapp, our own code, relicensed MIT OR Apache-2.0):
+  `migration-tool/src/ssh/terminal.rs` @ 4dff7e20208108f55c1f6173af00c58b1d69df1b, adapted into
+  `crates/fluent2-egui/src/data/terminal/grid.rs`. Copyright (c) 2026 The rdpapp authors.
+- vte (alacritty/vte, Apache-2.0 OR MIT) is a Cargo dependency of the optional `terminal`
+  feature; no vte source is copied.
+- imara-diff (pascalkuthe/imara-diff, Apache-2.0) is a Cargo dependency of the optional `diff`
+  feature; no imara-diff source is copied.
+- syntect (trishume/syntect, MIT) is a Cargo dependency of the optional `highlight` feature; no
+  syntect source is copied. Its bundled syntax definitions (from sublimehq/Packages and others)
+  are compiled into binaries that turn the feature on; their licences are listed in the syntect
+  repository.
+- TypeScript grammar (microsoft/TypeScript-TmLanguage `TypeScript.tmLanguage` @
+  48f608692aa6d6ad7bd65b478187906c798234a8, MIT, Copyright (c) Microsoft Corporation), converted
+  to sublime-syntax by aziz/SublimeSyntaxConvertor @ 8af296b42c7497455bb495bcc43bcbe60b1c464f
+  (MIT, Copyright (c) 2015 Allen A. Bargi) and published in rushsinging/aemeath
+  `apps/cli/assets/syntaxes/TypeScript.sublime-syntax` @ 186137abdefb3b8fa7575ab48ed3e90f99818581.
+  Vendored as `crates/fluent2-egui/syntaxes/TypeScript.sublime-syntax`, with a provenance header
+  and `.mts` / `.cts` extensions. Licence copy:
+  `crates/fluent2-egui/syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt`.
+- TypeScriptReact grammar (microsoft/TypeScript-Sublime-Plugin `TypeScriptReact.tmLanguage` @
+  ba45efd058df5111837e30fb9598cfc8cbd51095, Apache-2.0, Copyright (c) Microsoft Corporation),
+  converted to sublime-syntax the same way as the TypeScript grammar above (bat @
+  f748c1a467ae161682849949a7d036ab8362f9ba did not ship a TSX syntax). Vendored as
+  `crates/fluent2-egui/syntaxes/TypeScriptReact.sublime-syntax`. Same licence copy.
+- fluent-gpui (thedancingdeveloper/fluent-gpui, Apache-2.0): `crates/fluent-layout/src/command_palette.rs`
+  @ f601e54b4e58e416bc7495a75468b82af9a10545, adapted into
+  `crates/fluent2-egui/src/surfaces/command_palette.rs`. Copyright (c) 2026 sprooty, who relicensed
+  this code as MIT OR Apache-2.0 for this repository (WI-1792).

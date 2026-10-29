@@ -35,6 +35,7 @@ jobs:
       tokens: ${{ steps.c.outputs.tokens }}
       icons: ${{ steps.c.outputs.icons }}
       deny: ${{ steps.c.outputs.deny }}
+      licences: ${{ steps.c.outputs.licences }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -47,11 +48,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT" != pull_request ]]; then
-            printf 'full=true\nrust=true\ngallery=true\nfixtures=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\n' >> "$GITHUB_OUTPUT"
+            printf 'full=true\nrust=true\ngallery=true\nfixtures=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\nlicences=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           rust=false gallery=false fixtures=false full=false
-          readme=false tokens=false icons=false deny=false
+          readme=false tokens=false icons=false deny=false licences=false
           packages=()
           add_package() {
             local pkg
@@ -66,7 +67,7 @@ jobs:
               # the full workspace and the Windows matrix.
               .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*|deny.toml)
                 rust=true gallery=true fixtures=true full=true
-                readme=true tokens=true icons=true deny=true ;;
+                readme=true tokens=true icons=true deny=true licences=true ;;
               fixtures/*)
                 rust=true fixtures=true ;;
               crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh|scripts/wasm-size-check.sh|ci/wasm-budget.txt|docs/wasm-size.md)
@@ -104,13 +105,17 @@ jobs:
                 # The component index is checked by fluent2-egui's readme test.
                 rust=true readme=true
                 add_package fluent2-egui ;;
+              crates/*/LICENSE-MIT|crates/*/LICENSE-APACHE|crates/*/NOTICE)
+                licences=true ;;
+              LICENSE|LICENSE-MIT|LICENSE-APACHE|NOTICE|scripts/check-crate-licences.sh|scripts/publish-crates.sh)
+                licences=true ;;
               crates/*)
                 # A new or unrecognised crate is not safe to narrow.
                 rust=true fixtures=true full=true ;;
               *)
                 # An unclassified path fails safe: the full PR set, not nothing.
                 rust=true gallery=true fixtures=true full=true
-                readme=true tokens=true icons=true deny=true ;;
+                readme=true tokens=true icons=true deny=true licences=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
           # A Rust change we could not attribute to a package still needs the
@@ -118,8 +123,8 @@ jobs:
           if [[ "$rust" == true && "$full" == false && "$fixtures" == false && ${#packages[@]} -eq 0 ]]; then
             full=true
           fi
-          printf 'full=%s\nrust=%s\ngallery=%s\nfixtures=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\n' \
-            "$full" "$rust" "$gallery" "$fixtures" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" | tee -a "$GITHUB_OUTPUT"
+          printf 'full=%s\nrust=%s\ngallery=%s\nfixtures=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\nlicences=%s\n' \
+            "$full" "$rust" "$gallery" "$fixtures" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" "$licences" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     needs: changes
@@ -406,6 +411,17 @@ jobs:
       - run: cargo xtask check-icons
 
   # Advisories and licences. deny.toml is the policy release.yml also uses.
+
+  crate-licences:
+    needs: changes
+    if: needs.changes.outputs.licences == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, resolves stable
+        with:
+          toolchain: stable
+      - run: scripts/check-crate-licences.sh
   cargo-deny:
     needs: changes
     if: needs.changes.outputs.deny == 'true'
@@ -421,7 +437,7 @@ jobs:
   # by path scope, fails on any failure or cancellation.
   ci:
     if: always()
-    needs: [changes, fmt, test, wasm, doc, fixtures, fixtures-wasm, msrv, gallery-wasm, gallery-screenshots, icon-drift, cargo-deny]
+    needs: [changes, fmt, test, wasm, doc, fixtures, fixtures-wasm, msrv, gallery-wasm, gallery-screenshots, icon-drift, cargo-deny, crate-licences]
     runs-on: ubuntu-latest
     steps:
       - env:
