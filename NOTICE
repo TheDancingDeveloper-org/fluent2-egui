@@ -18,7 +18,7 @@ Bundled:
 - Fluent System Icons in `crates/fluent2-icons/svg/`, generated from microsoft/fluentui-system-icons
   @ 64e5aa757d1b70c24a283256ddcb8269d0f58773, MIT License, Copyright (c) 2020 Microsoft Corporation.
   See `crates/fluent2-icons/LICENSE-FLUENT-ICONS` and ATTRIBUTION.md.
-- Inter Regular and SemiBold (v4.1, rsms/inter, e3a3d4c5), Copyright (c) 2016 The Inter Project
+- Inter Regular and SemiBold (v4.1, rsms/inter, e3a3d4c57d5e), Copyright (c) 2016 The Inter Project
   Authors, SIL Open Font License 1.1. See `crates/fluent2-egui/fonts/LICENSE-INTER.txt` and
   ATTRIBUTION.md.
 

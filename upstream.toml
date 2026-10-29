@@ -191,12 +191,12 @@ notes = "Metric-compatible Segoe UI fallback. Considered for WI-1588 and not cho
 name = "inter"
 repo = "rsms/inter"
 branch = "master"
-rev = "353b61b9f4430d5f420d56605a6e7993e0941470"
-reviewed = "2026-10-24"
+rev = "e3a3d4c57d5ecc01453a575621882a384c1995a3"
+reviewed = "2026-10-29"
 licence = "OFL-1.1"
 role = "generated"
-watch = ["extras/ttf/Inter-Regular.ttf", "extras/ttf/Inter-SemiBold.ttf", "LICENSE.txt"]
-notes = "Source of the bundled UI fallback (crates/fluent2-egui/fonts): static Regular and SemiBold copied from the v4.1 release (tag v4.1), no edits. Re-bump by copying the new files and reviewing the OFL text."
+watch = ["LICENSE.txt"]
+notes = "Source of the bundled UI fallback (crates/fluent2-egui/fonts): static Regular and SemiBold copied from the v4.1 GitHub release zip (tag v4.1 @ e3a3d4c57d5ecc01453a575621882a384c1995a3, extras/ttf/Inter-Regular.ttf and Inter-SemiBold.ttf, no edits). Those TTFs are not in the git tree at that commit; they ship in Inter-4.1.zip. OFL-1.1 text is crates/fluent2-egui/fonts/LICENSE-INTER.txt, byte-identical to LICENSE.txt in the zip. Re-bump by copying the new files and reviewing the OFL text."
 
 [[source]]
 name = "winui-gallery"
