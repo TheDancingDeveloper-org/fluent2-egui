@@ -37,7 +37,7 @@ impl BottomSheet {
     /// A sheet whose id comes from `id_salt`, never from the title.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             title: WidgetText::default(),
             fraction: DEFAULT_FRACTION,
             kind: DialogKind::Modal,

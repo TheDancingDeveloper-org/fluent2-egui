@@ -34,7 +34,7 @@ use fluent2_tokens::generated::global::{border_radius, stroke_width};
 /// ```
 /// use fluent2_egui::data::RowId;
 /// use fluent2_egui::data::row_drag::RowDrag;
-/// let drag = RowDrag { source: egui::Id::new("grid"), rows: vec![RowId(4), RowId(9)] };
+/// let drag = RowDrag { source: egui::Id::unique("grid"), rows: vec![RowId(4), RowId(9)] };
 /// assert_eq!(drag.rows.len(), 2);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -163,9 +163,10 @@ impl<'a> DropTarget<'a> {
 fn paint_highlight(ui: &Ui, rect: egui::Rect) {
     let theme = Theme::get(ui.ctx());
     let radius = CornerRadius::same(rounded_u8(border_radius::MEDIUM));
-    let painter = ui
-        .ctx()
-        .layer_painter(LayerId::new(Order::Foreground, ui.id().with("row_drop_target")));
+    let painter = ui.ctx().layer_painter(LayerId::new(
+        Order::Foreground,
+        ui.scope_id().with("row_drop_target"),
+    ));
     painter.rect(
         rect,
         radius,
@@ -183,7 +184,7 @@ pub(crate) fn paint_ghost(ui: &Ui, text: &str) {
     let theme = Theme::get(ui.ctx());
     let painter = ui
         .ctx()
-        .layer_painter(LayerId::new(Order::Tooltip, Id::new("fluent2_row_drag_ghost")));
+        .layer_painter(LayerId::new(Order::Tooltip, Id::unique("fluent2_row_drag_ghost")));
     let galley = painter.layout_no_wrap(
         text.to_owned(),
         font_id(TypeRamp::Body1),

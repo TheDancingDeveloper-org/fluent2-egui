@@ -56,7 +56,7 @@ fn pointer_selects_an_option() {
     harness.get_by_label("City").click();
     harness.run();
     harness
-        .get_by_role_and_label(egui::accesskit::Role::Button, "Paris")
+        .get_by_role_and_label(egui::accesskit::Role::ListBoxOption, "Paris")
         .click();
     harness.run();
     assert_eq!(*selected.borrow(), Some(1), "clicking an option should select it");
@@ -263,7 +263,7 @@ fn combobox_marks_the_matching_option() {
     harness.run();
     harness.key_press_modifiers(egui::Modifiers::ALT, egui::Key::ArrowDown);
     harness.run();
-    let node = harness.get_by_role_and_label(egui::accesskit::Role::Button, "Paris");
+    let node = harness.get_by_role_and_label(egui::accesskit::Role::ListBoxOption, "Paris");
     let toggled = egui_kittest::kittest::NodeT::accesskit_node(&node).toggled();
     assert_eq!(toggled, Some(egui::accesskit::Toggled::True));
 }
@@ -308,12 +308,12 @@ fn press_outside_closes_the_listbox() {
     harness.run();
     harness.get_by_label("City").click();
     harness.run();
-    let _ = harness.get_by_role_and_label(egui::accesskit::Role::Button, "Paris");
+    let _ = harness.get_by_role_and_label(egui::accesskit::Role::ListBoxOption, "Paris");
     harness.get_by_label("Elsewhere").click();
     harness.run();
     assert!(
         harness
-            .query_by_role_and_label(egui::accesskit::Role::Button, "Paris")
+            .query_by_role_and_label(egui::accesskit::Role::ListBoxOption, "Paris")
             .is_none(),
         "a press outside the field and the popup should close the listbox"
     );

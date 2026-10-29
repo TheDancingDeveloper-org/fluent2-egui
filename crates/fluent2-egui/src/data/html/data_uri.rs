@@ -10,7 +10,7 @@ pub const MAX_BYTES: usize = 8 * 1024 * 1024;
 /// is not a base64 `data:image/` URI, or that fails to decode.
 pub(crate) fn register(ctx: &Context, src: &str) -> Option<String> {
     let src = src.trim();
-    let key = Id::new(("fluent2_html_data_uri", src));
+    let key = Id::unique(("fluent2_html_data_uri", src));
     if let Some(uri) = ctx.data(|data| data.get_temp::<Option<String>>(key)) {
         return uri;
     }

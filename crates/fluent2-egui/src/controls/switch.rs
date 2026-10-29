@@ -4,8 +4,8 @@
 //! The thumb slides with [`crate::foundation::motion::animate`].
 
 use egui::{
-    CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
-    WidgetText, WidgetType, epaint::RectShape,
+    CornerRadius, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
+    WidgetText, epaint::RectShape,
 };
 use fluent2_tokens::generated::global::{spacing_horizontal, stroke_width};
 
@@ -135,7 +135,7 @@ impl Widget for Switch<'_> {
         // is then given the Switch role (ARCHITECTURE "Component API" rule 8). Narrator and
         // Orca announce "switch, on/off" instead of "check box, checked".
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::Checkbox, enabled, label_text.clone());
+            let mut info = WidgetInfo::labeled(Role::CheckBox, enabled, label_text.clone());
             info.selected = Some(on);
             info
         });

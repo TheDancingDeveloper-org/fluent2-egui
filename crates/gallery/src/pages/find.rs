@@ -125,6 +125,7 @@ impl Page for FindPage {
                     list = list.scroll_to_row(m.item);
                 }
                 let items = &self.items;
+                list = list.row_label(|index| items.get(index).cloned().unwrap_or_default());
                 list.show(ui, &mut self.list, |cell, ui| {
                     let text = items.get(cell.row).map_or("", String::as_str);
                     ui.label(find.layout_job(ui, LIST, cell.row, text));

@@ -9,8 +9,8 @@
 //! Icons and the focus ring come from the foundation helpers.
 
 use egui::{
-    Color32, CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, TextEdit, Ui, Vec2, Widget,
-    WidgetInfo, WidgetType, epaint::RectShape,
+    Color32, CornerRadius, Id, IdSalt, Rect, Response, Role, Sense, Stroke, StrokeKind, TextEdit, Ui, Vec2,
+    Widget, WidgetInfo, epaint::RectShape,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -78,7 +78,7 @@ pub struct Input<'a> {
     content_after: Option<IconName>,
     password: bool,
     desired_width: Option<f32>,
-    id_salt: Option<Id>,
+    id_salt: Option<IdSalt>,
     /// SearchBox sets this. Not a public builder: the dismiss control is that control's.
     clear_button: bool,
 }
@@ -160,7 +160,7 @@ impl<'a> Input<'a> {
     /// Extra salt for the widget id, so two inputs can coexist.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(IdSalt::new(salt));
         self
     }
 
@@ -191,7 +191,7 @@ pub(crate) struct Field<'a> {
     pub(crate) height: f32,
     pub(crate) icon: IconSize,
     pub(crate) desired_width: Option<f32>,
-    pub(crate) id_salt: Option<Id>,
+    pub(crate) id_salt: Option<IdSalt>,
     /// SearchBox: a trailing dismiss control clears the string while it is not empty.
     pub(crate) clear_button: bool,
 }
@@ -244,14 +244,21 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
     };
     let (rect, _) = ui.allocate_exact_size(Vec2::new(finite(width), finite(height)), Sense::hover());
 
-    let id = ui.make_persistent_id(field.id_salt.unwrap_or_else(|| {
-        Id::new((
+    // Salt, not a root id. `Id::unique` ignores the parent, so two empty inputs
+    // (no label, no placeholder) would share one id and egui paints an id-clash warning.
+    // The leading icon and the clear button are part of the salt: a plain Input and a
+    // SearchBox can otherwise share label, placeholder and line count.
+    let id = match field.id_salt {
+        Some(salt) => ui.scope_id().with_salt(salt),
+        None => ui.make_persistent_id((
             "fluent2_input",
             field.label.clone(),
             field.placeholder.clone(),
             field.multiline,
-        ))
-    }));
+            field.content_before,
+            field.clear_button,
+        )),
+    };
     // Escape clears a SearchBox. Focus this frame is assigned while TextEdit runs, so the
     // check uses last frame's focus, which is set for the frame the key arrives.
     if field.clear_button
@@ -378,7 +385,7 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
             response.request_focus();
             response.mark_changed();
         }
-        clear.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Clear"));
+        clear.widget_info(|| WidgetInfo::labeled(Role::Button, true, "Clear"));
     }
 
     if focus_visible(ui, &response) {
@@ -389,11 +396,14 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
         .label
         .clone()
         .filter(|label| !label.is_empty())
-        .unwrap_or(hint);
-    // TextEdit already wrote the AccessKit node. A later `widget_info` does not replace it,
-    // so the accessible name is set on that node. The placeholder went in as `hint_text`.
+        .unwrap_or_default();
+    // The TextEdit node lives at `id`, which we passed in. `response.id` is the outer
+    // allocation, so a later `accessible_name` would name the wrong node. The placeholder
+    // already went in as `hint_text`.
     if !accessible.is_empty() {
-        ui.ctx().accesskit_node_builder(response.id, |builder| {
+        // The TextEdit node is `id` (passed to TextEdit::id). `response.id` is the outer
+        // allocation, so a later `accessible_name` would name the wrong node.
+        ui.ctx().accesskit_node_builder(id, |builder| {
             builder.set_label(accessible);
         });
     }
@@ -479,7 +489,7 @@ pub fn accent_open_for_test(ctx: &egui::Context, rect: Rect) -> Option<bool> {
 }
 
 fn accent_id(rect: Rect) -> Id {
-    Id::new((
+    Id::unique((
         "fluent2_input_accent",
         rect.min.x.to_bits(),
         rect.min.y.to_bits(),

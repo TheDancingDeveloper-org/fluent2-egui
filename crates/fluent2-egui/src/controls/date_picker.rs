@@ -56,7 +56,7 @@ impl<'a> DatePicker<'a> {
     /// A picker bound to `value`.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, value: &'a mut Option<CalendarDate>) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             value,
             today: None,
             first_weekday: 0,
@@ -243,7 +243,7 @@ impl<'a> DatePicker<'a> {
         }
         let choose = format!("Choose {}", label.to_lowercase());
         calendar_button
-            .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, choose.clone()));
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, choose.clone()));
         ui.ctx().accesskit_node_builder(calendar_button.id, |node| {
             node.set_has_popup(egui::accesskit::HasPopup::Dialog);
             if open {
@@ -278,7 +278,7 @@ impl<'a> DatePicker<'a> {
         let value_text = self.value.map(|d| self.strings.long_date(d)).unwrap_or_default();
         let name = label.clone();
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, enabled, name.clone());
+            let mut info = egui::WidgetInfo::labeled(egui::Role::TextInput, enabled, name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });
@@ -371,7 +371,7 @@ impl<'a> TimePicker<'a> {
     /// A picker bound to `value`, offering every 30 minutes of the day.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, value: &'a mut Option<TimeOfDay>) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             value,
             step: 30,
             start: TimeOfDay::MIDNIGHT,

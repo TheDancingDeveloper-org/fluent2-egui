@@ -20,7 +20,10 @@ impl Page for IconsPage {
         ui.heading("Icons");
         ui.horizontal(|ui| {
             ui.label("Filter");
-            ui.text_edit_singleline(&mut self.filter);
+            let filter = ui.text_edit_singleline(&mut self.filter);
+            ui.ctx().accesskit_node_builder(filter.id, |node| {
+                node.set_label("Filter");
+            });
         });
         ui.add_space(8.0);
         let needle = self.filter.to_ascii_lowercase();

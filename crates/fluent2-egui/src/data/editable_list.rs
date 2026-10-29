@@ -36,7 +36,7 @@
 //! ```
 
 use egui::accesskit::{Invalid, Role};
-use egui::{Id, Key, Response, RichText, Ui, UiBuilder, WidgetInfo, WidgetType};
+use egui::{Id, Key, Response, RichText, Ui, UiBuilder, WidgetInfo};
 
 use fluent2_icons::Icon;
 
@@ -134,7 +134,7 @@ impl<'a> EditableList<'a> {
     /// A list over `rows`. The id comes from `id_salt`, never from a translated label.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, rows: &'a [String]) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             rows,
             kind: EditableKind::Text,
             label: "List".to_owned(),
@@ -169,7 +169,7 @@ impl<'a> EditableList<'a> {
                 });
             })
             .response;
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, self.label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, self.label.clone()));
         ui.ctx()
             .accesskit_node_builder(response.id, |node| node.set_role(Role::List));
         EditableListResponse { response, events }

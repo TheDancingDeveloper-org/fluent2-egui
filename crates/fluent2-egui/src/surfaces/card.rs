@@ -6,8 +6,8 @@
 
 use egui::epaint::RectShape;
 use egui::{
-    CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    CornerRadius, Id, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo,
+    WidgetText, accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -73,7 +73,7 @@ impl<'a> Card<'a> {
     /// Extra salt so two cards can share a parent without colliding.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 
@@ -214,9 +214,8 @@ impl<'a> Card<'a> {
 
         if interactive {
             let name = label.clone().unwrap_or_default();
-            response.widget_info(|| {
-                WidgetInfo::selected(WidgetType::Checkbox, enabled, selected_now, name.clone())
-            });
+            response
+                .widget_info(|| WidgetInfo::selected(Role::CheckBox, enabled, selected_now, name.clone()));
             ui.ctx().accesskit_node_builder(id, |node| {
                 node.set_role(accesskit::Role::CheckBox);
                 node.set_toggled(if selected_now {

@@ -292,8 +292,11 @@ fn themes() -> [Theme; 3] {
 fn run_view(model: Rc<DiffModel>, mode: DiffMode, theme: Theme) -> Range<usize> {
     let seen = Rc::new(RefCell::new(0..0));
     let out = Rc::clone(&seen);
+    // The fixture includes CJK. egui 0.37's default monospace face has no glyphs for
+    // those characters, and kittest panics on a missing glyph unless the harness allows tofu.
     let mut harness = Harness::builder()
         .with_size(Vec2::new(500.0, 300.0))
+        .allow_missing_glyphs()
         .build_ui(move |ui| {
             install(ui.ctx(), &theme);
             let response = DiffView::new("diff").mode(mode).show(ui, &model);

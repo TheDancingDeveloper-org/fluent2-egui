@@ -211,7 +211,7 @@ impl Controls {
             ui.set_max_width(420.0);
             ui.add(Input::new(&mut self.name).placeholder("Name"));
             ui.add_space(4.0);
-            ui.add(Textarea::new(&mut self.notes));
+            ui.add(Textarea::new(&mut self.notes).label("Notes"));
             ui.add_space(4.0);
             ui.add(Slider::new(&mut self.volume, 0.0..=10.0));
             ui.add_space(4.0);

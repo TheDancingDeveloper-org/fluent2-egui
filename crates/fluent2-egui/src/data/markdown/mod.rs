@@ -20,7 +20,7 @@ use egui::accesskit::Role;
 use egui::text::LayoutJob;
 use egui::{
     Align2, Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Id, Label, Layout, Margin,
-    RichText, Sense, Stroke, Ui, Vec2, WidgetInfo, WidgetType,
+    RichText, Sense, Stroke, Ui, Vec2, WidgetInfo,
 };
 
 use crate::foundation::focus;
@@ -114,7 +114,7 @@ impl<'a> MarkdownView<'a> {
     /// A view of `doc`. `id_salt` keeps scroll state of code blocks and table grids apart.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, doc: &'a Document) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             doc,
             policy: &default_link_policy,
             highlighter: None,
@@ -329,7 +329,7 @@ impl Painter<'_, '_> {
         let response = ui.add(if wrap { label.wrap() } else { label.extend() });
         let enabled = ui.is_enabled();
         let label_text = text.to_owned();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Link, enabled, label_text.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label_text.clone()));
         if focus::focus_visible(ui, &response) {
             focus::paint_focus_ring(ui, response.rect, CornerRadius::ZERO);
         }
@@ -387,9 +387,8 @@ impl Painter<'_, '_> {
                         );
                     }
                     let label = item.blocks.first().map(block_text).unwrap_or_default();
-                    response.widget_info(|| {
-                        WidgetInfo::selected(WidgetType::Checkbox, false, checked, label.clone())
-                    });
+                    response
+                        .widget_info(|| WidgetInfo::selected(Role::CheckBox, false, checked, label.clone()));
                 } else if let Some(n) = start {
                     let number = n.saturating_add(i as u64);
                     painter.text(
@@ -430,7 +429,7 @@ impl Painter<'_, '_> {
                 )
             });
         self.counter += 1;
-        let id = ui.id().with(("code", self.counter));
+        let id = ui.scope_id().with(("code", self.counter));
         Frame::new()
             .fill(c(theme.color.neutral_background_3))
             .corner_radius(CornerRadius::same(border_radius::MEDIUM as u8))
@@ -449,7 +448,7 @@ impl Painter<'_, '_> {
         let color = &self.theme.color;
         let fg = c(color.neutral_foreground_1);
         self.counter += 1;
-        let id = ui.id().with(("table", self.counter));
+        let id = ui.scope_id().with(("table", self.counter));
         let columns = head.len().max(rows.iter().map(Vec::len).max().unwrap_or(0));
         Frame::new()
             .stroke(Stroke::new(stroke_width::THIN, c(color.neutral_stroke_2)))

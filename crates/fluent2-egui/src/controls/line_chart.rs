@@ -261,7 +261,7 @@ impl<'a> LineChart<'a> {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, series: &'a [ChartSeries]) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             series,
             label: "Chart".into(),
             height: DEFAULT_HEIGHT,

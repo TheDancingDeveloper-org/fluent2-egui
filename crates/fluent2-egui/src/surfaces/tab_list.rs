@@ -13,8 +13,8 @@
 
 use egui::epaint::RectShape;
 use egui::{
-    CornerRadius, Id, Key, Modifiers, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    CornerRadius, Id, Key, Modifiers, Rect, Response, Role, Sense, TextStyle, Ui, Vec2, WidgetInfo,
+    WidgetText, accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -79,7 +79,7 @@ impl<'a> TabList<'a> {
     /// `id_salt` is the widget id. It is never derived from a tab label.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, selected: &'a mut usize) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             selected,
             size: TabSize::Medium,
             vertical: false,
@@ -240,7 +240,7 @@ impl<'a> TabList<'a> {
             .get(selected)
             .map(|tab| tab.label.as_str())
             .unwrap_or("");
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::SelectableLabel, enabled_parent, label));
+        response.widget_info(|| WidgetInfo::labeled(Role::ListBoxOption, enabled_parent, label));
         let tab_labels: Vec<(String, bool, bool)> = self
             .tabs
             .iter()

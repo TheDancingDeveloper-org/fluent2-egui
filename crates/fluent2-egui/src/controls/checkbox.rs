@@ -4,8 +4,8 @@
 //! Sizes, radii and colours come from the installed [`Theme`].
 
 use egui::{
-    CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
-    WidgetText, WidgetType, epaint::RectShape,
+    CornerRadius, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget, WidgetInfo,
+    WidgetText, epaint::RectShape,
 };
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
@@ -251,7 +251,7 @@ fn show(
     }
 
     response.widget_info(|| {
-        let mut info = WidgetInfo::labeled(WidgetType::Checkbox, enabled, label_text.clone());
+        let mut info = WidgetInfo::labeled(Role::CheckBox, enabled, label_text.clone());
         info.selected = Some(state != CheckState::Unchecked);
         // Mixed is neither checked nor unchecked. AccessKit's tristate is `Toggled::Mixed`.
         if state == CheckState::Mixed {

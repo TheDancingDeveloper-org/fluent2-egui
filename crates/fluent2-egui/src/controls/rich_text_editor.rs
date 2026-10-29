@@ -524,7 +524,7 @@ impl<'a> RichTextEditor<'a> {
     /// An editor for `doc`, identified by `id_salt`. Defaults to six rows.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, doc: &'a mut RichText) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             doc,
             label: None,
             placeholder: None,

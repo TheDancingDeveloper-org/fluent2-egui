@@ -39,14 +39,14 @@ fn harness(probe: &'static Probe, mode: SelectionMode, rows: usize) -> Harness<'
             install(ui.ctx(), &Theme::light(fluent2_tokens::FLUENT));
             let mut state = probe.state.borrow_mut();
             let mut drawn = 0;
-            let response = List::new("items", rows).label("Items").selection_mode(mode).show(
-                ui,
-                &mut state,
-                |cell, ui| {
+            let response = List::new("items", rows)
+                .label("Items")
+                .row_label(|row| format!("Row {row}"))
+                .selection_mode(mode)
+                .show(ui, &mut state, |cell, ui| {
                     drawn += 1;
                     ui.label(format!("Item {}", cell.row));
-                },
-            );
+                });
             probe.most_rows_drawn.set(probe.most_rows_drawn.get().max(drawn));
             if let Some(cell) = response.activated {
                 probe.activated.set(Some(cell.row));

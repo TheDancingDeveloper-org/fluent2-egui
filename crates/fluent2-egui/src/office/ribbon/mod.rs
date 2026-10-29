@@ -16,8 +16,8 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 use egui::{
-    Area, CornerRadius, Frame, Galley, Id, Key, Modifiers, Order, Pos2, Rect, Response, Sense, Stroke,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType, accesskit,
+    Area, CornerRadius, Frame, Galley, Id, Key, Modifiers, Order, Pos2, Rect, Response, Role, Sense, Stroke,
+    TextStyle, Ui, Vec2, WidgetInfo, WidgetText, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
@@ -184,7 +184,7 @@ impl<'a> Ribbon<'a> {
     /// A ribbon. `id` is the widget id and is never derived from a label.
     pub fn new(id: impl Hash + std::fmt::Debug) -> Self {
         Self {
-            id: Id::new(id),
+            id: Id::unique(id),
             file_tab: None,
             tabs: Vec::new(),
         }
@@ -331,7 +331,7 @@ impl<'a> Ribbon<'a> {
                     file_response = Some(file_tab_button(ui, file, file_width, &theme));
                 }
                 // TabList names its tab nodes from this id; KeyTips set their access keys.
-                tab_list_id = Some(ui.make_persistent_id(Id::new(id)));
+                tab_list_id = Some(ui.make_persistent_id(Id::unique(id)));
                 let mut list = TabList::new(id, &mut selected);
                 for label in &label_refs {
                     list = list.tab(*label);
@@ -647,7 +647,7 @@ fn file_tab_button(ui: &mut Ui, file: &FileTab, width: f32, theme: &Theme) -> Re
     if focus::focus_visible(ui, &response) {
         paint_focus_ring(ui, rect, corner);
     }
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, file.label.as_str()));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, true, file.label.as_str()));
     response
 }
 

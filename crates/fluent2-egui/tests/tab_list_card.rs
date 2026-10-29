@@ -149,6 +149,7 @@ fn renders_in_light_dark_and_high_contrast() {
             let mut checked = true;
             Card::new()
                 .appearance(CardAppearance::Outline)
+                .label("Pick")
                 .selectable(&mut checked)
                 .show(ui, |ui| {
                     ui.label("Body");
@@ -166,9 +167,13 @@ fn selectable_card_toggles() {
     let mut harness = Harness::new_ui(move |ui| {
         install_light(ui);
         let mut value = state.get();
-        let response = Card::new().id_salt("card").selectable(&mut value).show(ui, |ui| {
-            ui.label("Body");
-        });
+        let response = Card::new()
+            .id_salt("card")
+            .label("Pick")
+            .selectable(&mut value)
+            .show(ui, |ui| {
+                ui.label("Body");
+            });
         response.request_focus();
         state.set(value);
     });
@@ -188,9 +193,13 @@ fn selectable_card_activates_on_space() {
     let mut harness = Harness::new_ui(move |ui| {
         install_light(ui);
         let mut value = state.get();
-        let response = Card::new().id_salt("card").selectable(&mut value).show(ui, |ui| {
-            ui.label("Body");
-        });
+        let response = Card::new()
+            .id_salt("card")
+            .label("Pick")
+            .selectable(&mut value)
+            .show(ui, |ui| {
+                ui.label("Body");
+            });
         response.request_focus();
         state.set(value);
     });

@@ -5,7 +5,7 @@
 //! uses `brand_background_selected`, and subtle and transparent use `subtle_background_selected`
 //! with `neutral_foreground_2_brand_selected`.
 
-use egui::{Id, Response, Sense, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Id, Response, Role, Sense, Ui, Vec2, Widget, WidgetInfo, WidgetText};
 
 use fluent2_icons::Icon;
 
@@ -103,7 +103,7 @@ impl<'a> ToggleButton<'a> {
     /// Extra salt for the widget id, so two toggles with the same label can coexist.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 
@@ -196,8 +196,7 @@ impl Widget for ToggleButton<'_> {
             response = response.on_hover_text(accessible.clone());
         }
         let selected = *self.checked;
-        response
-            .widget_info(|| WidgetInfo::selected(WidgetType::Button, enabled, selected, accessible.clone()));
+        response.widget_info(|| WidgetInfo::selected(Role::Button, enabled, selected, accessible.clone()));
         response
     }
 }
