@@ -6,6 +6,13 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
+## [0.4.1] - 2026-10-29
+
+### Fixed
+
+- A dialog whose body fits no longer wraps that body in a `ScrollArea`. egui 0.37 clips scroll children to the viewport even when the content fits, and on the first frame that viewport is shorter than the body, so a button in the body never received the click, was missing from AccessKit, and the click closed the dialog through the backdrop. The body scrolls only once its measured height is taller than the room left under the title and actions.
+- `Input` inside a `Field` copies the field's label onto the text box's AccessKit node, so a field with no input label of its own still has an accessible name.
+
 ## [0.4.0] - 2026-10-29
 
 ### Breaking
