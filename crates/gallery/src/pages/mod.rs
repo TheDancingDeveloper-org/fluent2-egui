@@ -28,6 +28,7 @@ mod markdown;
 mod menu_bar;
 mod navigation_view;
 mod pager;
+mod pane_drag;
 mod pieces;
 mod reorder;
 mod ribbon;
@@ -69,6 +70,7 @@ pub use markdown::MarkdownPage;
 pub use menu_bar::MenuBarPage;
 pub use navigation_view::NavigationViewPage;
 pub use pager::PagerPage;
+pub use pane_drag::PaneDragPage;
 pub use pieces::PiecesPage;
 pub use reorder::ReorderPage;
 pub use ribbon::RibbonPage;
@@ -133,6 +135,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(MenuBarPage::default()),
         Box::new(NavigationViewPage::default()),
         Box::new(PagerPage::default()),
+        Box::new(PaneDragPage::default()),
         Box::new(PiecesPage::default()),
         Box::new(ReorderPage::default()),
         Box::new(RibbonPage::default()),
