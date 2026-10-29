@@ -6,16 +6,9 @@ use fluent2_egui::data::grouped_list::{Group, GroupedList, GroupedListState};
 
 use super::Page;
 
+#[derive(Default)]
 pub struct GroupedListPage {
     state: GroupedListState,
-}
-
-impl Default for GroupedListPage {
-    fn default() -> Self {
-        Self {
-            state: GroupedListState::default(),
-        }
-    }
 }
 
 fn groups() -> Vec<Group> {
