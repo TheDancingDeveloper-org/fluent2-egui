@@ -37,6 +37,12 @@ default = ["bundled-font"]
 # every non-Windows target, and Windows without Segoe UI. Adds about 830 KB. Turn it off with
 # `default-features = false` to keep egui's default face instead.
 bundled-font = []
+# Noto Emoji COLR/CPAL (`fonts/Noto-COLRv1.ttf`, about 2.7 MB raw) as a colour-emoji fallback,
+# inserted after the UI face. Off by default, and the bytes are not compiled for wasm32 even
+# when the feature is on: embedding them in the gallery wasm exceeds the compressed-size
+# budget. Native apps that want colour emoji turn this on. Without it, egui's monochrome
+# emoji faces still cover the glyphs.
+color-emoji = ["bundled-font"]
 # Mirror egui's AccessKit output into an invisible DOM layer on wasm so browser accessibility
 # tools can discover widget roles, names and focus. No effect on native targets.
 web-a11y = []

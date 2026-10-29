@@ -111,6 +111,11 @@ measured here; the PR records it.
 4. Remove the `highlight` feature from the gallery: about 0.7 MB raw, but the CodeView page
    goes with it.
 
+The optional `color-emoji` feature embeds Noto Emoji COLR (~2.7 MB raw). The gallery turns
+the feature on, but the font bytes are not compiled for `wasm32`, so the default gallery wasm
+keeps egui's monochrome emoji fallbacks and stays inside the budget below. Native builds that
+enable `color-emoji` still install the colour face.
+
 **Budget (enforced):** gzip ≤ 4,500,000 bytes and brotli ≤ 4,500,000 bytes for the gallery
 wasm (`*_bg.wasm` from `trunk build index.html --release`). The numbers live in
 `ci/wasm-budget.txt`. `scripts/wasm-size-check.sh` compares the build and exits 1 when either
