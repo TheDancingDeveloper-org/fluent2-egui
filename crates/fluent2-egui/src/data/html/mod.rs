@@ -1291,7 +1291,11 @@ fn drag_selection(ui: &Ui, anchor: Id, blocks: &[String]) {
         return;
     }
     let id = anchor.with("doc-drag");
-    let response = ui.interact(ui.min_rect(), id, Sense::drag());
+    // The view has not laid out yet (this runs first so clicks on links still win).
+    // `ui.min_rect()` is therefore empty or only the widgets above the document.
+    // The previous frame's block rects still cover the document.
+    let rect = rects.iter().fold(rects[0].1, |acc, (_, r)| acc.union(*r));
+    let response = ui.interact(rect, id, Sense::drag());
     let ctx = ui.ctx();
     let Some(pointer) = response.interact_pointer_pos() else {
         copy_selection(ui, anchor, blocks, &response);
