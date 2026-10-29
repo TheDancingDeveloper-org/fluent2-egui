@@ -110,7 +110,10 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 
 # Text layout needs a font: without egui's default fonts every galley is empty and has no size,
 # so selection tests (tests/text_selection.rs) could not drag across glyphs.
-egui = { workspace = true, features = ["default_fonts"] }
+# `monochrome_emoji_fonts` keeps NotoEmoji and emoji-icon-font after the UI face.
+# Without them, installing Segoe UI Variable (Windows) or Inter leaves the proportional
+# family with no glyph for U+26A0, and egui 0.37 panics.
+egui = { workspace = true, features = ["default_fonts", "monochrome_emoji_fonts"] }
 # Round-trips the serde state in tests (the `serde` feature).
 serde_json = "1"
 
