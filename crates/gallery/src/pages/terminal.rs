@@ -49,7 +49,9 @@ fn banner() -> Vec<u8> {
         let v = i * 7;
         out.push_str(&format!("\x1b[48;2;{v};{};{}m ", 255 - v, 128));
     }
-    out.push_str("\x1b[0m\r\n\r\nCtrl+click a link: https://github.com/TheDancingDeveloper-org/fluent2-egui\r\n");
+    out.push_str(
+        "\x1b[0m\r\n\r\nCtrl+click a link: https://github.com/TheDancingDeveloper-org/fluent2-egui\r\n",
+    );
     out.push_str("Drag to select, Ctrl+C to copy, Shift+PageUp for scrollback.\r\n\r\n");
     for i in 1..=40 {
         out.push_str(&format!(
