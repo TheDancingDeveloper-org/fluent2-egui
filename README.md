@@ -8,7 +8,7 @@ Windows and Linux, and on the web through wasm.
 
 **Hosted gallery:** unavailable. GitHub Pages is not enabled on this repository, so there is no live site. Run the gallery locally with `cargo run -p gallery`. The wasm build in `.github/workflows/pages.yml` still runs; its deploy step is quarantined until Pages is turned on (see [`docs/ci.md`](docs/ci.md)).
 
-**Status: 0.2.0.** Milestones:
+**Status: 0.3.0.** Milestones:
 
 | milestone | contents |
 |---|---|

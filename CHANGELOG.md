@@ -6,6 +6,8 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
+## [0.3.0] - 2026-10-29
+
 ### Added
 - Skeleton (`controls::Skeleton`, `SkeletonItem`, `SkeletonAnimation`, `SKELETON_SIZES`): a loading placeholder for lists and cards. Items are a full-width rectangle, a circle or a text line (a fraction of the width), stacked with `spacingVerticalS` and snapped to Fluent's size ramp (16 to 128). The fill is `neutral_stencil_1`. The default wave sweeps `neutral_stencil_2` across the items; `Pulse` fades between the two; `Static` does not move. Reduced motion holds still and repaints nothing. High contrast draws an outline in `neutral_stroke_1`. The whole skeleton is one busy ProgressIndicator named "Loading" (or the label given); the items are hidden from AccessKit. Gallery page "Skeleton" (WI-1935).
 - Tag, InteractionTag and TagGroup (`controls::Tag`, `InteractionTag`, `TagGroup`, `TagAppearance`, `TagSize`, `TagResponse`, `TagGroupResponse`), for filter chips and labels. A tag is filled, outline or brand, extra-small (20), small (24) or medium (32), with an optional icon or `Avatar`, secondary text (under the primary at medium size), and an optional dismiss button named "Remove <text>"; Delete or Backspace on a focused tag dismisses it and reports `dismissed`, and the app removes it. An InteractionTag's body is a Button with a separate dismiss target, and `.selected(true)` shows it in the brand style, AccessKit-toggled. A TagGroup is an AccessKit List of ListItems with one Tab stop: the arrow keys, Home and End move between tags, and after a dismiss focus moves to the next tag (or the previous, for the last). High contrast adds an accessible outline. Gallery: "Tags" on Basic controls (WI-1934).
@@ -40,6 +42,85 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 
 ### Changed
 - Dark theme: two Fluent tokens failed WCAG AA for text. `Theme::dark` now sets `status_danger_foreground_1` to `status_danger_foreground_3` (danger text was 4.16:1; Field errors, the danger ribbon tab, danger badges and message bars) and `neutral_foreground_2_brand_hover` to `neutral_foreground_2_hover` (subtle button hover label was 4.18:1). Light and high contrast keep Fluent's values (WI-1844).
+
+### Added
+- `DataGrid::drag_source` drags the selected rows (or the row under the pointer) out of the grid, with a ghost that counts them; `DataGrid::drag_label` sets its text ("3 torrents") and `DataGridResponse::dragging` reports the drag.
+- `data::row_drag::DropTarget` makes any `Response`, such as a sidebar label, a drop target for grid rows: a brand highlight while a drag hovers it, the not-allowed cursor when it refuses, and a `RowDrop` with the row ids on release. Escape cancels.
+- `data::row_drag::drop_menu` and `drop_choices` list the same targets in a context menu, the keyboard alternative to dragging.
+- Gallery "Row drag" page: torrents dragged onto sidebar categories, a lockable category and a "Move to" menu.
+- EditableList (`data::editable_list::EditableList`, `EditableListState`, `EditableListEvent`, `EditableListResponse`, `EditableKind`): a column of text or number rows edited in place. Enter or a click edits a row, Enter commits, Escape cancels, and F2 and Delete edit or remove the focused row. An add field and Add button append rows, and each row has a remove button. The widget holds only the draft text and emits `Added`, `Edited` and `Removed` events for the app to apply, so it never mutates its rows. Number rows refuse values that do not parse and keep the editor open with a message. The list is an AccessKit List and invalid fields are marked invalid. Gallery page "Editable list" (GitHub #117).
+- URL state (`platform::hash_state`): `encode`, `decode` and `value` turn `key=value` pairs into a percent-encoded URL fragment and back, and `HashState` reads and writes the browser's `location.hash` on wasm (`replaceState`, so filters add no history entries). Native builds have no URL: reads return `None` and writes do nothing. The app polls `read_external` each frame, which picks up back and forward and pasted links. Spec: `docs/specs/url-state.md`. Gallery page "URL state" round-trips a tab and a filter through the address bar (#119).
+- Dependencies (wasm32 only): `web-sys` is no longer optional and gains the `History`, `Location` and `Window` features, and `wasm-bindgen` is a new direct dependency. Both were already in the tree through egui. The `file-dialog` feature no longer enables `web-sys`.
+- `Toaster::push_keyed` coalesces toasts: while a toast with the same key is showing, a push replaces its content, moves it to the newest slot and restarts its timeout, so a bulk action reads as one toast ("Paused 12 torrents").
+- A collapsed "+N more" row above the toast stack counts toasts waiting behind the visible ones.
+- `Toaster::set_max_visible` sets how many toasts the stack draws (default 3).
+- `Toaster::history` returns the last 100 pushed toasts, oldest first, and `Toaster::clear_history` forgets them, for a status-bar history list.
+- Gallery toasts page: a keyed "Pause 12 torrents" button, a "Push 50 toasts" button and a collapsed history list.
+- `cargo bench -p fluent2-egui --bench large_views` prints frame time for a 10,000-row list, a 10,000-row data grid and a combobox of 10,000 options. It is not a required check (gh:TheDancingDeveloper-org/fluent2-egui#153).
+- Downstream build fixtures check fluent2-egui with default features off, each optional feature on its own, a wasm consumer, and the declared MSRV (gh:TheDancingDeveloper-org/fluent2-egui#154).
+- Gallery pages for NavigationView and SplitView, so both data views are reachable from the page list.
+- DataGrid copy (issue #105): Ctrl+C on a focused grid copies the focused cell's text, or the selected rows (else the focused row) as TSV, to the clipboard. Works natively and on wasm through the browser Clipboard API. `DataGridResponse::copied` reports the text. Needs `DataGrid::cell_text`. `data_grid::{tsv_field, tsv_rows, rows_to_copy}` build the same text for a context menu. Gallery DataGrid page: right-click "Copy cell" and "Copy row(s)".
+- Read-only text can be selected across labels with the mouse or Shift+arrows, and Ctrl+C copies it. Labels in cards, detail panes, and the markdown and HTML views are covered. Gallery page "Text selection" (issue #106).
+- In-app find (`data::find`): a reusable `FindBar` on `SearchBox` that searches any number of `FindProvider`s (string slices, `TextLines`, `FindItems` for grids and other computed content, and `TerminalGrid` with the `terminal` feature). Ctrl+F (Cmd+F) opens it and focuses the field, Escape closes it, Enter and Shift+Enter step through the matches with wrap-around, and a counter reads "3 of 12" or "No results"; an optional "Aa" toggle makes it case-sensitive. `FindState::layout_job` highlights matches in palette yellow and the current one in marigold (the highlight colour and underlines in high contrast), and `FindState::take_reveal` reports the match to scroll to. Gallery page "Find" over a data grid, a list, text and a log (issue #107).
+- `List::scroll_to_row` and `DataGrid::scroll_to_row`: scroll a virtualised row into the middle of the view, for example to show a find match.
+- Feature `web-find`: `data::find::capture_browser_find` stops the browser's own find from taking Ctrl+F on wasm.
+- DataGrid column layout: `ColumnLayout { order, hidden }` in `DataGridState` (serde-gated), `Column::required`, header right-click and Shift+F10 reported as `DataGridResponse::header_context_menu`, a `column_menu` chooser (show/hide, resize to fit, reset), and column reorder by dragging a header or Alt+Left/Right on a focused one (`columns_reordered`). The gallery grid now has twenty columns and the chooser.
+- TreeView checks and cells: `TreeNode::checked(CheckState)` draws a tri-state checkbox per node, and a click on it or Space on the focused node reports `TreeViewResponse::check_toggled` (the app owns the states and their propagation). `TreeView::columns(&[TreeColumn], cell)` adds fixed-width trailing cell columns with a header row, drawn for visible rows only. Checked tree items expose AccessKit `toggled` (checked, not checked, partially checked). Gallery page "Tree view": 5,000 torrent files with size, progress and priority columns (issue #110).
+- LineChart (`controls::LineChart`, `ChartSeries`, `TimeRange`, `ChartHover`,
+-   `LineChartResponse`, `time_ago`, `bytes_per_second`) behind the new `chart` feature: a
+-   multi-series time-series chart with a value axis, a time axis, a legend, a hover cursor with
+-   a value read-out and 5 min / 1 h / 6 h range chips (#111). `ChartSeries` is a fixed-capacity
+-   ring buffer, series take Fluent palette tokens (alternating colours and dashes in high
+-   contrast), an optional area fill, and each frame keeps at most two points per pixel column.
+-   The AccessKit node summarises the visible samples. Gallery page "Charts".
+- Shortcut registry (`foundation::shortcuts::Shortcuts`, `Shortcut`, `ShortcutScope`, `ShortcutError`, `ShortcutsExt`): one source for key handling, menu captions, tooltips and help. `register` refuses a repeated id or keys another binding holds (Cmd and Ctrl count as one). `ctx.shortcut_pressed(id)` consumes the press once, lets Ctrl+Shift+S beat Ctrl+S, and never fires a binding without Ctrl, Cmd or Alt while a text field has focus. `shortcut_caption` and `shortcut_tooltip` use egui's platform formatting (⌘ on macOS). `MenuItem::bound(id)` draws the caption from the registry, and `surfaces::ShortcutOverlay` is a dialog listing every binding by group. Gallery page "Shortcuts" (#113).
+- `PieceBar`: a strip over piece states, a BitTorrent bitfield or availability counts, bucketed
+-   to one segment per pixel, with an AccessKit label carrying the percent done.
+- `PieceMap`: a grid with one cell per piece, a hover read-out and a legend with counts.
+- `PieceState` (`Missing`, `Downloading`, `Have`) for both widgets.
+- MenuBar (`office::menu_bar::MenuBar`, `MenuBarUi`): the classic File / Edit / View / Tools / Help bar of top-level menus holding Fluent `MenuItem`s, submenus and dividers. Titles mark mnemonics with `&` (`"&File"`). Alt pressed alone or F10 focuses the bar and underlines mnemonics; Alt+letter opens a menu from anywhere; Left and Right move between menus and switch the open one; Down, Enter or Space open the focused menu with focus on its first item; Esc closes the menu, then leaves the bar. With a menu open, hovering another title switches to it. AccessKit roles are MenuBar, MenuItem (with has-popup, expanded and access key) and Menu. It is a plain widget row, so it fits in a `TitleBar` slot. Shortcut captions come from `MenuItem::shortcut`; macOS OS-menu forwarding is left to the app. Gallery page "Menu bar" (#115).
+- `platform::LayoutStore` (feature `serde`): saves split sizes, side docks, dock trees, DataGrid
+-   columns and density under keys as one JSON document, loaded from and saved to any string
+-   storage such as eframe's (#118). The gallery now restores its layout and density on restart.
+- `DataGridSize` derives serde under the `serde` feature.
+- Accordion (`surfaces::Accordion`, `AccordionItem`, `AccordionSize`, `ExpandIconPosition`, `AccordionResponse`): Fluent headers that show or hide panels, for settings panes and grouped options. Small to extra-large sizes, the chevron at the start or end, single or multiple open, and `collapsible` to let the last open item close (off by default, as in Fluent). The app owns the open indices. Panel height animates with `durationNormal` on `curveEasyEase` and snaps under reduced motion. Headers are buttons (Enter or Space toggles) and AccessKit Buttons with expanded state that control their panel Region. Gallery page "Accordion" (WI-1937).
+- RichTextEditor (`controls::RichTextEditor`, `RichText`, `CharStyle`, `BlockKind`,
+-   `InlineFormat`, `RichTextEditorResponse`): a compose control for mail (email-rs, WI-1940).
+-   A toolbar toggles bold, italic and underline (also Ctrl+B, Ctrl+I, Ctrl+U), links, bulleted
+-   and numbered lists and quotes over egui's multiline text edit. With no selection, a toggled
+-   format applies to the next characters typed. `RichText::to_html` writes a small escaped
+-   HTML subset (`p`, `ul`/`ol`/`li`, `blockquote`, `strong`, `em`, `u`, and `a` for `http`,
+-   `https` and `mailto` links only); `RichText::to_plain` writes the plain-text alternative.
+-   Gallery page "Rich text editor".
+- Add an optional wasm accessibility plugin that mirrors common AccessKit roles, names, states and focus into a hidden DOM layer for browser find, screen readers, translation and extensions.
+
+### Changed
+- Weekly upstream review (#100, 2026-10-24): re-reviewed every upstream pin. No watched-path drift for rdpapp, vte, pulldown-cmark, egui_commonmark, imara-diff, syntect, bat, egui (still 0.36), fluentui tokens, selawik, inter, winui-gallery, laststudio-fluent-egui and fluent-gpui, so only their review dates moved. html5gum, the TypeScript grammar, Fluent System Icons, craft-libs and the wordcraft, gridcraft and deckcraft references moved on a watched path and stay pinned until that review is finished.
+- Code view's TypeScript grammar is the 2024 TypeScript-TmLanguage conversion (satisfies, const type parameters, import attributes, regexp `v`), published by aemeath and regenerated with SublimeSyntaxConvertor. TSX stays on the previous grammar (WI-2433).
+- Dialog actions take a stable id and a display text (`DialogActions::primary(id, text)` and `secondary`). `CloseReason::Button` carries that id, and the button's widget id is derived from it, so two actions may share a label and a translated label still closes as the same action. This is a breaking change: call sites that passed only a label now pass an id as well, and `CloseReason` is no longer `Copy` (gh:TheDancingDeveloper-org/fluent2-egui#147).
+- Dialogs are always modal. `DialogKind` only chooses what dismisses the surface: `Modal` closes on a backdrop click and on Escape, `Dismissible` on Escape only, `Alert` on neither. `DialogKind::NonModal` remains as a deprecated alias of `Dismissible`; it never let background input through (gh:TheDancingDeveloper-org/fluent2-egui#148).
+- Light and dark theme strokes, status borders and the dark primary fill now meet WCAG 2.2 contrast (3:1 non-text, 4.5:1 text) instead of keeping Fluent colours that failed those pairs (issue #150).
+- Slider rail, thumb and inner-dot sizes come from `Theme.slider` (`SliderMetrics`). A disabled slider paints the disabled alias colours for the rail, fill and thumb instead of the resting brand colours (issue #151).
+- `Combobox<'a, T = &'a str>` gains a generic parameter. Options are borrowed for `'a` and are not copied into the widget. `ComboboxOptions`, `SliceOptions` and `ModelCombobox` are new, and `filter_probe` counts real filter passes for tests (gh:TheDancingDeveloper-org/fluent2-egui#152).
+- The gallery wasm size budget is enforced. `gallery-wasm` runs `scripts/wasm-size-check.sh` against `ci/wasm-budget.txt` (gzip and brotli, each 4,500,000 bytes) and uploads the size report. Raise the budget in that file when a change needs the room (gh:TheDancingDeveloper-org/fluent2-egui#153).
+- `install` turns egui's text selection on in both egui themes, so an app that had turned it off gets it back for Fluent text.
+- Docs: a runnable `Toaster` example in `surfaces::toast`, and short examples in the `controls` and `surfaces` module docs that show a few widgets together. They run as doctests (WI-1938).
+- CI on a pull request now checks only the packages its diff touches, with a shared,
+-   SHA-pinned Rust cache and `cargo-nextest`; the merge queue and `main` still run the full
+-   Linux and Windows matrix. The module, gallery page, README and supporting-type lists are
+-   sorted one entry per line, and changelog entries are per-PR fragments under `changelog.d/`,
+-   so parallel PRs no longer conflict on shared lists. The gallery screenshot job now names
+-   the command to refresh a changed image (WI-2071).
+
+### Fixed
+- `Card` paints its elevation shadow behind its fill. A resting card had looked grey, because the shadow was drawn over the surface colour.
+- The foreground for a filled danger `Badge` is white in light and dark themes. It was unreadable in dark (the fill's own red, about 1.2:1) and low-contrast in light (about 1.7:1). It is now about 6:1 on the fill in both.
+- HTML data URIs with a declared decoded length over 8 MiB are refused before a decode buffer is allocated.
+- File drops stop reading at the size limit. An openable path is cut off by a bounded reader. A pathless drop, or a path that cannot be opened, is copied through the same reader so only `max + 1` bytes are kept.
+- Pathless file drops, and paths that cannot be opened, are a known limit: the platform fully buffers them before the size limit applies. Only `max + 1` bytes are kept afterwards.
+- Combobox filter cache for a plain slice (`Combobox::new`) was keyed only on the query, so a caller that rebuilt the option slice while the popup stayed open reused stale indexes and could panic. The cache now fingerprints the slice, and a cached index past the list is dropped. Closed popups still do not filter (gh:TheDancingDeveloper-org/fluent2-egui#152).
+- Code view highlights TSX as TypeScript, including JSX tags, instead of as JavaScript (WI-2424).
+- Docs now match the changelog-fragment rule, the Dialog `show` signature, Field parent naming, and the README: Accordion is listed only as shipped, the egui table includes 0.2, and the hosted gallery is marked unavailable because GitHub Pages is not enabled.
 
 ## [0.2.0] - 2026-10-19
 
