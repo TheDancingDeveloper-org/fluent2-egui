@@ -435,6 +435,10 @@ fn read_font(path: &std::path::Path) -> Option<Vec<u8>> {
 
 /// Insert the faces first in their families, then replace the font definitions.
 ///
+/// egui's default fallbacks stay after the new face. Replacing the family with only the UI
+/// face drops `NotoEmoji-Regular` and `emoji-icon-font`, and egui 0.37 panics when a glyph
+/// (for example U+26A0, which the proportional face does not cover) has nowhere to fall back.
+///
 /// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an
 /// equal definition, and [`egui::Context::add_font`] skips a name it already has.
 fn install_faces(ctx: &egui::Context, faces: Vec<Face>) {
@@ -635,6 +639,21 @@ mod tests {
         );
     }
 
+    /// egui's default fallback faces that cover glyphs the UI face does not.
+    ///
+    /// `FontDefinitions::default` lists these after `Ubuntu-Light` on `Proportional`. A UI face
+    /// (Segoe UI Variable, Segoe UI, Inter) covers Latin text and not emoji, so dropping them
+    /// makes the first uncovered character a panic under egui 0.37's default missing-glyph policy.
+    const GLYPH_FALLBACKS: [&str; 3] = ["NotoEmoji-Regular", "emoji-icon-font", "egui-icons"];
+
+    /// True when `family` still has a face that can draw a glyph the UI face misses.
+    fn keeps_glyph_fallback(fonts: &FontDefinitions, family: &FontFamily) -> bool {
+        fonts
+            .families
+            .get(family)
+            .is_some_and(|names| names.iter().any(|name| GLYPH_FALLBACKS.contains(&name.as_str())))
+    }
+
     fn family_names(ctx: &egui::Context) -> Vec<(FontFamily, Vec<String>)> {
         let output = ctx.run_ui(egui::RawInput::default(), |_| {});
         output.drop_without_applying_deltas();
@@ -718,5 +737,31 @@ mod tests {
             .filter(|name| name.as_str() == "Inter")
             .count();
         assert_eq!(inter_entries, 1, "Inter should appear once in Proportional");
+    }
+
+    #[test]
+    fn installed_families_keep_the_emoji_fallback() {
+        // egui 0.37 panics on a missing glyph. The UI face (Inter here, Segoe UI Variable on
+        // Windows) does not cover U+26A0, so the proportional family must still fall back to
+        // NotoEmoji or the egui icon font after install.
+        let ctx = egui::Context::default();
+        let _ = family_names(&ctx);
+        crate::install(&ctx, &crate::Theme::default());
+        let output = ctx.run_ui(egui::RawInput::default(), |_| {});
+        output.drop_without_applying_deltas();
+        ctx.fonts(|fonts| {
+            let definitions = fonts.definitions();
+            assert!(
+                keeps_glyph_fallback(definitions, &FontFamily::Proportional),
+                "proportional fallbacks: {:?}",
+                definitions.families.get(&FontFamily::Proportional)
+            );
+        });
+        // Layout the warning sign the Windows CI job panicked on. A missing fallback
+        // panics inside epaint before this returns.
+        let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.label("\u{26a0}\u{fe0f}");
+        });
+        output.drop_without_applying_deltas();
     }
 }
