@@ -396,6 +396,7 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
         .label
         .clone()
         .filter(|label| !label.is_empty())
+        .or_else(|| super::field::enclosing_field_label(ui.ctx()).filter(|label| !label.is_empty()))
         .unwrap_or_default();
     // The TextEdit node lives at `id`, which we passed in. `response.id` is the outer
     // allocation, so a later `accessible_name` would name the wrong node. The placeholder

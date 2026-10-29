@@ -562,3 +562,91 @@ fn deprecated_dismissible_alias_is_non_modal() {
     assert!(!DialogKind::Alert.backdrop_dismiss());
     assert!(DialogKind::Alert.blocks_background());
 }
+
+/// A body button must be clickable on the first frame, before the dialog has measured
+/// itself. Wrapping a short body in a ScrollArea clips that click (egui 0.37).
+#[test]
+fn body_button_clicks_on_the_first_frame() {
+    let probe = open_probe();
+    let probe_ui = probe.clone();
+    let clicks = Rc::new(RefCell::new(0u32));
+    let clicks_ui = clicks.clone();
+    let mut harness = Harness::new_ui(move |ui| {
+        install_light(ui);
+        let mut open = probe_ui.borrow().open;
+        let was_open = open;
+        let result = Dialog::new("dialog")
+            .title("Dialog title")
+            .kind(DialogKind::Modal)
+            .width(600.0)
+            .show(ui.ctx(), &mut open, |ui| {
+                if ui.add(Button::new("Save").id_salt("body-save")).clicked() {
+                    *clicks_ui.borrow_mut() += 1;
+                }
+            });
+        record(&probe_ui, was_open, open, result);
+    });
+    harness.run();
+    assert!(probe.borrow().open, "the first frame closed the dialog");
+    let pos = harness.get_by_label("Save").rect().center();
+    click_at(&mut harness, pos);
+    assert_eq!(*clicks.borrow(), 1, "the body button missed the first click");
+    assert!(
+        probe.borrow().open,
+        "the click closed the dialog as a backdrop click"
+    );
+}
+
+#[test]
+fn body_buttons_and_inputs_are_in_accesskit() {
+    let probe = open_probe();
+    let probe_ui = probe.clone();
+    let mut harness = Harness::new_ui(move |ui| {
+        install_light(ui);
+        let mut open = probe_ui.borrow().open;
+        let mut name = String::new();
+        let was_open = open;
+        let result = Dialog::new("dialog")
+            .title("Dialog title")
+            .kind(DialogKind::Modal)
+            .show(ui.ctx(), &mut open, |ui| {
+                let _ = ui.add(Button::new("Confirm").id_salt("confirm"));
+                fluent2_egui::controls::Field::new("Display name").show(ui, |ui| {
+                    ui.add(fluent2_egui::controls::Input::new(&mut name).id_salt("name"));
+                });
+            });
+        record(&probe_ui, was_open, open, result);
+    });
+    harness.run();
+    let _ = harness.get_by_role_and_label(Role::Button, "Confirm");
+    let _ = harness.get_by_role_and_label(Role::TextInput, "Display name");
+}
+
+#[test]
+fn a_long_body_still_scrolls() {
+    let probe = open_probe();
+    let probe_ui = probe.clone();
+    let mut harness = Harness::new_ui(move |ui| {
+        install_light(ui);
+        let mut open = probe_ui.borrow().open;
+        let was_open = open;
+        let result = Dialog::new("dialog")
+            .title("Dialog title")
+            .kind(DialogKind::Modal)
+            .show(ui.ctx(), &mut open, |ui| {
+                for line in 0..80 {
+                    ui.label(format!("Line {line}"));
+                }
+                let _ = ui.add(Button::new("Bottom").id_salt("bottom"));
+            });
+        record(&probe_ui, was_open, open, result);
+    });
+    harness.run();
+    harness.run();
+    let dialog = harness.get_by_role_and_label(Role::Dialog, "Dialog title");
+    let bottom = harness.get_by_label("Bottom");
+    assert!(
+        bottom.rect().bottom() > dialog.rect().bottom() + 1.0,
+        "a long body fitted inside the dialog, so it is not scrolling"
+    );
+}
