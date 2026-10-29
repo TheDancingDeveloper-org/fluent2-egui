@@ -159,8 +159,12 @@ impl Widget for Slider<'_> {
             rect,
             fraction(current, min, max),
             vertical,
-            enabled,
-            response.has_focus(),
+            PaintState {
+                enabled,
+                hovered: response.hovered(),
+                pressed: response.is_pointer_button_down_on(),
+                focused: response.has_focus(),
+            },
         );
         response.widget_info(|| WidgetInfo::slider(enabled, current, label.clone()));
         // The range, so screen readers can say where the value sits: without it Orca read a
@@ -176,7 +180,20 @@ impl Widget for Slider<'_> {
     }
 }
 
-fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enabled: bool, focused: bool) {
+struct PaintState {
+    enabled: bool,
+    hovered: bool,
+    pressed: bool,
+    focused: bool,
+}
+
+fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, state: PaintState) {
+    let PaintState {
+        enabled,
+        hovered,
+        pressed,
+        focused,
+    } = state;
     let color = &theme.color;
     let painter = ui.painter();
     let metrics = theme.slider;
@@ -188,10 +205,16 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
     } else {
         Rect::from_center_size(rect.center(), Vec2::new(rect.width() - thumb_size, rail_size))
     };
-    let rail_fill = if enabled {
-        color.neutral_stroke_accessible
-    } else {
+    // Resting, hover and pressed are Fluent alias colours, not slider-specific tokens.
+    // Disabled wins over interaction, matching Checkbox.
+    let rail_fill = if !enabled {
         color.neutral_stroke_disabled
+    } else if pressed {
+        color.neutral_stroke_accessible_pressed
+    } else if hovered {
+        color.neutral_stroke_accessible_hover
+    } else {
+        color.neutral_stroke_accessible
     };
     painter.rect_filled(rail, rail_size / 2.0, theme::c(rail_fill));
     let filled = if vertical {
@@ -205,10 +228,14 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
             Pos2::new(rail.left() + rail.width() * fraction, rail.bottom()),
         )
     };
-    let brand = if enabled {
-        color.compound_brand_background
-    } else {
+    let brand = if !enabled {
         color.neutral_foreground_disabled
+    } else if pressed {
+        color.compound_brand_background_pressed
+    } else if hovered {
+        color.compound_brand_background_hover
+    } else {
+        color.compound_brand_background
     };
     if fraction > 0.0 {
         painter.rect_filled(filled, rail_size / 2.0, theme::c(brand));
@@ -224,10 +251,14 @@ fn paint(ui: &Ui, theme: &Theme, rect: Rect, fraction: f32, vertical: bool, enab
     } else {
         color.neutral_background_disabled
     };
-    let thumb_stroke = if enabled {
-        color.neutral_stroke_1
-    } else {
+    let thumb_stroke = if !enabled {
         color.neutral_stroke_disabled
+    } else if pressed {
+        color.neutral_stroke_1_pressed
+    } else if hovered {
+        color.neutral_stroke_1_hover
+    } else {
+        color.neutral_stroke_1
     };
     painter.circle_filled(thumb.center(), thumb_size / 2.0, theme::c(thumb_fill));
     painter.circle_stroke(

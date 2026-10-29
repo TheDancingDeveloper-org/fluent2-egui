@@ -89,11 +89,13 @@ one test file. Do not reorganise folders as part of a component item.
   px values in the slider styles. Density grows only the allocated cross-axis hit target
   (44 in Touch); the thumb diameter is not scaled. Layout clamps on the long axis
   (120–240 horizontal, 80–160 vertical) are **fixed constraints**, not tokens. Hover,
-  pressed and focus fills are **not** customisable on the slider: the painter uses resting
-  alias colours (`neutral_stroke_accessible`, `compound_brand_background`,
-  `neutral_background_1`, `neutral_stroke_1`) and the disabled aliases when `ui` is
-  disabled (`neutral_stroke_disabled`, `neutral_foreground_disabled`,
-  `neutral_background_disabled`). High contrast uses the same aliases from
+  pressed and focus fills are **not** customisable on the slider: the painter uses the
+  resting aliases (`neutral_stroke_accessible`, `compound_brand_background`,
+  `neutral_background_1`, `neutral_stroke_1`), the matching `_hover` and `_pressed`
+  aliases while the pointer is over or down on the control, and the disabled aliases
+  when `ui` is disabled (`neutral_stroke_disabled`, `neutral_foreground_disabled`,
+  `neutral_background_disabled`). Disabled wins over hover and pressed. The focus ring
+  stays `stroke_focus_1` / `stroke_focus_2`. High contrast uses the same aliases from
   `Theme::high_contrast()`.
 
 ## Fonts
