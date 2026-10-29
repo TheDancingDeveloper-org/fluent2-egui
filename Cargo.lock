@@ -1248,7 +1248,7 @@ checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 
 [[package]]
 name = "fluent2-egui"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "egui",
@@ -1277,18 +1277,18 @@ dependencies = [
 
 [[package]]
 name = "fluent2-egui-consumer"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "fluent2-egui",
 ]
 
 [[package]]
 name = "fluent2-icons"
-version = "0.4.0"
+version = "0.4.1"
 
 [[package]]
 name = "fluent2-tokens"
-version = "0.4.0"
+version = "0.4.1"
 
 [[package]]
 name = "fnv"
@@ -1402,7 +1402,7 @@ dependencies = [
 
 [[package]]
 name = "gallery"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "eframe",
  "egui",
@@ -4595,7 +4595,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "serde_json",
  "ureq",
