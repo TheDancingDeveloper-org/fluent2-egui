@@ -9,3 +9,9 @@ crates/gallery/dist/
 docs/images/gallery/*.new.png
 docs/images/gallery/*.diff.png
 docs/images/gallery/*.old.png
+
+# Copies staged by scripts/publish-crates.sh during the archive check.
+crates/*/LICENSE
+crates/*/LICENSE-MIT
+crates/*/LICENSE-APACHE
+crates/*/NOTICE
