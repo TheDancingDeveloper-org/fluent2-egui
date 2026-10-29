@@ -1,5 +1,5 @@
-//! Data views: DataGrid, TreeView, List, NavigationView, SplitView, the Reorder drag helper and row
-//! drag onto external targets
+//! Data views: DataGrid, TreeView, List, NavigationView, SplitView, the Reorder drag helper, row
+//! drag onto external targets and the inter-pane drag primitive
 //! (see `docs/specs/data-views.md`), TerminalView behind the `terminal` feature, MarkdownView
 //! behind `markdown`, DiffView behind `diff` and CodeView behind `highlight`, and the in-app find
 //! bar (`find`).
@@ -18,6 +18,7 @@ pub mod list;
 #[cfg(feature = "markdown")]
 pub mod markdown;
 pub mod nav_view;
+pub mod pane_drag;
 pub mod reorder;
 pub mod row_drag;
 pub(crate) mod rows;
