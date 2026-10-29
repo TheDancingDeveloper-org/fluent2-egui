@@ -13,10 +13,8 @@
 use std::ops::Range;
 
 use egui::text::{LayoutJob, TextFormat};
-use egui::{
-    Color32, FontDefinitions, FontFamily, FontId, MissingGlyphPolicy, RichText, Stroke, TextStyle,
-};
-#[cfg(feature = "bundled-font")]
+use egui::{Color32, FontDefinitions, FontFamily, FontId, MissingGlyphPolicy, RichText, Stroke, TextStyle};
+#[cfg(all(feature = "color-emoji", not(target_arch = "wasm32")))]
 use egui::{FontData, FontInsert, FontPriority, InsertFontFamily};
 
 /// Name of the family used for semibold steps of the ramp.
@@ -448,8 +446,13 @@ pub fn apply_missing_glyph_policy(ctx: &egui::Context) {
 
 /// Colour emoji COLR/CPAL face (Noto Emoji). Inserted after the UI face and before
 /// egui's monochrome emoji fallbacks so colour presentation is preferred when available.
+///
+/// Compiled only with the `color-emoji` feature, and never for `wasm32`: the face is about
+/// 2.7 MB and embedding it in the gallery wasm exceeds the compressed-size budget. On wasm,
+/// and without the feature, this is a no-op; egui's monochrome emoji fallbacks still cover
+/// the glyphs.
 fn install_color_emoji(ctx: &egui::Context) {
-    #[cfg(feature = "bundled-font")]
+    #[cfg(all(feature = "color-emoji", not(target_arch = "wasm32")))]
     {
         const COLOR_EMOJI_NAME: &str = "NotoColorEmoji";
         ctx.add_font(FontInsert {
@@ -470,7 +473,7 @@ fn install_color_emoji(ctx: &egui::Context) {
     let _ = ctx;
 }
 
-#[cfg(feature = "bundled-font")]
+#[cfg(all(feature = "color-emoji", not(target_arch = "wasm32")))]
 const NOTO_COLOR_EMOJI: &[u8] = include_bytes!("../../fonts/Noto-COLRv1.ttf");
 
 /// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an

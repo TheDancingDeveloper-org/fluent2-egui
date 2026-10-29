@@ -10,7 +10,7 @@ Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](c
 
 ### Added
 
-- Colour emoji fallback (Noto Emoji COLR/CPAL, OFL-1.1) and `MissingGlyphPolicy::Tofu` on install, so production text never panics on a missing glyph.
+- Colour emoji fallback (Noto Emoji COLR/CPAL, OFL-1.1) and `MissingGlyphPolicy::Tofu` on install, so production text never panics on a missing glyph. The face is the optional `color-emoji` feature (off by default, and not compiled into wasm32), so the gallery wasm stays inside its compressed-size budget. egui's monochrome emoji faces still cover the glyphs when the feature is off.
 - `EmojiPicker`: search, categories, recent emoji, keyboard movement and AccessKit names.
 - `GroupedList`: a virtualised list of expandable groups. Only the rows in view are built, the current group's header sticks to the top while its rows scroll, and Left, Right, Enter and a header click expand and collapse. Headers are AccessKit groups; rows are list-box options.
 - Inter-pane drag and drop: `data::pane_drag` carries a typed payload from a `DragSource` to a `DropTarget` in another pane, with hover and accept feedback, a keyboard "Move to" menu, and a polite AccessKit live region. The gallery's Pane drag page demonstrates it.

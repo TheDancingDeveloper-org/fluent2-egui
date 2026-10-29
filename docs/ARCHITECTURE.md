@@ -125,6 +125,7 @@ default build stays a Fluent library with no extra dependencies.
   Input and PTY or SSH transport stay with the app. The gallery turns it on. Its tests
   (`tests/terminal.rs`) are `#![cfg(feature = "terminal")]` and run under `cargo test
   --workspace` through the gallery's feature unification.
+- `color-emoji`: the Noto Emoji COLR/CPAL face (`fonts/Noto-COLRv1.ttf`) as a colour fallback, inserted after the UI face by `install_system_fonts`. Off by default (it depends on `bundled-font`). The font bytes are `cfg`'d out of `wasm32` builds even when the feature is on, so the gallery wasm does not embed the 2.7 MB face. Without the feature, egui's monochrome emoji faces remain.
 - `chart`: `controls::LineChart` with `ChartSeries` (a fixed-capacity ring buffer of
   `(time, value)` samples) and `TimeRange` chips. Axes, legend and hover read-out are painted
   with egui only; series take Fluent palette tokens in a fixed order, alternating colours and
