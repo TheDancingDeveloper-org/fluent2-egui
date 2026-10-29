@@ -73,7 +73,7 @@ fn file_opens_backstage_and_escape_returns_to_the_document() {
     harness.run();
     assert!(editor.borrow().backstage.open);
     assert!(
-        has(&harness, Role::Button, "Options"),
+        has(&harness, Role::ListBoxOption, "Options"),
         "backstage navigation is shown"
     );
     assert!(harness.query_by_role(Role::MultilineTextInput).is_none());

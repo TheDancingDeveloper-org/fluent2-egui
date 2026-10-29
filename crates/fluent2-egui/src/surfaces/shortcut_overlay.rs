@@ -39,7 +39,7 @@ impl ShortcutOverlay {
     /// An overlay titled "Keyboard shortcuts".
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: egui::Id::new(id_salt),
+            id_salt: egui::Id::unique(id_salt),
             title: "Keyboard shortcuts".to_owned(),
         }
     }
@@ -66,7 +66,7 @@ impl ShortcutOverlay {
                     }
                     ui.label(text::rich(group, TypeRamp::Body1Strong));
                     ui.add_space(spacing_vertical::XS);
-                    Grid::new(ui.id().with(("shortcut-group", index)))
+                    Grid::new(ui.scope_id().with(("shortcut-group", index)))
                         .num_columns(2)
                         .spacing([spacing_horizontal::XXL, spacing_vertical::S])
                         .striped(false)

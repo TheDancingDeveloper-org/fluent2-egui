@@ -4,7 +4,7 @@
 //! [`foundation::motion::animate`] over `durationSlow`. Reduced motion snaps
 //! that animation, so the arc stays still.
 
-use egui::{Pos2, Response, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Pos2, Response, Role, Sense, Stroke, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText};
 
 use fluent2_tokens::generated::global::stroke_width;
 
@@ -152,9 +152,7 @@ impl Widget for Spinner<'_> {
             .as_ref()
             .map(|text| text.text().to_owned())
             .unwrap_or_else(|| "Loading".to_owned());
-        response.widget_info(|| {
-            WidgetInfo::labeled(WidgetType::ProgressIndicator, ui.is_enabled(), label.clone())
-        });
+        response.widget_info(|| WidgetInfo::labeled(Role::ProgressIndicator, ui.is_enabled(), label.clone()));
         response
     }
 }

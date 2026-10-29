@@ -314,6 +314,7 @@ fn ten_thousand_by_twenty_stays_inside_the_frame_budget() {
             delta: Vec2::new(0.0, -400.0),
             modifiers: Modifiers::NONE,
             phase: egui::TouchPhase::Move,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.step();
     }

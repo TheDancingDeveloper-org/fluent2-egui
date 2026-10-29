@@ -25,8 +25,8 @@
 use egui::epaint::RectShape;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
-    CornerRadius, EventFilter, FocusDirection, Id, InnerResponse, Key, Modifiers, Popup, Sense, Stroke, Ui,
-    UiKind, UiStackInfo, Vec2, WidgetInfo, WidgetType, accesskit,
+    CornerRadius, EventFilter, FocusDirection, Id, InnerResponse, Key, Modifiers, Popup, Role, Sense, Stroke,
+    Ui, UiKind, UiStackInfo, Vec2, WidgetInfo, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
@@ -75,7 +75,7 @@ pub struct MenuBar {
 impl MenuBar {
     /// A menu bar whose state is stored under `id`.
     pub fn new(id: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        Self { id: Id::new(id) }
+        Self { id: Id::unique(id) }
     }
 
     /// Lay the bar out in `ui` and add its menus with `add`. Returns what `add` returns; the
@@ -211,7 +211,7 @@ impl MenuBarUi<'_> {
         }
 
         let enabled = ui.is_enabled();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &label));
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(accesskit::Role::MenuItem);
             node.set_has_popup(accesskit::HasPopup::Menu);
@@ -244,7 +244,7 @@ impl MenuBarUi<'_> {
                 if focus_first {
                     focus_first_item(ui.ctx());
                 }
-                ui.ctx().accesskit_node_builder(ui.id(), |node| {
+                ui.ctx().accesskit_node_builder(ui.scope_id(), |node| {
                     node.set_role(accesskit::Role::Menu);
                     node.set_label(label.clone());
                 });

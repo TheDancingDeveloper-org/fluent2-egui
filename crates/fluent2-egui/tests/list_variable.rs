@@ -52,6 +52,7 @@ fn harness(probe: &'static Probe, rows: usize) -> Harness<'static> {
             let mut tops = HashMap::new();
             List::new("variable", count)
                 .label("Mixed")
+                .row_label(|index| format!("Row {}", id_of(index).0))
                 .row_id(id_of)
                 .variable_height(40.0)
                 .show(ui, &mut state, |cell, ui| {

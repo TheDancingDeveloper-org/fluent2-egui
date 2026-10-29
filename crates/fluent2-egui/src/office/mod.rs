@@ -25,5 +25,5 @@ pub use title_bar::{
 fn chrome_id(value: impl Hash) -> egui::Id {
     let mut hasher = DefaultHasher::new();
     value.hash(&mut hasher);
-    egui::Id::new(hasher.finish())
+    egui::Id::unique(hasher.finish())
 }

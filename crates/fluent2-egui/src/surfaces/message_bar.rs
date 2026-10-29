@@ -101,7 +101,7 @@ impl MessageBar {
     /// Extra salt so two bars with the same text can coexist.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 

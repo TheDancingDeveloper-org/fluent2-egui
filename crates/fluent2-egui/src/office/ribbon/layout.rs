@@ -347,7 +347,7 @@ pub(crate) fn cached_measure(
     measure: impl FnOnce() -> GroupMeasure,
 ) -> GroupMeasure {
     let key = ribbon.with(("measure", tab, group));
-    let hash = Id::new(content);
+    let hash = Id::unique(content);
     if let Some((stored, widths)) = ctx.data(|data| data.get_temp::<(Id, GroupMeasure)>(key))
         && stored == hash
     {
@@ -555,7 +555,7 @@ mod tests {
     #[test]
     fn the_memo_recomputes_on_a_content_change() {
         let ctx = Context::default();
-        let id = Id::new("ribbon");
+        let id = Id::unique("ribbon");
         let a = cached_measure(&ctx, id, "home", "font", 1, || all([1.0, 1.0, 1.0, 1.0]));
         let b = cached_measure(&ctx, id, "home", "font", 1, || all([2.0, 2.0, 2.0, 2.0]));
         assert_eq!(a, b);
@@ -566,7 +566,7 @@ mod tests {
     #[test]
     fn plan_tab_keeps_the_anchor_per_tab() {
         let ctx = Context::default();
-        let id = Id::new("ribbon");
+        let id = Id::unique("ribbon");
         let groups = example();
         let m = LayoutMetrics::default();
         plan_tab(&ctx, id, "home", &groups, 900.0, m);

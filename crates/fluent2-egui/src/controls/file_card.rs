@@ -8,7 +8,7 @@
 //! on; when the card is openable, clicking it (or Enter on it) opens too. [`file_card_row`] lays
 //! cards out in wrapping rows.
 
-use egui::{CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType};
+use egui::{CornerRadius, Id, Rect, Response, Role, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
 use crate::controls::{ProgressBar, ProgressBarSize};
@@ -128,7 +128,7 @@ impl FileCard {
     /// Salt for the card's id, when two cards could share a name.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 
@@ -145,7 +145,7 @@ impl FileCard {
         let color = &theme.color;
         let enabled = ui.is_enabled();
         let height = 52.0;
-        let salt = self.id_salt.unwrap_or_else(|| Id::new(&self.name));
+        let salt = self.id_salt.unwrap_or_else(|| Id::unique(&self.name));
         let id = ui.make_persistent_id(("fluent2_file_card", salt));
         let sense = if self.openable {
             Sense::click()
@@ -226,7 +226,7 @@ impl FileCard {
                 paint_focus_ring(ui, b, radius);
             }
             let name = format!("{verb} {}", self.name);
-            response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
+            response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, name.clone()));
             let response = response.fluent_tooltip(verb.to_string());
             if enabled && response.clicked() {
                 pressed[usize::from(index > 0 && self.removable)] = true;
@@ -284,11 +284,7 @@ impl FileCard {
             (None, Some(bytes)) => label.push_str(&format!(", {}", format_size(bytes))),
             (None, None) => {}
         }
-        let kind = if self.openable {
-            WidgetType::Button
-        } else {
-            WidgetType::Label
-        };
+        let kind = if self.openable { Role::Button } else { Role::Label };
         card.widget_info(|| WidgetInfo::labeled(kind, enabled, label.clone()));
         let pointer_on_action = ui
             .input(|i| i.pointer.interact_pos())

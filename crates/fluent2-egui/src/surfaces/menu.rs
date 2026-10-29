@@ -9,8 +9,8 @@
 
 use egui::epaint::RectShape;
 use egui::{
-    Align, CornerRadius, Frame, Id, InnerResponse, Layout, Popup, Rect, Response, Sense, Stroke,
-    TextWrapMode, Ui, UiKind, UiStackInfo, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
+    Align, CornerRadius, Frame, Id, InnerResponse, Layout, Popup, Rect, Response, Role, Sense, Stroke,
+    TextWrapMode, Ui, UiKind, UiStackInfo, Vec2, Widget, WidgetInfo, WidgetText,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -156,7 +156,7 @@ impl<'a> MenuItem<'a> {
     /// Extra salt for the widget id.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 }
@@ -261,7 +261,7 @@ impl Widget for MenuItem<'_> {
         let enabled = ui.is_enabled();
         let checkable = self.checked.is_some();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::Button, enabled, &label);
+            let mut info = WidgetInfo::labeled(Role::Button, enabled, &label);
             // Only a checkable item has a state. Always set, it made every item a "toggle
             // button, not pressed" in Orca (WI-1586).
             info.selected = checkable.then_some(selected);
@@ -279,7 +279,7 @@ impl Widget for MenuItem<'_> {
 }
 
 fn focus_request_id() -> Id {
-    Id::new("fluent2_menu_focus_first_item")
+    Id::unique("fluent2_menu_focus_first_item")
 }
 
 /// Ask the next enabled [`MenuItem`] drawn this frame to take keyboard focus. The menu bar

@@ -58,7 +58,7 @@ use egui::accesskit::Role;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
     Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Galley, Id, Label, Layout, Margin, Rect,
-    Sense, Stroke, Ui, Vec2, WidgetInfo, WidgetType,
+    Sense, Stroke, Ui, Vec2, WidgetInfo,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
 
@@ -179,7 +179,7 @@ impl<'a> HtmlView<'a> {
     /// A view of `doc`. `id_salt` keeps the ids of its links and scroll areas apart.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, doc: &'a HtmlDocument) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             doc,
             links: &default_link_policy,
             images: &default_image_policy,
@@ -272,7 +272,7 @@ fn spaced(block: &Block) -> bool {
 impl Painter<'_, '_> {
     fn next_id(&mut self, ui: &Ui, what: &str) -> Id {
         self.counter += 1;
-        ui.id().with((what, self.counter))
+        ui.scope_id().with((what, self.counter))
     }
 
     fn page(&self) -> Color32 {
@@ -531,7 +531,7 @@ impl Painter<'_, '_> {
                 if n == 0 {
                     let label = link.text.trim().to_owned();
                     let enabled = ui.is_enabled();
-                    piece.widget_info(|| WidgetInfo::labeled(WidgetType::Link, enabled, label.clone()));
+                    piece.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label.clone()));
                     if focus::focus_visible(ui, &piece) {
                         focus::paint_focus_ring(ui, rect, CornerRadius::ZERO);
                     }
@@ -635,7 +635,7 @@ impl Painter<'_, '_> {
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .on_hover_text(url.clone());
             let enabled = ui.is_enabled();
-            link.widget_info(|| WidgetInfo::labeled(WidgetType::Link, enabled, label.clone()));
+            link.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label.clone()));
             if focus::focus_visible(ui, &link) {
                 focus::paint_focus_ring(ui, response.rect, CornerRadius::ZERO);
             }

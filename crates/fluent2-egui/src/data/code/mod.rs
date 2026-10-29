@@ -12,7 +12,7 @@ pub use highlight::{Highlighter, SyntaxToken, TokenSpan, highlight, line_job, sp
 use egui::accesskit::Role;
 use egui::{
     Align2, CornerRadius, Event, EventFilter, FontId, Key, Modifiers, Pos2, Rect, ScrollArea, Sense, Stroke,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetType,
+    TextStyle, Ui, Vec2, WidgetInfo,
 };
 
 use crate::foundation::focus::paint_focus_ring;
@@ -152,7 +152,7 @@ impl CodeView {
     /// A view whose id is derived from `id_salt` and the parent `Ui`.
     pub fn new(id_salt: impl std::hash::Hash) -> Self {
         Self {
-            id_salt: egui::Id::new(hashed(&id_salt)),
+            id_salt: egui::Id::unique(hashed(&id_salt)),
             language: String::new(),
             font: None,
             label: "Code".into(),
@@ -395,7 +395,7 @@ impl CodeView {
 
         let enabled = ui.is_enabled();
         let label = self.label.clone();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::TextEdit, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(Role::TextInput, enabled, &label));
         // The builder runs only while AccessKit is on; the value was joined at highlight time.
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::MultilineTextInput);

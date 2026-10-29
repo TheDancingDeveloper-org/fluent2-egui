@@ -124,7 +124,7 @@ impl<'a> Pager<'a> {
         page_count: usize,
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             page,
             page_count,
             siblings: 1,

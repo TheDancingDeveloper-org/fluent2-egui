@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use egui::{
-    Galley, Id, Popup, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, WidgetInfo,
-    WidgetText, WidgetType, accesskit,
+    Galley, Id, Popup, Pos2, Rect, Response, Role, Sense, TextStyle, TextWrapMode, Ui, Vec2, WidgetInfo,
+    WidgetText, accesskit,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal};
 
@@ -386,7 +386,7 @@ fn finish_button(ui: &Ui, response: &Response, rect: Rect, label: &str, enabled:
     if focus::focus_visible(ui, response) {
         paint_focus_ring(ui, rect, radius(border_radius::MEDIUM));
     }
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
 }
 
 /// Toggle button bound to `value`. Small. Event: `Changed` (`value` is already updated).

@@ -7,8 +7,8 @@
 //! AccessKit Button with its expanded state that controls its panel region.
 
 use egui::{
-    CornerRadius, FontId, FontSelection, Id, Rect, Sense, Ui, UiBuilder, Vec2, WidgetInfo, WidgetText,
-    WidgetType, accesskit,
+    CornerRadius, FontId, FontSelection, Id, Rect, Role, Sense, Ui, UiBuilder, Vec2, WidgetInfo, WidgetText,
+    accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -128,7 +128,7 @@ impl<'a> Accordion<'a> {
     /// An accordion keyed by `id_salt`, with the open item indices in `open`.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, open: &'a mut Vec<usize>) -> Self {
         Self {
-            id: Id::new(id_salt).with("fluent2_accordion"),
+            id: Id::unique(id_salt).with("fluent2_accordion"),
             open,
             items: Vec::new(),
             size: AccordionSize::Medium,
@@ -301,7 +301,7 @@ fn header(
         }
     }
 
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, text.clone()));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, text.clone()));
     let panel_node = panel_ui_id(id);
     ui.ctx().accesskit_node_builder(header_id, |node| {
         node.set_role(accesskit::Role::Button);
@@ -335,14 +335,12 @@ fn panel(ui: &mut Ui, item_id: Id, body: PanelBody<'_>, is_open: bool) {
     let width = finite_pos(ui.available_width());
     let top = ui.cursor().min;
     let pad = spacing_horizontal::M;
-    let mut child = ui.new_child(
-        UiBuilder::new()
-            .id(panel_ui_id(item_id))
-            .max_rect(Rect::from_min_size(
-                egui::pos2(top.x + pad, top.y),
-                Vec2::new((width - pad * 2.0).max(0.0), f32::INFINITY),
-            )),
-    );
+    let mut child = ui.new_child(UiBuilder::new().scope_id(panel_ui_id(item_id)).max_rect(
+        Rect::from_min_size(
+            egui::pos2(top.x + pad, top.y),
+            Vec2::new((width - pad * 2.0).max(0.0), f32::INFINITY),
+        ),
+    ));
     let measured: f32 = ctx.data(|data| data.get_temp(measured_id)).unwrap_or(0.0);
     let visible = if progress >= 1.0 {
         None
@@ -356,7 +354,7 @@ fn panel(ui: &mut Ui, item_id: Id, body: PanelBody<'_>, is_open: bool) {
     body(&mut child);
     let full = child.min_rect().height().max(0.0);
     ctx.data_mut(|data| data.insert_temp(measured_id, full));
-    ctx.accesskit_node_builder(child.id(), |node| {
+    ctx.accesskit_node_builder(child.scope_id(), |node| {
         node.set_role(accesskit::Role::Region);
     });
     let height = visible.unwrap_or(full).min(full);

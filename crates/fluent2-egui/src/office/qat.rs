@@ -6,7 +6,7 @@
 //! by itself. The app applies each [`QatCustomize`] with [`QatState::apply`], and places the
 //! toolbar in the title bar or beside the ribbon according to [`QatState::position`].
 
-use egui::{Id, Layout, Popup, Sense, Ui, WidgetInfo, WidgetType, accesskit};
+use egui::{Id, Layout, Popup, Role, Sense, Ui, WidgetInfo, accesskit};
 use fluent2_icons::Icon;
 
 use super::keytips::{self, KeyTipCandidate, KeyTipLevel, Region, TargetKind};
@@ -227,7 +227,7 @@ impl<'a> Qat<'a> {
         // The toolbar has no widget of its own, so an interact over its rect gives the AccessKit
         // node bounds. It senses hover only, so clicks still reach the buttons.
         let toolbar = ui.interact(row.response.rect, id, Sense::hover());
-        toolbar.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Quick Access Toolbar"));
+        toolbar.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, "Quick Access Toolbar"));
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(accesskit::Role::Toolbar);
         });

@@ -602,7 +602,7 @@ impl FindBar {
     /// A find bar. `id_salt` names its field and must be unique among siblings.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             placeholder: "Find".to_owned(),
             match_case_toggle: false,
             shortcut: true,

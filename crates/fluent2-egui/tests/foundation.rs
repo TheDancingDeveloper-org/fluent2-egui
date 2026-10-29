@@ -28,7 +28,7 @@ fn retarget(curve: Curve) -> (f32, f32) {
         move |ui, state: &mut MotionRun| {
             let value = motion::animate(
                 ui.ctx(),
-                Id::new("retarget"),
+                Id::unique("retarget"),
                 state.target,
                 Duration::UltraSlow,
                 curve,

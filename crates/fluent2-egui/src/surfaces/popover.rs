@@ -39,7 +39,7 @@ impl Popover {
     /// A popover whose id is derived from `id_salt` (never from a translated label).
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             arrow: false,
             label: None,
         }
@@ -102,7 +102,7 @@ impl Popover {
                 let (_, response) =
                     ui.allocate_exact_size(Vec2::new(width, 1.0), Sense::focusable_noninteractive());
                 response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), accessible.clone())
+                    egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), accessible.clone())
                 });
                 ui.ctx().accesskit_node_builder(response.id, |node| {
                     node.set_role(egui::accesskit::Role::Dialog);

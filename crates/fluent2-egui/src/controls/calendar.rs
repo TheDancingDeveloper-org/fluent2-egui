@@ -11,8 +11,7 @@
 //! GridCell named with the full date ("Monday, 20 October 2026").
 
 use egui::{
-    Align2, CornerRadius, Id, Key, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo,
-    WidgetType,
+    Align2, CornerRadius, Id, Key, Rect, Response, Role, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo,
 };
 use fluent2_tokens::generated::global::{border_radius, spacing_vertical, stroke_width};
 
@@ -416,7 +415,7 @@ impl<'a> Calendar<'a> {
         selected: &'a mut Option<CalendarDate>,
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             selected,
             today: None,
             first_weekday: 0,
@@ -721,7 +720,7 @@ impl<'a> Calendar<'a> {
             response.mark_changed();
         }
         let label = self.strings.month_year(memory.month);
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, label.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, label.clone()));
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(egui::accesskit::Role::Grid);
             node.set_row_count(6);

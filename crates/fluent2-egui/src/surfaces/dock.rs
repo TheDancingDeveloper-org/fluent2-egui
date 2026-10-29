@@ -538,7 +538,7 @@ impl DockArea {
     /// A dock area. `id_salt` is the widget id.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
         }
     }
 
@@ -757,7 +757,7 @@ fn paint_drop_preview(ui: &Ui, report: &PaneReport, zone: Zone, theme: &Theme) {
     let radius = CornerRadius::same(border_radius::MEDIUM.round().clamp(0.0, 255.0) as u8);
     let painter = ui.ctx().layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
-        ui.id().with("dock_drop_preview"),
+        ui.scope_id().with("dock_drop_preview"),
     ));
     painter.add(RectShape::new(
         area.shrink(stroke_width::THICK),
@@ -838,7 +838,7 @@ impl SideDock {
         title: impl Into<String>,
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             edge,
             title: title.into(),
         }

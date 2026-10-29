@@ -18,8 +18,8 @@
 use egui::epaint::RectShape;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
-    Align2, Area, Context, CornerRadius, Frame, Id, Key, Modal, Order, Rect, Sense, Stroke, TextWrapMode, Ui,
-    UiBuilder, UiKind, Vec2, WidgetInfo, WidgetType,
+    Align2, Area, Context, CornerRadius, Frame, Id, Key, Modal, Order, Rect, Role, Sense, Stroke,
+    TextWrapMode, Ui, UiBuilder, UiKind, Vec2, WidgetInfo,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -412,7 +412,7 @@ impl<'a> CommandPalette<'a> {
     /// A palette over `commands`, with an id from `id_salt`.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, commands: &'a [PaletteCommand]) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             commands,
             recents: &[],
             label: "Command palette".to_owned(),
@@ -549,7 +549,7 @@ impl<'a> CommandPalette<'a> {
             .area(area)
             .show(ctx, |ui| {
                 // The body runs in its own Ui so the Dialog node is the parent of everything in it.
-                ui.scope_builder(UiBuilder::new().id(surface_id), |ui| {
+                ui.scope_builder(UiBuilder::new().scope_id(surface_id), |ui| {
                     let surface_node = ui.unique_id();
                     ui.set_width(
                         width
@@ -618,7 +618,7 @@ impl<'a> CommandPalette<'a> {
                         .auto_shrink([false, true])
                         .show(ui, |ui| {
                             // The rows run in their own Ui so the ListBox node is their parent.
-                            ui.scope_builder(UiBuilder::new().id(list_id), |ui| {
+                            ui.scope_builder(UiBuilder::new().scope_id(list_id), |ui| {
                                 ui.spacing_mut().item_spacing.y = 0.0;
                                 if rows.is_empty() {
                                     ui.label(
@@ -840,7 +840,7 @@ fn paint_row(
     let enabled = !command.disabled;
     let label = command.label.clone();
     response.widget_info(|| {
-        let mut info = WidgetInfo::labeled(WidgetType::SelectableLabel, enabled, &label);
+        let mut info = WidgetInfo::labeled(Role::ListBoxOption, enabled, &label);
         info.selected = Some(selected);
         info
     });

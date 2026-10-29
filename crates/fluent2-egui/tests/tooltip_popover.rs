@@ -27,6 +27,8 @@ fn tooltip_appears_after_hover_time() {
     assert!(too_soon.is_err(), "tooltip should wait for the hover delay");
     harness.step();
     harness.step();
+    // egui 0.37 hides a Tooltip Area on its first frame (a sizing pass).
+    harness.step();
     let _ = harness.get_by_label("Saves the document");
 }
 

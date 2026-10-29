@@ -22,8 +22,8 @@ Windows and Linux, and on the web through wasm.
 
 ```toml
 [dependencies]
-egui = "0.36"
-fluent2-egui = "0.2"
+egui = "0.37"
+fluent2-egui = "0.3"
 ```
 
 Install the theme once (it is safe to call again, for example when the user switches theme),
@@ -185,6 +185,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 |---|---|
 | 0.1.x | 0.36 |
 | 0.2.x | 0.36 |
+| 0.3.x | 0.37 |
 
 ## CI
 

@@ -74,7 +74,7 @@ impl FileDropZone {
     /// A zone named by `id_salt`.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             label: "Drop files here".to_owned(),
             window_wide: false,
             max_bytes: DEFAULT_MAX_BYTES,
@@ -172,7 +172,7 @@ fn file_name(path: &std::path::Path) -> String {
 
 /// Claim this frame's drop for the calling zone. False when another zone already took it.
 fn claim(ctx: &egui::Context) -> bool {
-    let key = Id::new("fluent2_file_drop_claim");
+    let key = Id::unique("fluent2_file_drop_claim");
     let pass = ctx.cumulative_pass_nr();
     ctx.data_mut(|d| {
         if d.get_temp::<u64>(key) == Some(pass) {
