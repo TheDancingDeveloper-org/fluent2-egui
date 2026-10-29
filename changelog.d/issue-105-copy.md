@@ -1,2 +1,0 @@
-### Added
-- DataGrid copy (issue #105): Ctrl+C on a focused grid copies the focused cell's text, or the selected rows (else the focused row) as TSV, to the clipboard. Works natively and on wasm through the browser Clipboard API. `DataGridResponse::copied` reports the text. Needs `DataGrid::cell_text`. `data_grid::{tsv_field, tsv_rows, rows_to_copy}` build the same text for a context menu. Gallery DataGrid page: right-click "Copy cell" and "Copy row(s)".
