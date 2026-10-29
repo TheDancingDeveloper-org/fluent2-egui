@@ -23,11 +23,16 @@ for crate in "${crates[@]}"; do
   fi
   echo "licence check: package list for $crate"
   cargo package -p "$crate" --allow-dirty --list | python3 -c 'import sys
-need=("LICENSE-MIT","LICENSE-APACHE","NOTICE")
+crate=sys.argv[1]
+need=["LICENSE-MIT","LICENSE-APACHE","NOTICE"]
+if crate=="fluent2-icons":
+    need.append("LICENSE-FLUENT-ICONS")
+if crate=="fluent2-egui":
+    need += ["fonts/LICENSE-INTER.txt","syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt","syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt"]
 text=sys.stdin.read().splitlines()
-missing=[n for n in need if not any(line.endswith("/"+n) or line==n for line in text)]
+missing=[n for n in need if not any(line.endswith("/"+n) or line==n or line.endswith(n) for line in text)]
 if missing:
     sys.stderr.write("crate archive missing: "+", ".join(missing)+"\n")
     sys.exit(1)
-'
+' "$crate"
 done

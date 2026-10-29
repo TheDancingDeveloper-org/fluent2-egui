@@ -48,11 +48,18 @@ Breaking changes in 0.3.0:
   After:
 
   ```rust
-  let reason: &CloseReason = dialog.close_reason();
-  match reason {
-      CloseReason::Escape => {}
-      CloseReason::Backdrop => {}
-      CloseReason::Button(id) => {}
+  // CloseReason is not Copy. Borrow it while matching, or clone it to keep it.
+  match dialog.show(ctx, &mut open, |ui| body(ui)) {
+      DialogResult::Open(_) => {}
+      DialogResult::Closed(reason) => {
+          let _kept = reason.clone();
+          match &reason {
+              CloseReason::Escape => {}
+              CloseReason::Backdrop => {}
+              CloseReason::Button(id) if id == "save" => save(),
+              CloseReason::Button(_) | CloseReason::Programmatic => {}
+          }
+      }
   }
   ```
 
@@ -70,7 +77,7 @@ Breaking changes in 0.3.0:
   Dialog::new(DialogKind::Dismissible)
   ```
 
-- `Combobox<'a, T = &'a str>` gains a generic parameter. Options are borrowed for `'a` and are not copied into the widget. Code that writes `Combobox` or `Combobox::new` without naming the type parameter still compiles: the default is `&str`. Code that names the old type `Combobox<'a>` still compiles for the same reason. Code that names a field or alias as `Combobox<'static>` (one lifetime, no second parameter) still compiles. Only a type that fixed the old parameter list by position in a way that now means something else would change, and the old type had a single lifetime parameter, so existing names are not affected.
+
 
   Before:
 
@@ -129,7 +136,6 @@ Breaking changes in 0.3.0:
 - Gallery "Row drag" page: torrents dragged onto sidebar categories, a lockable category and a "Move to" menu.
 - EditableList (`data::editable_list::EditableList`, `EditableListState`, `EditableListEvent`, `EditableListResponse`, `EditableKind`): a column of text or number rows edited in place. Enter or a click edits a row, Enter commits, Escape cancels, and F2 and Delete edit or remove the focused row. An add field and Add button append rows, and each row has a remove button. The widget holds only the draft text and emits `Added`, `Edited` and `Removed` events for the app to apply, so it never mutates its rows. Number rows refuse values that do not parse and keep the editor open with a message. The list is an AccessKit List and invalid fields are marked invalid. Gallery page "Editable list" (GitHub #117).
 - URL state (`platform::hash_state`): `encode`, `decode` and `value` turn `key=value` pairs into a percent-encoded URL fragment and back, and `HashState` reads and writes the browser's `location.hash` on wasm (`replaceState`, so filters add no history entries). Native builds have no URL: reads return `None` and writes do nothing. The app polls `read_external` each frame, which picks up back and forward and pasted links. Spec: `docs/specs/url-state.md`. Gallery page "URL state" round-trips a tab and a filter through the address bar (#119).
-- Dependencies (wasm32 only): `web-sys` is no longer optional and gains the `History`, `Location` and `Window` features, and `wasm-bindgen` is a new direct dependency. Both were already in the tree through egui. The `file-dialog` feature no longer enables `web-sys`.
 - `Toaster::push_keyed` coalesces toasts: while a toast with the same key is showing, a push replaces its content, moves it to the newest slot and restarts its timeout, so a bulk action reads as one toast ("Paused 12 torrents").
 - A collapsed "+N more" row above the toast stack counts toasts waiting behind the visible ones.
 - `Toaster::set_max_visible` sets how many toasts the stack draws (default 3).
@@ -160,7 +166,7 @@ Breaking changes in 0.3.0:
 - MenuBar (`office::menu_bar::MenuBar`, `MenuBarUi`): the classic File / Edit / View / Tools / Help bar of top-level menus holding Fluent `MenuItem`s, submenus and dividers. Titles mark mnemonics with `&` (`"&File"`). Alt pressed alone or F10 focuses the bar and underlines mnemonics; Alt+letter opens a menu from anywhere; Left and Right move between menus and switch the open one; Down, Enter or Space open the focused menu with focus on its first item; Esc closes the menu, then leaves the bar. With a menu open, hovering another title switches to it. AccessKit roles are MenuBar, MenuItem (with has-popup, expanded and access key) and Menu. It is a plain widget row, so it fits in a `TitleBar` slot. Shortcut captions come from `MenuItem::shortcut`; macOS OS-menu forwarding is left to the app. Gallery page "Menu bar" (#115).
 - `platform::LayoutStore` (feature `serde`): saves split sizes, side docks, dock trees, DataGrid
   columns and density under keys as one JSON document, loaded from and saved to any string
-  storage such as eframe's (#118). The gallery now restores its layout and density on restart.
+  storage such as eframe's (#118) (gh:TheDancingDeveloper-org/fluent2-egui#141). The gallery now restores its layout and density on restart.
 - `DataGridSize` derives serde under the `serde` feature.
 - Accordion (`surfaces::Accordion`, `AccordionItem`, `AccordionSize`, `ExpandIconPosition`, `AccordionResponse`): Fluent headers that show or hide panels, for settings panes and grouped options. Small to extra-large sizes, the chevron at the start or end, single or multiple open, and `collapsible` to let the last open item close (off by default, as in Fluent). The app owns the open indices. Panel height animates with `durationNormal` on `curveEasyEase` and snaps under reduced motion. Headers are buttons (Enter or Space toggles) and AccessKit Buttons with expanded state that control their panel Region. Gallery page "Accordion" (WI-1937).
 - RichTextEditor (`controls::RichTextEditor`, `RichText`, `CharStyle`, `BlockKind`,
@@ -171,9 +177,11 @@ Breaking changes in 0.3.0:
   HTML subset (`p`, `ul`/`ol`/`li`, `blockquote`, `strong`, `em`, `u`, and `a` for `http`,
   `https` and `mailto` links only); `RichText::to_plain` writes the plain-text alternative.
   Gallery page "Rich text editor".
-- Add an optional wasm accessibility plugin that mirrors common AccessKit roles, names, states and focus into a hidden DOM layer for browser find, screen readers, translation and extensions.
+- Add an optional wasm accessibility plugin that mirrors common AccessKit roles, names, states and focus into a hidden DOM layer for browser find, screen readers, translation and extensions (gh:TheDancingDeveloper-org/fluent2-egui#142).
 
 ### Changed
+- Dependencies (wasm32 only): `web-sys` is no longer optional and gains the `History`, `Location` and `Window` features, and `wasm-bindgen` is a new direct dependency. Both were already in the tree through egui. The `file-dialog` feature no longer enables `web-sys`.
+- `fluent2-icons` is dual-licensed `MIT OR Apache-2.0` (it was `MIT`). Every published crate ships `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` (gh:TheDancingDeveloper-org/fluent2-egui#161).
 - Dark theme: two Fluent tokens failed WCAG AA for text. `Theme::dark` now sets `status_danger_foreground_1` to `status_danger_foreground_3` (danger text was 4.16:1; Field errors, the danger ribbon tab, danger badges and message bars) and `neutral_foreground_2_brand_hover` to `neutral_foreground_2_hover` (subtle button hover label was 4.18:1). Light and high contrast keep Fluent's values (WI-1844).
 - Weekly upstream review (#100, 2026-10-24): re-reviewed every upstream pin. No watched-path drift for rdpapp, vte, pulldown-cmark, egui_commonmark, imara-diff, syntect, bat, egui (still 0.36), fluentui tokens, selawik, inter, winui-gallery, laststudio-fluent-egui and fluent-gpui, so only their review dates moved. html5gum, the TypeScript grammar, Fluent System Icons, craft-libs and the wordcraft, gridcraft and deckcraft references moved on a watched path and stay pinned until that review is finished.
 - Code view's TypeScript grammar is the 2024 TypeScript-TmLanguage conversion (satisfies, const type parameters, import attributes, regexp `v`), published by aemeath and regenerated with SublimeSyntaxConvertor. TSX stays on the previous grammar (WI-2433).
@@ -193,6 +201,9 @@ Breaking changes in 0.3.0:
   the command to refresh a changed image (WI-2071).
 
 ### Fixed
+- Slider thumb and rail painted the value from before the pointer press, and the value reported on release was that pre-input value. Both now follow the pointer (gh:TheDancingDeveloper-org/fluent2-egui#143, b94bf46).
+- Extreme slider ranges no longer produce NaN geometry (gh:TheDancingDeveloper-org/fluent2-egui#144, b6508a5).
+- A freeform combobox ignored the arrow-key selection when Enter was pressed. Enter now commits the highlighted option (gh:TheDancingDeveloper-org/fluent2-egui#145, c1610c0).
 - Tooltip text was only painted, so screen readers never read it. `fluent_tooltip` now sets it as the widget's AccessKit description (Fluent's `aria-describedby`), with no hover needed. A tooltip that only repeats the label adds nothing, and ribbon tooltips ("Paste\nCtrl+V") describe the control by its shortcut alone. Found by the 2026-10-20 audit (WI-1931).
 - KeyTips: once KeyTips are on, letters typed with Alt still held were dropped. They now continue the sequence, as in Office, and releasing Alt afterwards no longer toggles KeyTips off. Found in the 2026-10-20 upstream review (gridcraft 4ed93c3b) (WI-1927).
 - Opening Backstage from the keyboard left focus nowhere. Focus now moves to the selected entry, repeating the request until egui accepts it. A Dialog node is now described by its body (AccessKit `described_by`), so the body is announced on open while focus is on the primary button. Found by the WI-1586 Orca walk (WI-1850).
@@ -203,7 +214,6 @@ Breaking changes in 0.3.0:
 - The foreground for a filled danger `Badge` is white in light and dark themes. It was unreadable in dark (the fill's own red, about 1.2:1) and low-contrast in light (about 1.7:1). It is now about 6:1 on the fill in both.
 - HTML data URIs with a declared decoded length over 8 MiB are refused before a decode buffer is allocated.
 - File drops stop reading at the size limit. An openable path is cut off by a bounded reader. A pathless drop, or a path that cannot be opened, is copied through the same reader so only `max + 1` bytes are kept.
-- Pathless file drops, and paths that cannot be opened, are a known limit: the platform fully buffers them before the size limit applies. Only `max + 1` bytes are kept afterwards.
 - Combobox filter cache for a plain slice (`Combobox::new`) was keyed only on the query, so a caller that rebuilt the option slice while the popup stayed open reused stale indexes and could panic. The cache now fingerprints the slice, and a cached index past the list is dropped. Closed popups still do not filter (gh:TheDancingDeveloper-org/fluent2-egui#152).
 - Code view highlights TSX as TypeScript, including JSX tags, instead of as JavaScript (WI-2424).
 - Docs now match the changelog-fragment rule, the Dialog `show` signature, Field parent naming, and the README: Accordion is listed only as shipped, the egui table includes 0.2, and the hosted gallery is marked unavailable because GitHub Pages is not enabled.

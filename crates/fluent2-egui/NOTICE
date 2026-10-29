@@ -19,7 +19,7 @@ Bundled:
   @ a347af95478f989038cccbf085978865264c048a, MIT License, Copyright (c) 2020 Microsoft Corporation.
   See `crates/fluent2-icons/LICENSE-FLUENT-ICONS` and ATTRIBUTION.md.
 - Inter Regular and SemiBold (v4.1, rsms/inter, e3a3d4c5), Copyright (c) 2016 The Inter Project
-  Authors, SIL Open Font License 1.1. See `crates/fluent2-egui/fonts/LICENSE-INTER.txt` and
+  Authors, SIL Open Font License 1.1. See `fonts/LICENSE-INTER.txt` and
   ATTRIBUTION.md.
 
 Source provenance
@@ -54,7 +54,7 @@ upstream repository, path, revision and copyright holder.
   ba45efd058df5111837e30fb9598cfc8cbd51095, Apache-2.0, Copyright (c) Microsoft Corporation),
   converted to sublime-syntax the same way as the TypeScript grammar above (bat @
   f748c1a467ae161682849949a7d036ab8362f9ba did not ship a TSX syntax). Vendored as
-  `crates/fluent2-egui/syntaxes/TypeScriptReact.sublime-syntax`. Same licence copy.
+  `syntaxes/TypeScriptReact.sublime-syntax`. Licence copy: `syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt`.
 - fluent-gpui (thedancingdeveloper/fluent-gpui, Apache-2.0): `crates/fluent-layout/src/command_palette.rs`
   @ f601e54b4e58e416bc7495a75468b82af9a10545, adapted into
   `crates/fluent2-egui/src/surfaces/command_palette.rs`. Copyright (c) 2026 sprooty, who relicensed
