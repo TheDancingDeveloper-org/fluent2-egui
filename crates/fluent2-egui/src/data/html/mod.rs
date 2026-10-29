@@ -208,9 +208,11 @@ pub fn find_text(doc: &HtmlDocument, query: &str) -> Vec<TextMatch> {
         let mut map: Vec<usize> = Vec::new();
         for (idx, ch) in text.char_indices() {
             for lower in ch.to_lowercase() {
-                let encoded = lower.encode_utf8(&mut [0; 4]);
+                let mut buf = [0; 4];
+                let encoded = lower.encode_utf8(&mut buf);
+                let len = encoded.len();
                 folded.push_str(encoded);
-                map.extend(std::iter::repeat_n(idx, encoded.len()));
+                map.extend(std::iter::repeat_n(idx, len));
             }
         }
         let mut from = 0;
