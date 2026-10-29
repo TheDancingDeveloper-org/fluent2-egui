@@ -517,36 +517,48 @@ fn click_at(harness: &mut Harness<'_>, pos: egui::Pos2) {
 }
 
 #[test]
-fn every_kind_blocks_the_page_and_backdrop_dismiss_follows_the_kind() {
-    for kind in [DialogKind::Modal, DialogKind::Dismissible, DialogKind::Alert] {
+fn modal_and_alert_block_the_page_and_non_modal_lets_the_click_through() {
+    for kind in [DialogKind::Modal, DialogKind::NonModal, DialogKind::Alert] {
         let probe = open_probe();
         let mut harness = page_behind(probe.clone(), kind);
         harness.run();
         let pos = harness.get_by_label("Behind").rect().center();
         click_at(&mut harness, pos);
-        assert_eq!(
-            probe.borrow().behind_clicks,
-            0,
-            "{kind:?} let a click through to the page behind the dialog"
-        );
         match kind {
             DialogKind::Modal => {
+                assert_eq!(probe.borrow().behind_clicks, 0, "Modal let a click through");
                 assert!(!probe.borrow().open, "Modal closes on a backdrop click");
                 assert_eq!(probe.borrow().closed_with, Some(CloseReason::Backdrop));
             }
-            DialogKind::Dismissible | DialogKind::Alert => {
-                assert!(probe.borrow().open, "{kind:?} stays open on a backdrop click");
-                assert_eq!(probe.borrow().closed_with, None, "{kind:?}");
+            DialogKind::NonModal => {
+                assert_eq!(
+                    probe.borrow().behind_clicks,
+                    1,
+                    "a non-modal dialog blocked the page behind it"
+                );
+                assert!(
+                    probe.borrow().open,
+                    "a click outside a non-modal dialog does not close it"
+                );
+                assert_eq!(probe.borrow().closed_with, None);
+            }
+            DialogKind::Alert => {
+                assert_eq!(probe.borrow().behind_clicks, 0, "Alert let a click through");
+                assert!(probe.borrow().open, "Alert stays open on a backdrop click");
+                assert_eq!(probe.borrow().closed_with, None);
             }
         }
     }
 }
 
 #[test]
-fn deprecated_non_modal_alias_is_dismissible() {
+fn deprecated_dismissible_alias_is_non_modal() {
     #![allow(deprecated)]
-    assert_eq!(DialogKind::NonModal, DialogKind::Dismissible);
+    assert_eq!(DialogKind::Dismissible, DialogKind::NonModal);
     assert!(!DialogKind::NonModal.backdrop_dismiss());
+    assert!(!DialogKind::NonModal.blocks_background());
     assert!(DialogKind::Modal.backdrop_dismiss());
+    assert!(DialogKind::Modal.blocks_background());
     assert!(!DialogKind::Alert.backdrop_dismiss());
+    assert!(DialogKind::Alert.blocks_background());
 }
