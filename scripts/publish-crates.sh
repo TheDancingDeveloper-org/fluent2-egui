@@ -34,10 +34,18 @@ if ! command -v cargo-deny >/dev/null 2>&1; then
   echo "cargo-deny is required for the licence check" >&2
   exit 1
 fi
-# Allowlist (deny.toml): MIT, Apache-2.0, and the unicode-ident Unicode-3.0 exception.
-# SIL OFL is a bundled-font licence (see NOTICE), not a Cargo crate licence, so it is
-# not in the cargo-deny allowlist. A disallowed licence fails the check.
+# Allowlist is deny.toml (MIT, Apache-2.0, and the permissive licences already in
+# the tree, including the font licences OFL-1.1 and Ubuntu-font-1.0). A disallowed
+# licence fails the check.
 cargo deny check licenses
+
+# The root LICENSE is the MIT text, byte-for-byte with LICENSE-MIT, so hosts that
+# only read LICENSE see a real licence. LICENSE-APACHE stays beside it; Cargo.toml
+# still says "MIT OR Apache-2.0". A placeholder or a third text fails the check.
+if ! cmp -s LICENSE LICENSE-MIT; then
+  echo "refusing to publish: LICENSE is not the MIT text in LICENSE-MIT" >&2
+  exit 1
+fi
 
 crates=(fluent2-tokens fluent2-icons fluent2-egui)
 for crate in "${crates[@]}"; do
@@ -49,7 +57,7 @@ for crate in "${crates[@]}"; do
   echo "package $crate $version and check the archive ships licence notices"
   cargo package -p "$crate" --allow-dirty=false --list \
     | python3 -c 'import sys
-need=("LICENSE-MIT","LICENSE-APACHE","NOTICE")
+need=("LICENSE","LICENSE-MIT","LICENSE-APACHE","NOTICE")
 text=sys.stdin.read().splitlines()
 missing=[n for n in need if not any(line.endswith("/"+n) or line==n for line in text)]
 if missing:
