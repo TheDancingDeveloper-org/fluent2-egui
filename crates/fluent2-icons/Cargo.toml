@@ -3,7 +3,7 @@ name = "fluent2-icons"
 description = "A subset of Fluent System Icons (MIT) as an embedded catalogue for Rust UIs"
 version.workspace = true
 edition.workspace = true
-license = "MIT"
+license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 

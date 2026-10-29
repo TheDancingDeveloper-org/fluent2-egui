@@ -158,11 +158,14 @@ run at once.
 permissive licences already in the tree: BSD-2-Clause, BSD-3-Clause, BSL-1.0,
 ISC, Zlib, Unicode-3.0, OFL-1.1, Ubuntu-font-1.0, CDLA-Permissive-2.0; a
 copyleft or unknown licence fails) before any publish,
-then copies `LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` into the
-crate directory (Cargo only packs files inside it), runs `cargo package`,
-checks the archive lists those four files, and deletes the copies. `LICENSE` must be byte-for-byte the MIT text in
-`LICENSE-MIT` (GitHub's licence file). `LICENSE-APACHE` stays beside it, and
-`Cargo.toml` still says `MIT OR Apache-2.0`. Each of `fluent2-tokens`, `fluent2-icons` and
-`fluent2-egui` is skipped when that version is already on crates.io, so a
-re-run resumes after a partial failure. Without `--publish` the script dry-runs
-(`cargo publish --dry-run`) and uploads nothing.
+then runs `scripts/check-crate-licences.sh`. That check requires each of
+`fluent2-tokens`, `fluent2-icons` and `fluent2-egui` to declare
+`MIT OR Apache-2.0`, to carry `LICENSE-MIT` and `LICENSE-APACHE` byte-for-byte
+with the root copies, and to list those files plus `NOTICE` in
+`cargo package --list`. Cargo only packs files inside the crate directory, so
+the copies are tracked there; the root files stay the source of truth.
+`LICENSE` must be byte-for-byte the MIT text in `LICENSE-MIT` (GitHub's licence
+file). `LICENSE-APACHE` stays beside it. CI runs the same check in the
+`crate-licences` job. Each published crate is skipped when that version is
+already on crates.io, so a re-run resumes after a partial failure. Without
+`--publish` the script dry-runs (`cargo publish --dry-run`) and uploads nothing.
