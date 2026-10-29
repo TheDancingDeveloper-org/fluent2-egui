@@ -5,7 +5,8 @@
 //! AccessKit role. The behaviour is specified in `docs/specs/dialog.md`.
 
 use egui::{
-    Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, Sense, Stroke, Ui, Vec2, WidgetText,
+    Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, ModalResponse, Sense, Stroke, Ui, Vec2,
+    WidgetText,
 };
 
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -25,46 +26,52 @@ const CHROME_ESTIMATE: f32 = 96.0;
 /// The body is never squeezed below this, even on a very short screen.
 const MIN_BODY_HEIGHT: f32 = 48.0;
 
-/// How the dialog reacts to the backdrop and to Escape.
+/// How the dialog sits over the page, and what closes it.
 ///
-/// Every dialog is modal: while one is open the backdrop blocks input to the UI behind it,
-/// whatever this variant is. The variant only chooses what dismisses the dialog. `Modal` is the
-/// default and is the only kind a backdrop click closes.
+/// [`DialogKind::Modal`] and [`DialogKind::Alert`] are modal: a backdrop blocks input to the UI
+/// behind them. [`DialogKind::NonModal`] is not: there is no backdrop, and the page behind stays
+/// interactive. Escape closes a modal or non-modal dialog; only a button closes an alert.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum DialogKind {
     /// A backdrop click and Escape both close the dialog. The default.
     ///
-    /// The dialog still blocks the UI behind it, as every kind does.
+    /// The backdrop blocks the UI behind the dialog.
     #[default]
     Modal,
-    /// Escape closes the dialog. A backdrop click does not.
+    /// Escape closes the dialog. The page behind stays interactive.
     ///
-    /// The dialog is still modal: the backdrop blocks input to the UI behind it. The name is the
-    /// dismissal policy, not a non-modal window. [`DialogKind::NonModal`] is the old name.
-    Dismissible,
+    /// There is no backdrop, so a click outside the dialog reaches the page and does not close
+    /// the dialog. [`DialogKind::Dismissible`] is the old name, from when this kind was modal.
+    NonModal,
     /// Only a button closes the dialog. Backdrop clicks and Escape are ignored.
     ///
-    /// The dialog is still modal: the backdrop blocks input to the UI behind it.
+    /// The backdrop blocks the UI behind the dialog.
     Alert,
 }
 
 #[allow(non_upper_case_globals)]
 impl DialogKind {
-    /// The previous name of [`DialogKind::Dismissible`].
+    /// The previous name of [`DialogKind::NonModal`].
     ///
-    /// It never meant the dialog let background input through. Prefer [`DialogKind::Dismissible`].
+    /// Kept so code that passed `Dismissible` still builds. Prefer [`DialogKind::NonModal`].
     #[deprecated(
         since = "0.3.0",
-        note = "renamed to DialogKind::Dismissible; every dialog is modal"
+        note = "renamed to DialogKind::NonModal, which no longer blocks the page"
     )]
-    pub const NonModal: Self = Self::Dismissible;
+    pub const Dismissible: Self = Self::NonModal;
 
     /// Whether a backdrop click closes a dialog of this kind. Only [`DialogKind::Modal`] does.
     ///
-    /// Every kind blocks background input. This is the dismissal policy, not modality.
+    /// A non-modal dialog has no backdrop.
     #[must_use]
     pub const fn backdrop_dismiss(self) -> bool {
         matches!(self, Self::Modal)
+    }
+
+    /// Whether the dialog blocks the UI behind it. Only [`DialogKind::NonModal`] does not.
+    #[must_use]
+    pub const fn blocks_background(self) -> bool {
+        !matches!(self, Self::NonModal)
     }
 }
 
@@ -74,7 +81,7 @@ impl DialogKind {
 /// can share a label and a translated label still closes as the same action.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CloseReason {
-    /// Escape, on a [`DialogKind::Modal`] or [`DialogKind::Dismissible`] with no popup open.
+    /// Escape, on a [`DialogKind::Modal`] or [`DialogKind::NonModal`] with no popup open.
     Escape,
     /// A click on the backdrop of a [`DialogKind::Modal`].
     Backdrop,
@@ -258,101 +265,126 @@ impl<'a> Dialog<'a> {
             .inner_margin(Vec2::new(spacing_horizontal::XXL, spacing_vertical::XXL))
             .shadow(shadow64(&theme));
 
-        // `egui::Modal` blocks the page and records whether a popup was already open.
-        let shown = Modal::new(id)
-            .backdrop_color(c(theme.color.background_overlay))
-            .frame(frame)
-            .area(Modal::default_area(id))
-            .show(ctx, |ui| {
-                ui.set_max_width(width);
-                ui.set_min_width(width.min(ui.available_width().max(0.0)));
+        let blocks = self.kind.blocks_background();
+        let content = |ui: &mut Ui| {
+            ui.set_max_width(width);
+            ui.set_min_width(width.min(ui.available_width().max(0.0)));
 
-                // Strong steps need the semibold family, which may not be bound yet. Draw in the
-                // proportional family until it is, as the buttons do.
-                crate::controls::ensure_type_ramp(ui);
-                let title_text = self.title.text().to_owned();
-                let title_response = ui
-                    .push_id(title_id, |ui| {
-                        ui.label(text::rich(title_text.clone(), TypeRamp::Subtitle1))
-                    })
-                    .inner;
+            // Strong steps need the semibold family, which may not be bound yet. Draw in the
+            // proportional family until it is, as the buttons do.
+            crate::controls::ensure_type_ramp(ui);
+            let title_text = self.title.text().to_owned();
+            let title_response = ui
+                .push_id(title_id, |ui| {
+                    ui.label(text::rich(title_text.clone(), TypeRamp::Subtitle1))
+                })
+                .inner;
 
-                // The body scrolls when it is taller than the screen leaves room for, so the
-                // title and actions stay visible and every control stays inside the surface
-                // (WI-1912). The title and action heights come from the previous frame.
-                let chrome_key = id.with("chrome_height");
-                let chrome = ui
-                    .ctx()
-                    .data(|data| data.get_temp::<f32>(chrome_key))
-                    .unwrap_or(CHROME_ESTIMATE);
-                let max_body = (ui.ctx().content_rect().height()
-                    - 2.0 * (SCREEN_MARGIN + spacing_vertical::XXL)
-                    - chrome)
+            // The body scrolls when it is taller than the screen leaves room for, so the
+            // title and actions stay visible and every control stays inside the surface
+            // (WI-1912). The title and action heights come from the previous frame.
+            let chrome_key = id.with("chrome_height");
+            let chrome = ui
+                .ctx()
+                .data(|data| data.get_temp::<f32>(chrome_key))
+                .unwrap_or(CHROME_ESTIMATE);
+            let max_body =
+                (ui.ctx().content_rect().height() - 2.0 * (SCREEN_MARGIN + spacing_vertical::XXL) - chrome)
                     .max(MIN_BODY_HEIGHT);
-                let scrolled = egui::ScrollArea::vertical()
-                    .id_salt(id.with("body"))
-                    .max_height(max_body)
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        // The body gets its own container node, which describes the dialog.
-                        ui.scope_builder(egui::UiBuilder::new().id_salt("fluent2_dialog_body"), |ui| {
-                            let value = body(ui);
-                            reveal_new_focus(ui, id.with("body_focus"));
-                            (value, ui.unique_id())
-                        })
-                        .inner
-                    });
-                let (value, body_node) = scrolled.inner;
-                let body_rect = scrolled.inner_rect;
-
-                let mut declared = DialogActions {
-                    primary: None,
-                    secondary: Vec::new(),
-                    close_requested: false,
-                    dialog: id,
-                    _lifetime: std::marker::PhantomData,
-                };
-                if let Some(build) = self.actions {
-                    build(&mut declared);
-                }
-                let primary_id = declared.primary.as_ref().map(|action| action.id.clone());
-                let shown_actions = show_actions(ui, declared, stack_actions, opening);
-                // Measured from the layout cursor, not `min_rect`: the surface keeps last
-                // frame's size, so its rect would feed the old height back in and never shrink.
-                let measured = ((body_rect.top() - ui.max_rect().top())
-                    + (ui.cursor().top() - body_rect.bottom()))
-                .max(0.0);
-                if (measured - chrome).abs() > 0.5 {
-                    ui.ctx().data_mut(|data| data.insert_temp(chrome_key, measured));
-                    ui.ctx().request_discard("dialog chrome height changed");
-                }
-
-                // A focusable surface, so Tab has a stop even when the body has no widgets.
-                // It is allocated last, which makes it the last stop; the title is not a stop.
-                let surface = ui.interact(ui.min_rect(), surface_id, Sense::focusable_noninteractive());
-                if opening && primary_id.is_none() {
-                    surface.request_focus();
-                }
-
-                let role = match self.kind {
-                    DialogKind::Alert => egui::accesskit::Role::AlertDialog,
-                    DialogKind::Modal | DialogKind::Dismissible => egui::accesskit::Role::Dialog,
-                };
-                ui.ctx().accesskit_node_builder(surface_id, |node| {
-                    node.set_role(role);
-                    node.set_label(title_text.clone());
-                    node.push_labelled_by(title_response.id.accesskit_id());
-                    // Focus opens on the primary button, so the title and body are announced
-                    // through the dialog's description, as Fluent does with aria-describedby
-                    // (WI-1850).
-                    node.push_described_by(body_node.accesskit_id());
-                    if let Some(description) = &self.description {
-                        node.set_description(description.clone());
-                    }
+            let scrolled = egui::ScrollArea::vertical()
+                .id_salt(id.with("body"))
+                .max_height(max_body)
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    // The body gets its own container node, which describes the dialog.
+                    ui.scope_builder(egui::UiBuilder::new().id_salt("fluent2_dialog_body"), |ui| {
+                        let value = body(ui);
+                        reveal_new_focus(ui, id.with("body_focus"));
+                        (value, ui.unique_id())
+                    })
+                    .inner
                 });
+            let (value, body_node) = scrolled.inner;
+            let body_rect = scrolled.inner_rect;
 
-                (value, primary_id, shown_actions)
+            let mut declared = DialogActions {
+                primary: None,
+                secondary: Vec::new(),
+                close_requested: false,
+                dialog: id,
+                _lifetime: std::marker::PhantomData,
+            };
+            if let Some(build) = self.actions {
+                build(&mut declared);
+            }
+            let primary_id = declared.primary.as_ref().map(|action| action.id.clone());
+            let shown_actions = show_actions(ui, declared, stack_actions, opening);
+            // Measured from the layout cursor, not `min_rect`: the surface keeps last
+            // frame's size, so its rect would feed the old height back in and never shrink.
+            let measured =
+                ((body_rect.top() - ui.max_rect().top()) + (ui.cursor().top() - body_rect.bottom())).max(0.0);
+            if (measured - chrome).abs() > 0.5 {
+                ui.ctx().data_mut(|data| data.insert_temp(chrome_key, measured));
+                ui.ctx().request_discard("dialog chrome height changed");
+            }
+
+            // A focusable surface, so Tab has a stop even when the body has no widgets.
+            // It is allocated last, which makes it the last stop; the title is not a stop.
+            let surface = ui.interact(ui.min_rect(), surface_id, Sense::focusable_noninteractive());
+            if opening && primary_id.is_none() {
+                surface.request_focus();
+            }
+
+            let role = match self.kind {
+                DialogKind::Alert => egui::accesskit::Role::AlertDialog,
+                DialogKind::Modal | DialogKind::NonModal => egui::accesskit::Role::Dialog,
+            };
+            ui.ctx().accesskit_node_builder(surface_id, |node| {
+                node.set_role(role);
+                node.set_label(title_text.clone());
+                node.push_labelled_by(title_response.id.accesskit_id());
+                // Focus opens on the primary button, so the title and body are announced
+                // through the dialog's description, as Fluent does with aria-describedby
+                // (WI-1850).
+                node.push_described_by(body_node.accesskit_id());
+                if let Some(description) = &self.description {
+                    node.set_description(description.clone());
+                }
             });
+
+            (value, primary_id, shown_actions)
+        };
+        // A modal dialog uses `egui::Modal`, which blocks the page and records whether a popup
+        // was already open. A non-modal dialog uses the same centred area with no backdrop, so a
+        // click outside it reaches the page and does not close the dialog.
+        let shown = if blocks {
+            Modal::new(id)
+                .backdrop_color(c(theme.color.background_overlay))
+                .frame(frame)
+                .area(Modal::default_area(id))
+                .show(ctx, content)
+        } else {
+            let area = Modal::default_area(id);
+            let any_popup_open = egui::Popup::is_any_open(ctx);
+            let surface_frame = frame;
+            let shown = area.show(ctx, move |ui| {
+                ui.scope_builder(
+                    egui::UiBuilder::new().sense(egui::Sense::CLICK | egui::Sense::DRAG),
+                    |ui| surface_frame.show(ui, content).inner,
+                )
+                .inner
+            });
+            // No backdrop, so a click on the area is not a backdrop click. A dummy response
+            // built from the area's would move the real one, so the click is ignored by the
+            // `blocks` guard at the close check instead.
+            ModalResponse {
+                response: shown.response.clone(),
+                backdrop_response: shown.response,
+                inner: shown.inner,
+                is_top_modal: true,
+                any_popup_open,
+            }
+        };
 
         let (value, primary_id, action_state) = shown.inner;
         let mut close = None;
@@ -362,7 +394,7 @@ impl<'a> Dialog<'a> {
         if action_state.close_requested {
             close = Some(CloseReason::Programmatic);
         }
-        if shown.backdrop_response.clicked() && self.kind == DialogKind::Modal {
+        if blocks && shown.backdrop_response.clicked() && self.kind == DialogKind::Modal {
             close = Some(CloseReason::Backdrop);
         }
 
