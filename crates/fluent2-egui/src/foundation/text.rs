@@ -437,15 +437,6 @@ fn read_font(path: &std::path::Path) -> Option<Vec<u8>> {
     }
 }
 
-/// Insert the faces first in their families, then replace the font definitions.
-///
-/// egui's default fallbacks stay after the new face. Replacing the family with only the UI
-/// face drops `NotoEmoji-Regular` and `emoji-icon-font`, and egui 0.37 panics when a glyph
-/// (for example U+26A0, which the proportional face does not cover) has nowhere to fall back.
-///
-/// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an
-/// equal definition, and [`egui::Context::add_font`] skips a name it already has.
-///
 /// Production text never panics on a missing glyph: draw tofu instead.
 ///
 /// `egui_kittest` still defaults tests to [`MissingGlyphPolicy::Panic`]. Call this from
@@ -482,6 +473,8 @@ fn install_color_emoji(ctx: &egui::Context) {
 #[cfg(feature = "bundled-font")]
 const NOTO_COLOR_EMOJI: &[u8] = include_bytes!("../../fonts/Noto-COLRv1.ttf");
 
+/// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an
+/// equal definition, and [`egui::Context::add_font`] skips a name it already has.
 fn install_faces(ctx: &egui::Context, faces: Vec<Face>) {
     let mut fonts = FontDefinitions::default();
     for face in faces {
