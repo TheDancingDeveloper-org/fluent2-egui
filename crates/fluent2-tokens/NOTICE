@@ -1,0 +1,38 @@
+fluent2-tokens
+Copyright (c) 2026 The fluent2-egui contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE).
+
+Not affiliated with or endorsed by Microsoft Corporation. Microsoft and Fluent are
+trademarks of the Microsoft group of companies.
+
+Third-party material
+
+The design token values in data/ are generated from microsoft/fluentui packages/tokens
+(npm @fluentui/tokens@1.0.0-alpha.24, microsoft/fluentui@93e324f72f0e187ff6a7e5f70ebf929d9b2212a2).
+They are MIT License, Copyright (c) Microsoft Corporation. The Microsoft MIT terms are:
+
+MIT License
+
+Copyright (c) Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+The fluentui repository also ships fonts and MDL2 icons under
+https://aka.ms/fluentui-assets-license. This crate does not contain them.
