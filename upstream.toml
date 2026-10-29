@@ -199,6 +199,17 @@ watch = ["LICENSE.txt"]
 notes = "Source of the bundled UI fallback (crates/fluent2-egui/fonts): static Regular and SemiBold copied from the v4.1 GitHub release zip (tag v4.1 @ e3a3d4c57d5ecc01453a575621882a384c1995a3, extras/ttf/Inter-Regular.ttf and Inter-SemiBold.ttf, no edits). Those TTFs are not in the git tree at that commit; they ship in Inter-4.1.zip. OFL-1.1 text is crates/fluent2-egui/fonts/LICENSE-INTER.txt, byte-identical to LICENSE.txt in the zip. Re-bump by copying the new files and reviewing the OFL text."
 
 [[source]]
+name = "noto-emoji"
+repo = "googlefonts/noto-emoji"
+branch = "main"
+rev = "v2.047"
+reviewed = "2026-10-29"
+licence = "OFL-1.1"
+role = "generated"
+watch = ["fonts/Noto-COLRv1-noflags.ttf", "LICENSE"]
+notes = "Source of the bundled colour emoji face (crates/fluent2-egui/fonts/Noto-COLRv1.ttf), copied from the v2.047 tag fonts/Noto-COLRv1-noflags.ttf with no edits. OFL-1.1 text is fonts/LICENSE-NOTO-EMOJI.txt."
+
+[[source]]
 name = "winui-gallery"
 repo = "microsoft/WinUI-Gallery"
 branch = "main"
