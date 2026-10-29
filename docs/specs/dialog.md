@@ -1,25 +1,19 @@
 # Dialog
 
-A modal surface built on [`egui::Modal`](https://docs.rs/egui/0.36.2/egui/containers/struct.Modal.html).
-Every dialog is modal. The egui modal paints a full-screen backdrop, blocks input to the UI behind
-it, tracks the topmost modal layer, and reports whether any popup was open at the start of the
-frame. That blocking does not depend on [`DialogKind`]: a click, hover or key meant for the page
-does not reach it while any dialog is open. Fluent chrome, focus, keyboard policy and
-accessibility sit on top of that. A custom area is not used.
+A surface built on [`egui::Modal`](https://docs.rs/egui/0.37.0/egui/containers/struct.Modal.html)
+for the modal kinds, and on the same centred area without a backdrop for the non-modal kind.
+Fluent chrome, focus, keyboard policy and accessibility sit on top of that.
 
 ## Kinds
 
-`DialogKind` is the dismissal policy, not modality. All three kinds block background input.
+| Kind | Backdrop | Backdrop click | Escape | Use |
+|---|---|---|---|---|
+| `Modal` (default) | blocks the page | closes (`CloseReason::Backdrop`) | closes (`CloseReason::Escape`) when this dialog is the top modal and no popup is open | ordinary dialog |
+| `NonModal` | none; the page behind stays interactive | none | closes, as Modal does | a dialog the user can work beside |
+| `Alert` | blocks the page | ignored | ignored | a choice the user must make with a button |
 
-| Kind | Backdrop click | Escape | Use |
-|---|---|---|---|
-| `Modal` (default) | closes (`CloseReason::Backdrop`) | closes (`CloseReason::Escape`) when this dialog is the top modal and no popup is open | ordinary dialog |
-| `Dismissible` | does not close | same as Modal | a modal surface that stays open when the dimmed page is clicked |
-| `Alert` | ignored | ignored | a choice the user must make with a button |
-
-`DialogKind::NonModal` is a deprecated alias of `Dismissible`. The old name described the
-dismissal policy as if the dialog were not modal. It was not: the backdrop always blocked the
-page. New code uses `Dismissible`.
+`DialogKind::Dismissible` is a deprecated alias of `NonModal`. It used to mean a modal dialog that
+ignored a backdrop click. It now means the dialog is not modal.
 
 `Dialog::show` returns `DialogResult::Closed` only on the frame the dialog closes. While it stays
 open the body closure runs and its value is `DialogResult::Open`. Setting `open` to `false` from
@@ -48,7 +42,7 @@ Enter activates the primary action, unless:
 
 Escape follows the kind table above and is also swallowed when a popup is open, so a Dropdown
 inside the dialog can close itself first. The next Escape, with no popup open, closes a Modal or
-Dismissible dialog. Alert never closes on Escape.
+NonModal dialog. Alert never closes on Escape.
 
 ## Nested popups
 

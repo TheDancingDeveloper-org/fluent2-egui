@@ -290,12 +290,10 @@ impl SurfacesPage {
         let was = self.non_modal;
         let result = Dialog::new("surfaces_non_modal")
             .title("Find")
-            .kind(DialogKind::Dismissible)
+            .kind(DialogKind::NonModal)
             .actions(|actions| actions.secondary("close", "Close"))
             .show(ctx, &mut self.non_modal, |ui| {
-                ui.label(
-                    "Escape closes this dialog; a backdrop click does not. The page behind stays blocked.",
-                );
+                ui.label("Escape closes this dialog. There is no backdrop, so the page behind stays usable.");
             });
         if was {
             record(&mut self.status, "Non-modal", result);

@@ -327,7 +327,7 @@ pub(crate) fn show_overlay<R>(
             }
             let role = match overlay.kind {
                 DialogKind::Alert => egui::accesskit::Role::AlertDialog,
-                DialogKind::Modal | DialogKind::Dismissible => egui::accesskit::Role::Dialog,
+                DialogKind::Modal | DialogKind::NonModal => egui::accesskit::Role::Dialog,
             };
             ui.ctx().accesskit_node_builder(surface_id, |node| {
                 node.set_role(role);
