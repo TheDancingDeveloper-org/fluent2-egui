@@ -151,7 +151,7 @@ impl<'a> SpellSession<'a> {
                     .or_else(|| ui.input(|input| input.pointer.interact_pos()))
                     .and_then(|pos| word_at_pos(&findings, galley, origin, pos))
             } else {
-                word_at_caret(&findings, ui, response)
+                word_at_caret(&findings, self.text, ui, response)
             };
             if let Some(spelling) = hit {
                 ui.data_mut(|data| data.insert_temp(menu_id, spelling));
@@ -207,8 +207,10 @@ impl<'a> SpellSession<'a> {
 
 /// Screen-space underline segments for `range`: one per visual line the range crosses.
 fn spans(galley: &egui::Galley, origin: egui::Pos2, range: &Range<usize>) -> Vec<(f32, f32, f32)> {
-    let start = galley.pos_from_cursor(egui::text::CCursor::new(range.start));
-    let end = galley.pos_from_cursor(egui::text::CCursor::new(range.end));
+    // `Spelling.range` is bytes. `CCursor` is a char index.
+    let text = galley.text();
+    let start = galley.pos_from_cursor(egui::text::CCursor::new(byte_to_char(text, range.start)));
+    let end = galley.pos_from_cursor(egui::text::CCursor::new(byte_to_char(text, range.end)));
     // Cursor rects are in galley space. `origin` is where `rect.min` is on screen.
     let shift = origin.to_vec2() - galley.rect.min.to_vec2();
     let start = start.translate(shift);
@@ -239,16 +241,17 @@ fn word_at_pos(
 ) -> Option<Spelling> {
     let local = screen - origin.to_vec2() + galley.rect.min.to_vec2();
     let cursor = galley.cursor_from_pos(local.to_vec2());
-    let index = cursor.index.0;
+    let index = char_to_byte(galley.text(), cursor.index.0);
     findings
         .iter()
         .find(|spelling| spelling.range.start <= index && index < spelling.range.end)
         .cloned()
 }
 
-fn word_at_caret(findings: &[Spelling], ui: &Ui, response: &Response) -> Option<Spelling> {
+fn word_at_caret(findings: &[Spelling], text: &str, ui: &Ui, response: &Response) -> Option<Spelling> {
     let state = egui::text_edit::TextEditState::load(ui.ctx(), response.id)?;
-    let index = state.cursor.char_range().map(|range| range.primary.index.0)?;
+    let char_index = state.cursor.char_range().map(|range| range.primary.index.0)?;
+    let index = char_to_byte(text, char_index);
     findings
         .iter()
         .find(|spelling| spelling.range.start <= index && index <= spelling.range.end)
@@ -326,6 +329,41 @@ pub(crate) fn apply_replace(text: &mut String, range: Range<usize>, with: &str) 
     if !valid_range(text, &range) {
         return None;
     }
-    text.replace_range(range.clone(), with);
-    Some(text[..range.start + with.len()].chars().count())
+    let caret_bytes = range.start + with.len();
+    text.replace_range(range, with);
+    Some(text[..caret_bytes].chars().count())
+}
+
+/// Char index of the char that begins at `byte` (or the char count, when `byte` is the end).
+fn byte_to_char(text: &str, byte: usize) -> usize {
+    let byte = byte.min(text.len());
+    text[..byte].chars().count()
+}
+
+/// Byte offset of char index `index`.
+fn char_to_byte(text: &str, index: usize) -> usize {
+    text.char_indices()
+        .nth(index)
+        .map_or(text.len(), |(byte, _)| byte)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{byte_to_char, char_to_byte};
+
+    #[test]
+    fn cursors_convert_across_multibyte_chars() {
+        let text = "café lait";
+        let byte = text.len() - "lait".len();
+        assert!(text.ends_with("lait"));
+        let chars = byte_to_char(text, byte);
+        assert_eq!(chars, 5);
+        assert_eq!(char_to_byte(text, chars), byte);
+        assert_eq!(byte_to_char(text, text.len()), text.chars().count());
+        // A caret on the last char of a misspelling still lands inside the byte range.
+        let end_byte = byte + "lait".len();
+        let end_chars = byte_to_char(text, end_byte);
+        let caret_byte = char_to_byte(text, end_chars);
+        assert!(byte <= caret_byte && caret_byte <= end_byte);
+    }
 }
