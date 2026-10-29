@@ -38,6 +38,8 @@ const SUPPORTING: &[&str] = &[
     "Shape",
     "SkeletonAnimation",
     "SkeletonItem",
+    "SpellChecker",
+    "Spelling",
     "SpinnerSize",
     "SplitButtonResponse",
     "TagAppearance",
@@ -48,6 +50,7 @@ const SUPPORTING: &[&str] = &[
     "TagSuggestion",
     "TextareaResize",
     "TimeOfDay",
+    "WordListChecker",
     "ValidationState",
     // surfaces
     "CardAppearance",
