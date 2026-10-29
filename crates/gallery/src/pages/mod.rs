@@ -36,6 +36,7 @@ mod rich_text_editor;
 mod row_drag;
 mod shortcuts;
 mod skeleton;
+mod spell;
 mod split_view;
 mod surfaces;
 mod tab_strip;
@@ -78,6 +79,7 @@ pub use rich_text_editor::RichTextEditorPage;
 pub use row_drag::RowDragPage;
 pub use shortcuts::ShortcutsPage;
 pub use skeleton::SkeletonPage;
+pub use spell::SpellPage;
 pub use split_view::SplitViewPage;
 pub use surfaces::SurfacesPage;
 pub use tab_strip::TabStripPage;
@@ -143,6 +145,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(RowDragPage::default()),
         Box::new(ShortcutsPage::default()),
         Box::new(SkeletonPage),
+        Box::new(SpellPage::default()),
         Box::new(SplitViewPage::default()),
         Box::new(SurfacesPage::default()),
         Box::new(TabStripPage::default()),
