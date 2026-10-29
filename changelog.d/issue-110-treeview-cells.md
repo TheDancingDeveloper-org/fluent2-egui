@@ -1,2 +1,0 @@
-### Added
-- TreeView checks and cells: `TreeNode::checked(CheckState)` draws a tri-state checkbox per node, and a click on it or Space on the focused node reports `TreeViewResponse::check_toggled` (the app owns the states and their propagation). `TreeView::columns(&[TreeColumn], cell)` adds fixed-width trailing cell columns with a header row, drawn for visible rows only. Checked tree items expose AccessKit `toggled` (checked, not checked, partially checked). Gallery page "Tree view": 5,000 torrent files with size, progress and priority columns (issue #110).
