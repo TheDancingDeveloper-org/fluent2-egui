@@ -518,6 +518,7 @@ pub struct RichTextEditor<'a> {
     placeholder: Option<String>,
     rows: usize,
     desired_width: Option<f32>,
+    spell: Option<&'a mut dyn super::spell::SpellChecker>,
 }
 
 impl<'a> RichTextEditor<'a> {
@@ -530,6 +531,7 @@ impl<'a> RichTextEditor<'a> {
             placeholder: None,
             rows: 6,
             desired_width: None,
+            spell: None,
         }
     }
 
@@ -561,6 +563,18 @@ impl<'a> RichTextEditor<'a> {
         self
     }
 
+    /// Underline misspellings in the plain text and offer replacements.
+    ///
+    /// The library ships no dictionary. A secondary click on a misspelling, or Shift+F10 /
+    /// the Menu key with the caret in one, opens the suggestions. Choosing one replaces that
+    /// span and keeps the surrounding character styles. Ignore hides the underline until the
+    /// text changes. The checker runs only when the plain text changes.
+    #[must_use]
+    pub fn spell_checker(mut self, checker: &'a mut dyn super::spell::SpellChecker) -> Self {
+        self.spell = Some(checker);
+        self
+    }
+
     /// Paint the editor and apply this frame's edits to the document.
     pub fn show(self, ui: &mut Ui) -> RichTextEditorResponse {
         super::ensure_type_ramp(ui);
@@ -568,6 +582,7 @@ impl<'a> RichTextEditor<'a> {
         let id = ui.make_persistent_id(self.id_salt);
         let edit_id = id.with("text");
         let enabled = ui.is_enabled();
+        let spell = self.spell;
         let doc = self.doc;
         let mut memory: EditorMemory = ui.data(|data| data.get_temp(id)).unwrap_or_default();
         let mut changed = false;
@@ -766,6 +781,17 @@ impl<'a> RichTextEditor<'a> {
             if text != doc.text() {
                 doc.replace_text(&text, &memory.typing);
                 changed = true;
+            }
+            if let Some(checker) = spell {
+                let mut session = super::spell::SpellSession::new(edit_id, doc.text(), checker);
+                session.paint(ui, &output.galley, output.galley_pos);
+                let action = session.menu(ui, &output.response.response, &output.galley, output.galley_pos);
+                if let Some((range, with)) = action.replace.clone()
+                    && super::spell::apply_replace(&mut text, range, &with).is_some()
+                {
+                    doc.replace_text(&text, &memory.typing);
+                    changed = true;
+                }
             }
             paint_gutter(ui, doc, &output.galley, output.galley_pos, gutter, &fonts);
 

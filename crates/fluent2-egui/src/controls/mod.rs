@@ -47,6 +47,7 @@ mod search_box;
 mod skeleton;
 mod slider;
 mod sparkline;
+mod spell;
 mod spin_button;
 mod spinner;
 pub(crate) mod split_button;
@@ -190,6 +191,12 @@ pub use skeleton::{
     SkeletonItem,
 };
 pub use slider::Slider;
+#[rustfmt::skip]
+pub use spell::{
+    SpellChecker,
+    Spelling,
+    WordListChecker,
+};
 #[rustfmt::skip]
 pub use sparkline::{
     SeriesSummary,
