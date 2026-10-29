@@ -158,8 +158,9 @@ run at once.
 permissive licences already in the tree: BSD-2-Clause, BSD-3-Clause, BSL-1.0,
 ISC, Zlib, Unicode-3.0, OFL-1.1, Ubuntu-font-1.0, CDLA-Permissive-2.0; a
 copyleft or unknown licence fails) before any publish,
-then `cargo package` and checks the archive lists `LICENSE`, `LICENSE-MIT`,
-`LICENSE-APACHE` and `NOTICE`. `LICENSE` must be byte-for-byte the MIT text in
+then copies `LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE` and `NOTICE` into the
+crate directory (Cargo only packs files inside it), runs `cargo package`,
+checks the archive lists those four files, and deletes the copies. `LICENSE` must be byte-for-byte the MIT text in
 `LICENSE-MIT` (GitHub's licence file). `LICENSE-APACHE` stays beside it, and
 `Cargo.toml` still says `MIT OR Apache-2.0`. Each of `fluent2-tokens`, `fluent2-icons` and
 `fluent2-egui` is skipped when that version is already on crates.io, so a
