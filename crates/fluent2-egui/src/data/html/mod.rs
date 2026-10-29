@@ -151,6 +151,76 @@ pub struct HtmlResponse {
     pub clicked: Option<LinkClick>,
     /// How many images were painted as blocked placeholders.
     pub blocked_images: usize,
+    /// The link under the pointer this frame, when the policy allows it.
+    pub hovered: Option<LinkHover>,
+    /// The current find match, `1`-based, and how many matches the query has.
+    pub find: FindStatus,
+    /// The text a Copy would place on the clipboard, blocks joined by newlines.
+    /// Empty when nothing spanning a block is selected.
+    pub selection: String,
+}
+
+/// A link the pointer is over. The status line an app shows while hovering.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinkHover {
+    /// The `href` as written.
+    pub href: String,
+    /// What the policy made of it (never [`LinkTarget::Blocked`]).
+    pub target: LinkTarget,
+    /// The link's own text, trimmed.
+    pub text: String,
+}
+
+/// Where find-in-message is, for a status line ("2 of 5") and step buttons.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FindStatus {
+    /// Matches of the current query. `0` when the query is empty or absent.
+    pub matches: usize,
+    /// The match on screen, `1`-based. `0` when there is no current match.
+    pub current: usize,
+}
+
+/// One occurrence of a find query inside a document's selectable text.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TextMatch {
+    /// Index into [`HtmlDocument::text_blocks`].
+    pub block: usize,
+    /// Byte offset of the match in that block.
+    pub start: usize,
+    /// Byte offset just past the match.
+    pub end: usize,
+}
+
+/// Case-insensitive matches of `query` across [`HtmlDocument::text_blocks`], in reading order.
+/// An empty query matches nothing. A match never crosses a block boundary.
+#[must_use]
+pub fn find_text(doc: &HtmlDocument, query: &str) -> Vec<TextMatch> {
+    if query.is_empty() {
+        return Vec::new();
+    }
+    let needle: String = query.chars().flat_map(|ch| ch.to_lowercase()).collect();
+    let mut found = Vec::new();
+    for (block, text) in doc.text_blocks().into_iter().enumerate() {
+        let mut folded = String::new();
+        let mut map: Vec<usize> = Vec::new();
+        for (idx, ch) in text.char_indices() {
+            for lower in ch.to_lowercase() {
+                folded.push(lower);
+                map.push(idx);
+            }
+        }
+        let mut from = 0;
+        while let Some(at) = folded[from..].find(&needle) {
+            let start_folded = from + at;
+            let end_folded = start_folded + needle.len();
+            let start = map[start_folded];
+            let end_char = text[map[end_folded - 1]..].chars().next();
+            let end = map[end_folded - 1] + end_char.map_or(0, char::len_utf8);
+            found.push(TextMatch { block, start, end });
+            from = end_folded.max(start_folded + 1);
+        }
+    }
+    found
 }
 
 /// Paints an [`HtmlDocument`].
@@ -173,6 +243,10 @@ pub struct HtmlView<'a> {
     doc: &'a HtmlDocument,
     links: LinkPolicy<'a>,
     images: ImagePolicy<'a>,
+    /// Case-insensitive substring. Empty disables find.
+    find: &'a str,
+    /// Which match to bring on screen and emphasise. Clamped to the match list.
+    find_index: usize,
 }
 
 impl<'a> HtmlView<'a> {
@@ -183,7 +257,19 @@ impl<'a> HtmlView<'a> {
             doc,
             links: &default_link_policy,
             images: &default_image_policy,
+            find: "",
+            find_index: 0,
         }
+    }
+
+    /// Highlight matches of `query` (case-insensitive, within a block) and step the current
+    /// one with `index`. An empty query highlights nothing. The current match is the one
+    /// [`FindStatus::current`] reports.
+    #[must_use]
+    pub fn find(mut self, query: &'a str, index: usize) -> Self {
+        self.find = query;
+        self.find_index = index;
+        self
     }
 
     /// Decide what each link is. Defaults to [`default_link_policy`].
@@ -210,26 +296,58 @@ impl<'a> HtmlView<'a> {
                 .contains_key(&FontFamily::Name(SEMIBOLD_FAMILY.into()))
         });
         let page = c(theme.color.neutral_background_1);
+        let matches = find_text(self.doc, self.find);
+        let current = if matches.is_empty() {
+            None
+        } else {
+            Some(self.find_index % matches.len())
+        };
         let mut painter = Painter {
             theme: &theme,
             links: self.links,
             images: self.images,
             semibold,
             clicked: None,
+            hovered: None,
             blocked: 0,
             counter: 0,
             backgrounds: vec![page],
+            doc_blocks: self.doc.text_blocks(),
+            block_index: 0,
+            matches: &matches,
+            current,
+            anchor: ui.next_auto_id().with(self.id),
         };
+        let anchor = painter.anchor;
+        ui.ctx()
+            .data_mut(|d| d.insert_temp(anchor.with("block-rects"), Vec::<(usize, Rect)>::new()));
         let inner = ui.push_id(self.id, |ui| {
+            // Blocks and links publish their own AccessKit nodes (heading, paragraph,
+            // link, image). They are not re-parented: a node egui already placed in the
+            // tree cannot also be a child here, and AccessKit rejects the duplicate.
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 painter.blocks(ui, &self.doc.blocks, 0);
-            })
+            });
         });
+        drag_selection(ui, anchor, &painter.doc_blocks);
+        if let Some(index) = current {
+            let hit = matches[index];
+            let key = anchor.with(("sel", hit.block));
+            if let Some(rect) = ui.ctx().data(|d| d.get_temp::<Rect>(key)) {
+                ui.scroll_to_rect(rect, Some(egui::Align::Center));
+            }
+        }
         HtmlResponse {
             response: inner.response,
             clicked: painter.clicked,
             blocked_images: painter.blocked,
+            hovered: painter.hovered,
+            find: FindStatus {
+                matches: matches.len(),
+                current: current.map_or(0, |index| index + 1),
+            },
+            selection: selected_text(ui.ctx(), anchor, &painter.doc_blocks),
         }
     }
 }
@@ -240,11 +358,20 @@ struct Painter<'a, 't> {
     images: ImagePolicy<'a>,
     semibold: bool,
     clicked: Option<LinkClick>,
+    hovered: Option<LinkHover>,
     blocked: usize,
     /// Running index for ids of links, images and scroll areas.
     counter: usize,
     /// The background under the text being painted, innermost last.
     backgrounds: Vec<Color32>,
+    /// Selectable text, same order as [`HtmlDocument::text_blocks`].
+    doc_blocks: Vec<String>,
+    /// Next text block to claim while painting.
+    block_index: usize,
+    matches: &'a [TextMatch],
+    current: Option<usize>,
+    /// Stable id salt for selection memory, independent of the frame's auto ids.
+    anchor: Id,
 }
 
 fn heading_step(level: u8) -> TypeRamp {
@@ -497,12 +624,15 @@ impl Painter<'_, '_> {
         (job, links)
     }
 
-    /// Paint a job as one selectable label, with a focusable, clickable link area over each
-    /// link (which is also the link's AccessKit node).
+    /// Paint a job as one selectable block. The block joins the document-wide selection,
+    /// find matches are highlighted, and each link is a focusable click target plus an
+    /// AccessKit link under this block's paragraph (or heading) node.
     fn paint_job(&mut self, ui: &mut Ui, job: LayoutJob, links: &[LinkSpan], heading: Option<u8>) {
         if job.text.trim().is_empty() && job.text.chars().all(|ch| ch != '\n') {
             return;
         }
+        let plain = job.text.clone();
+        let block_index = self.claim_block(&plain);
         let galley: Arc<Galley> = ui.fonts_mut(|f| f.layout_job(job));
         let response = ui.add(Label::new(galley.clone()).selectable(true));
         let origin = match galley.job.halign {
@@ -510,17 +640,28 @@ impl Painter<'_, '_> {
             egui::Align::Center => response.rect.center_top(),
             egui::Align::RIGHT => response.rect.right_top(),
         };
-        if let Some(level) = heading {
-            let text = galley.text().to_owned();
-            ui.ctx().accesskit_node_builder(response.id, |node| {
+        if let Some(index) = block_index {
+            ui.ctx()
+                .data_mut(|d| d.insert_temp(self.anchor.with(("sel", index)), response.rect));
+            self.paint_selection(ui, &galley, origin, index);
+            self.paint_find(ui, &galley, origin, index, &plain);
+            self.note_block(ui, response.rect, index);
+        }
+        let node_id = response.id;
+        let text = galley.text().to_owned();
+        ui.ctx().accesskit_node_builder(node_id, |node| {
+            if let Some(level) = heading {
                 node.set_role(Role::Heading);
                 node.set_level(usize::from(level.max(1)));
-                node.set_label(text);
-            });
-        }
+            } else {
+                node.set_role(Role::Paragraph);
+            }
+            node.set_label(text);
+        });
         for link in links {
             let rects = link_rects(&galley, link.start, link.end);
             let id = self.next_id(ui, "link");
+            let mut primary: Option<egui::Response> = None;
             for (n, rect) in rects.iter().enumerate() {
                 let rect = rect.translate(origin.to_vec2());
                 // The first piece is the Tab stop; the rest only take clicks.
@@ -529,6 +670,7 @@ impl Painter<'_, '_> {
                     .interact(rect, id.with(n), sense)
                     .on_hover_cursor(CursorIcon::PointingHand);
                 if n == 0 {
+                    primary = Some(piece.clone());
                     let label = link.text.trim().to_owned();
                     let enabled = ui.is_enabled();
                     piece.widget_info(|| WidgetInfo::labeled(Role::Link, enabled, label.clone()));
@@ -541,6 +683,13 @@ impl Painter<'_, '_> {
                 } else {
                     piece
                 };
+                if piece.hovered() && !matches!(link.target, LinkTarget::Blocked) {
+                    self.hovered = Some(LinkHover {
+                        href: link.href.clone(),
+                        target: link.target.clone(),
+                        text: link.text.trim().to_owned(),
+                    });
+                }
                 if piece.clicked() {
                     self.clicked = Some(LinkClick {
                         href: link.href.clone(),
@@ -548,7 +697,69 @@ impl Painter<'_, '_> {
                     });
                 }
             }
+            // The link already has its own AccessKit node (from widget_info). Parenting it
+            // under the paragraph as well makes the tree list the same child twice, which
+            // AccessKit rejects, so the document stays a flat reading order of blocks and
+            // the links stay addressable on their own.
+            let _ = primary;
         }
+    }
+
+    /// The selectable-text index of `plain`, or `None` when this job is not a text block
+    /// (an image-only run, or text that [`HtmlDocument::text_blocks`] skipped).
+    fn claim_block(&mut self, plain: &str) -> Option<usize> {
+        let index = self.block_index;
+        if self.doc_blocks.get(index).is_some_and(|text| text == plain) {
+            self.block_index += 1;
+            Some(index)
+        } else {
+            None
+        }
+    }
+
+    fn paint_selection(&self, ui: &Ui, galley: &Galley, origin: egui::Pos2, index: usize) {
+        let Some(range) = selection_in_block(ui.ctx(), self.anchor, index) else {
+            return;
+        };
+        let color = ui.visuals().selection.bg_fill.gamma_multiply(0.55);
+        for rect in link_rects(galley, range.0, range.1) {
+            ui.painter()
+                .rect_filled(rect.translate(origin.to_vec2()), CornerRadius::ZERO, color);
+        }
+    }
+
+    fn paint_find(&self, ui: &Ui, galley: &Galley, origin: egui::Pos2, index: usize, plain: &str) {
+        let current_color = c(self.theme.color.palette_yellow_background_2);
+        let other_color = c(self.theme.color.palette_yellow_background_1);
+        for (n, hit) in self.matches.iter().enumerate() {
+            if hit.block != index {
+                continue;
+            }
+            let start = hit.start.min(plain.len());
+            let end = hit.end.min(plain.len());
+            if start >= end {
+                continue;
+            }
+            let color = if self.current == Some(n) {
+                current_color
+            } else {
+                other_color
+            };
+            for rect in link_rects(galley, start, end) {
+                ui.painter()
+                    .rect_filled(rect.translate(origin.to_vec2()), CornerRadius::ZERO, color);
+            }
+        }
+    }
+
+    /// Remember where this block was painted so a view-level drag can hit-test it.
+    fn note_block(&self, ui: &Ui, rect: Rect, index: usize) {
+        ui.ctx().data_mut(|d| {
+            let key = self.anchor.with("block-rects");
+            let mut rects = d.get_temp::<Vec<(usize, Rect)>>(key).unwrap_or_default();
+            rects.push((index, rect));
+            d.insert_temp(key, rects);
+        });
     }
 
     fn image(&mut self, ui: &mut Ui, image: &ImageRef) {
@@ -1035,4 +1246,169 @@ mod tests {
         assert!((widths.iter().sum::<f32>() - 600.0).abs() < 0.5, "{widths:?}");
         assert!(widths[0] > widths[1]);
     }
+}
+
+/// A document selection: the pointer-down block and the block under the pointer.
+#[derive(Clone, Copy)]
+struct SelRange {
+    anchor_block: usize,
+    anchor_cursor: usize,
+    focus_block: usize,
+    focus_cursor: usize,
+}
+
+/// Drag anywhere in the view. The block under the pointer-down is the anchor and the
+/// block under the pointer is the focus, so a drag crosses blocks even though each block
+/// is its own widget.
+fn drag_selection(ui: &Ui, anchor: Id, blocks: &[String]) {
+    let rects = ui
+        .ctx()
+        .data(|d| d.get_temp::<Vec<(usize, Rect)>>(anchor.with("block-rects")))
+        .unwrap_or_default();
+    if rects.is_empty() {
+        return;
+    }
+    let id = anchor.with("doc-drag");
+    let response = ui.interact(ui.min_rect(), id, Sense::drag());
+    let ctx = ui.ctx();
+    let Some(pointer) = response.interact_pointer_pos() else {
+        copy_selection(ui, anchor, blocks, &response);
+        return;
+    };
+    let Some((index, rect)) = rects.iter().copied().find(|(_, rect)| rect.contains(pointer)) else {
+        copy_selection(ui, anchor, blocks, &response);
+        return;
+    };
+    let text = blocks.get(index).map(String::as_str).unwrap_or("");
+    let cursor = cursor_in_block(ui, rect, text, Some(pointer));
+    if response.drag_started() {
+        ctx.data_mut(|d| {
+            d.insert_temp(
+                anchor.with("sel-range"),
+                SelRange {
+                    anchor_block: index,
+                    anchor_cursor: cursor,
+                    focus_block: index,
+                    focus_cursor: cursor,
+                },
+            );
+        });
+    } else if response.dragged() {
+        ctx.data_mut(|d| {
+            let mut range = d
+                .get_temp::<SelRange>(anchor.with("sel-range"))
+                .unwrap_or(SelRange {
+                    anchor_block: index,
+                    anchor_cursor: cursor,
+                    focus_block: index,
+                    focus_cursor: cursor,
+                });
+            range.focus_block = index;
+            range.focus_cursor = cursor;
+            d.insert_temp(anchor.with("sel-range"), range);
+        });
+    }
+    copy_selection(ui, anchor, blocks, &response);
+}
+
+fn copy_selection(ui: &Ui, anchor: Id, blocks: &[String], response: &egui::Response) {
+    let copy = ui.input(|i| i.events.iter().any(|event| matches!(event, egui::Event::Copy)));
+    if copy && (response.hovered() || response.has_focus()) {
+        let text = selected_text(ui.ctx(), anchor, blocks);
+        if !text.is_empty() {
+            ui.ctx().copy_text(text);
+        }
+    }
+}
+
+/// The selected byte range inside one block, when the document selection covers it.
+fn selection_in_block(ctx: &egui::Context, anchor: Id, index: usize) -> Option<(usize, usize)> {
+    let range = ctx.data(|d| d.get_temp::<SelRange>(anchor.with("sel-range")))?;
+    let (from_b, from_c, to_b, to_c) = ordered(range);
+    if index < from_b || index > to_b {
+        return None;
+    }
+    let start = if index == from_b { from_c } else { 0 };
+    let end = if index == to_b { to_c } else { usize::MAX };
+    if start >= end {
+        return None;
+    }
+    Some((start, end))
+}
+
+fn ordered(range: SelRange) -> (usize, usize, usize, usize) {
+    if (range.focus_block, range.focus_cursor) < (range.anchor_block, range.anchor_cursor) {
+        (
+            range.focus_block,
+            range.focus_cursor,
+            range.anchor_block,
+            range.anchor_cursor,
+        )
+    } else {
+        (
+            range.anchor_block,
+            range.anchor_cursor,
+            range.focus_block,
+            range.focus_cursor,
+        )
+    }
+}
+
+/// Plain text of the document selection, blocks joined by newlines. What Copy places
+/// on the clipboard.
+fn selected_text(ctx: &egui::Context, anchor: Id, blocks: &[String]) -> String {
+    let Some(range) = ctx.data(|d| d.get_temp::<SelRange>(anchor.with("sel-range"))) else {
+        return String::new();
+    };
+    let (from_b, from_c, to_b, to_c) = ordered(range);
+    let mut parts = Vec::new();
+    for index in from_b..=to_b {
+        let Some(text) = blocks.get(index) else {
+            continue;
+        };
+        let start = if index == from_b {
+            from_c.min(text.len())
+        } else {
+            0
+        };
+        let end = if index == to_b {
+            to_c.min(text.len())
+        } else {
+            text.len()
+        };
+        if start < end {
+            parts.push(text[start..end].to_owned());
+        }
+    }
+    parts.join("\n")
+}
+
+/// Byte offset of the pointer in a single-line-or-wrapped block, by closest row and x.
+fn cursor_in_block(ui: &Ui, rect: Rect, plain: &str, pointer: Option<egui::Pos2>) -> usize {
+    let Some(pointer) = pointer else {
+        return 0;
+    };
+    let font = font_id(TypeRamp::Body1);
+    let galley = ui.fonts_mut(|f| {
+        f.layout(
+            plain.to_owned(),
+            font,
+            Color32::PLACEHOLDER,
+            rect.width().max(1.0),
+        )
+    });
+    let local = pointer - rect.left_top();
+    let mut best = 0usize;
+    let mut best_dist = f32::MAX;
+    for (idx, _) in plain.char_indices().chain(std::iter::once((plain.len(), '\0'))) {
+        let cursor = galley.pos_from_cursor(egui::text::CCursor::new(idx));
+        let point = cursor.center();
+        let delta = point - local;
+        let dist = delta.x * delta.x + delta.y * delta.y;
+        if dist < best_dist {
+            best_dist = dist;
+            best = idx;
+        }
+    }
+    best
 }

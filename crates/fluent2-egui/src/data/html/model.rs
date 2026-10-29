@@ -208,6 +208,16 @@ impl HtmlDocument {
         out.trim().replace('\u{a0}', " ")
     }
 
+    /// Text runs in reading order, one string per selectable block (paragraphs, headings,
+    /// flow, pre, list items, quotes and table cells). Find-in-message and cross-block copy
+    /// walk this, not the painted widgets.
+    #[must_use]
+    pub fn text_blocks(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        collect_text(&self.blocks, &mut out);
+        out
+    }
+
     /// A compact text form of the structure, for tests: one line per block (`p`, `h2`, `div`,
     /// `pre`, `hr`, `ul`/`ol` items as `-`, `quote`, table rows as `|`), runs inline, bold as
     /// `*x*`, links as `[x](href)`, images as `![alt](src)`.
@@ -963,6 +973,44 @@ fn plain_inlines(inlines: &[Inline]) -> String {
         i += 1;
     }
     out
+}
+
+/// Selectable text of each text-bearing block, in reading order. Empty blocks are skipped.
+fn collect_text(blocks: &[Block], out: &mut Vec<String>) {
+    for block in blocks {
+        match block {
+            Block::Text { inlines, .. } | Block::Pre(inlines) => {
+                let text = inline_plain(inlines);
+                if !text.trim().is_empty() {
+                    out.push(text);
+                }
+            }
+            Block::List { items, .. } => {
+                for item in items {
+                    collect_text(item, out);
+                }
+            }
+            Block::Quote(inner) => collect_text(inner, out),
+            Block::Rule => {}
+            Block::Table(table) => {
+                for row in &table.rows {
+                    for cell in row {
+                        collect_text(&cell.blocks, out);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn inline_plain(inlines: &[Inline]) -> String {
+    let mut text = String::new();
+    for inline in inlines {
+        if let Inline::Text(run) = inline {
+            text.push_str(&run.text);
+        }
+    }
+    text
 }
 
 fn outline_blocks(blocks: &[Block], out: &mut String, depth: usize) {
