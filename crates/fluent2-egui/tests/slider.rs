@@ -284,6 +284,69 @@ fn disabled_slider_uses_disabled_colours() {
     );
 }
 
+#[test]
+fn hover_and_pressed_use_interaction_aliases() {
+    let theme = Theme::default();
+    let rgb = |color: egui::Color32| (color.r(), color.g(), color.b());
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(400.0, 200.0));
+    let frame = |ctx: &egui::Context, events: Vec<egui::Event>| {
+        let raw = egui::RawInput {
+            screen_rect: Some(screen),
+            events,
+            ..Default::default()
+        };
+        let mut rect = egui::Rect::ZERO;
+        let mut output = ctx.run_ui(raw, |ui| {
+            let mut value = 50.0;
+            rect = ui.add(Slider::new(&mut value, 0.0..=100.0)).rect;
+        });
+        let shapes = flatten(output.shapes.into_iter().map(|clipped| clipped.shape));
+        output.textures_delta.clear();
+        (rect, shapes)
+    };
+    let ctx = egui::Context::default();
+    theme::install(&ctx, &theme);
+    let (rect, _) = frame(&ctx, Vec::new());
+    let center = rect.center();
+    let (_, hover) = frame(&ctx, vec![egui::Event::PointerMoved(center)]);
+    let (_, press) = frame(
+        &ctx,
+        vec![
+            egui::Event::PointerMoved(center),
+            egui::Event::PointerButton {
+                pos: center,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::default(),
+            },
+        ],
+    );
+    let rects = |shapes: &[Shape]| {
+        shapes
+            .iter()
+            .filter_map(|shape| match shape {
+                Shape::Rect(rect) => Some(rgb(rect.fill)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let strokes = |shapes: &[Shape]| {
+        shapes
+            .iter()
+            .filter_map(|shape| match shape {
+                Shape::Circle(circle) => Some(rgb(circle.stroke.color)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert!(rects(&hover).contains(&rgb(c(theme.color.neutral_stroke_accessible_hover))));
+    assert!(rects(&hover).contains(&rgb(c(theme.color.compound_brand_background_hover))));
+    assert!(strokes(&hover).contains(&rgb(c(theme.color.neutral_stroke_1_hover))));
+    assert!(rects(&press).contains(&rgb(c(theme.color.neutral_stroke_accessible_pressed))));
+    assert!(rects(&press).contains(&rgb(c(theme.color.compound_brand_background_pressed))));
+    assert!(strokes(&press).contains(&rgb(c(theme.color.neutral_stroke_1_pressed))));
+}
+
 /// The theme-render test must check painted outcomes, not only that the harness runs.
 #[test]
 fn theme_render_paints_token_colours_and_metrics() {
