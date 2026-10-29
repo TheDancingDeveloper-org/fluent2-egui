@@ -14,9 +14,10 @@ use std::ops::Range;
 
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
-    Color32, FontData, FontDefinitions, FontFamily, FontId, FontInsert, FontPriority, InsertFontFamily,
-    MissingGlyphPolicy, RichText, Stroke, TextStyle,
+    Color32, FontDefinitions, FontFamily, FontId, MissingGlyphPolicy, RichText, Stroke, TextStyle,
 };
+#[cfg(feature = "bundled-font")]
+use egui::{FontData, FontInsert, FontPriority, InsertFontFamily};
 
 /// Name of the family used for semibold steps of the ramp.
 ///
@@ -445,13 +446,12 @@ pub fn apply_missing_glyph_policy(ctx: &egui::Context) {
     ctx.set_missing_glyph_policy(MissingGlyphPolicy::Tofu);
 }
 
-const COLOR_EMOJI_NAME: &str = "NotoColorEmoji";
-
 /// Colour emoji COLR/CPAL face (Noto Emoji). Inserted after the UI face and before
 /// egui's monochrome emoji fallbacks so colour presentation is preferred when available.
 fn install_color_emoji(ctx: &egui::Context) {
     #[cfg(feature = "bundled-font")]
     {
+        const COLOR_EMOJI_NAME: &str = "NotoColorEmoji";
         ctx.add_font(FontInsert {
             name: COLOR_EMOJI_NAME.to_owned(),
             data: FontData::from_static(NOTO_COLOR_EMOJI),
