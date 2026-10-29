@@ -85,6 +85,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `DatePicker` | DatePicker | | Date and time |
 | `Divider` | Divider | | Basic controls |
 | `Dropdown` | Dropdown | | Basic controls |
+| `EmojiPicker` | egui-only (emoji picker) | | Emoji |
 | `Field` | Field (and Label) | | Basic controls |
 | `FileCard` | Attachment (file card) | | Surfaces |
 | `Input` | Input | | Basic controls |
@@ -122,6 +123,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `CommandPalette` | egui-only (command palette) | | Command palette |
 | `Dialog` | Dialog | | Surfaces |
 | `DockArea`, `DockTree`, `SideDock` | egui-only (docking) | `docking` | Docking |
+| `EmojiPicker` | egui-only (emoji picker) | | Emoji |
 | `Drawer`, `BottomSheet` | Drawer (overlay and inline) | | Drawer |
 | `FluentTooltip` (`TooltipExt::fluent_tooltip`) | Tooltip | | Surfaces |
 | `MenuItem`, `context_menu`, `submenu` | Menu | | Surfaces |

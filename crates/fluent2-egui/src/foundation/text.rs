@@ -13,7 +13,10 @@
 use std::ops::Range;
 
 use egui::text::{LayoutJob, TextFormat};
-use egui::{Color32, FontDefinitions, FontFamily, FontId, RichText, Stroke, TextStyle};
+use egui::{
+    Color32, FontData, FontDefinitions, FontFamily, FontId, FontInsert, FontPriority, InsertFontFamily,
+    MissingGlyphPolicy, RichText, Stroke, TextStyle,
+};
 
 /// Name of the family used for semibold steps of the ramp.
 ///
@@ -323,13 +326,14 @@ pub fn install_system_fonts(ctx: &egui::Context) {
 
     if let Some(faces) = os_faces.or_else(bundled_faces) {
         install_faces(ctx, faces);
-        return;
+    } else {
+        // No face to install. The semibold family still has to resolve, so point it at whatever
+        // egui already uses for proportional text. Fonts exist only after the first pass, so a call
+        // before that queues the fallback and a later call sees it already registered.
+        install_semibold_fallback(ctx);
     }
-
-    // No face to install. The semibold family still has to resolve, so point it at whatever
-    // egui already uses for proportional text. Fonts exist only after the first pass, so a call
-    // before that queues the fallback and a later call sees it already registered.
-    install_semibold_fallback(ctx);
+    install_color_emoji(ctx);
+    apply_missing_glyph_policy(ctx);
 }
 
 /// A face ready to go first in a family.
@@ -441,6 +445,43 @@ fn read_font(path: &std::path::Path) -> Option<Vec<u8>> {
 ///
 /// A second call with the same names is a no-op because [`egui::Context::set_fonts`] skips an
 /// equal definition, and [`egui::Context::add_font`] skips a name it already has.
+///
+/// Production text never panics on a missing glyph: draw tofu instead.
+///
+/// `egui_kittest` still defaults tests to [`MissingGlyphPolicy::Panic`]. Call this from
+/// `install` so apps (and tests that go through `install`) stay on tofu.
+pub fn apply_missing_glyph_policy(ctx: &egui::Context) {
+    ctx.set_missing_glyph_policy(MissingGlyphPolicy::Tofu);
+}
+
+const COLOR_EMOJI_NAME: &str = "NotoColorEmoji";
+
+/// Colour emoji COLR/CPAL face (Noto Emoji). Inserted after the UI face and before
+/// egui's monochrome emoji fallbacks so colour presentation is preferred when available.
+fn install_color_emoji(ctx: &egui::Context) {
+    #[cfg(feature = "bundled-font")]
+    {
+        ctx.add_font(FontInsert {
+            name: COLOR_EMOJI_NAME.to_owned(),
+            data: FontData::from_static(NOTO_COLOR_EMOJI),
+            families: vec![
+                InsertFontFamily {
+                    family: FontFamily::Proportional,
+                    priority: FontPriority::Lowest,
+                },
+                InsertFontFamily {
+                    family: FontFamily::Name(SEMIBOLD_FAMILY.into()),
+                    priority: FontPriority::Lowest,
+                },
+            ],
+        });
+    }
+    let _ = ctx;
+}
+
+#[cfg(feature = "bundled-font")]
+const NOTO_COLOR_EMOJI: &[u8] = include_bytes!("../../fonts/Noto-COLRv1.ttf");
+
 fn install_faces(ctx: &egui::Context, faces: Vec<Face>) {
     let mut fonts = FontDefinitions::default();
     for face in faces {
@@ -644,7 +685,12 @@ mod tests {
     /// `FontDefinitions::default` lists these after `Ubuntu-Light` on `Proportional`. A UI face
     /// (Segoe UI Variable, Segoe UI, Inter) covers Latin text and not emoji, so dropping them
     /// makes the first uncovered character a panic under egui 0.37's default missing-glyph policy.
-    const GLYPH_FALLBACKS: [&str; 3] = ["NotoEmoji-Regular", "emoji-icon-font", "egui-icons"];
+    const GLYPH_FALLBACKS: [&str; 4] = [
+        "NotoColorEmoji",
+        "NotoEmoji-Regular",
+        "emoji-icon-font",
+        "egui-icons",
+    ];
 
     /// True when `family` still has a face that can draw a glyph the UI face misses.
     fn keeps_glyph_fallback(fonts: &FontDefinitions, family: &FontFamily) -> bool {

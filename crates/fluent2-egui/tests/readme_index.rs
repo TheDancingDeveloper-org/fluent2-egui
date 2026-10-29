@@ -26,6 +26,8 @@ const SUPPORTING: &[&str] = &[
     "ModelCombobox",
     "SliceOptions",
     "DayContent",
+    "EmojiCategory",
+    "EmojiPickerResponse",
     "FileCardResponse",
     "InputAppearance",
     "PageItem",
