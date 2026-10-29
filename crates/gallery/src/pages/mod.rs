@@ -19,6 +19,7 @@ mod diff;
 mod docking;
 mod drawer;
 mod editable_list;
+mod emoji;
 mod file_dialog;
 mod find;
 mod grouped_list;
@@ -62,6 +63,7 @@ pub use diff::DiffPage;
 pub use docking::DockingPage;
 pub use drawer::DrawerPage;
 pub use editable_list::EditableListPage;
+pub use emoji::EmojiPage;
 pub use file_dialog::FileDialogPage;
 pub use find::FindPage;
 pub use grouped_list::GroupedListPage;
@@ -127,6 +129,7 @@ pub fn pages() -> Vec<Box<dyn Page>> {
         Box::new(DockingPage::default()),
         Box::new(DrawerPage::default()),
         Box::new(EditableListPage::default()),
+        Box::new(EmojiPage::default()),
         Box::new(FileDialogPage::default()),
         Box::new(FindPage::default()),
         Box::new(GroupedListPage::default()),

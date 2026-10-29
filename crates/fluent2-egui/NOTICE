@@ -21,6 +21,9 @@ Bundled:
 - Inter Regular and SemiBold (v4.1, rsms/inter, e3a3d4c57d5e), Copyright (c) 2016 The Inter Project
   Authors, SIL Open Font License 1.1. See `fonts/LICENSE-INTER.txt` and
   ATTRIBUTION.md.
+- Noto Emoji COLR/CPAL (googlefonts/noto-emoji tag v2.047, fonts/Noto-COLRv1.ttf),
+  Copyright 2013 Google LLC, SIL Open Font License 1.1. See
+  `fonts/LICENSE-NOTO-EMOJI.txt` and ATTRIBUTION.md.
 
 Source provenance
 
