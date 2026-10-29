@@ -1,1 +1,0 @@
-- Workspace `repository` and the gallery terminal demo link now point at `TheDancingDeveloper-org/fluent2-egui` (gh:TheDancingDeveloper-org/fluent2-egui#163).

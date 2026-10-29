@@ -1,1 +1,0 @@
-Regenerated the Fluent System Icons subset from microsoft/fluentui-system-icons @ 64e5aa757d1b70c24a283256ddcb8269d0f58773 (was a347af95478f989038cccbf085978865264c048a). The committed SVGs and catalogue are unchanged. The MIT notice now names the new revision.

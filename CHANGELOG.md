@@ -4,21 +4,32 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Changed
+Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
-- Built against egui, eframe, egui_extras and egui_kittest 0.37 (was 0.36). The crate version is unchanged. egui's MSRV stays 1.95, matching this crate.
-- Accessible names are set on gallery inputs that egui_kittest 0.37 now rejects when a visible input role has no label or placeholder (the cause of issue #146).
+## [0.4.0] - 2026-10-29
 
 ### Breaking
 
+- Requires egui, eframe, egui_extras and egui_kittest 0.37 (was 0.36). egui's MSRV stays 1.95, matching this crate.
 - Callers that name `egui::WidgetType` must use `egui::Role` (a re-export of `accesskit::Role`). Checkboxes are `Role::CheckBox`. Selectable rows and nav rows are `Role::ListBoxOption`, not `Role::Button`.
 - `Id::new` is deprecated. New ids in this crate use `Id::unique`. `FontId::new` and `LayerId::new` are unchanged.
 - `egui::Event::MouseWheel` now carries `source: egui::MouseWheelSource`.
 - Scroll `State::offset` is private. Read `unclamped_offset()` instead.
 - `Ui::id` is `Ui::scope_id`.
 - egui_kittest panics after settle when a visible input widget (including `ListBoxOption`, `TextInput` and `MultilineTextInput`) has no accessible name. Set a label, placeholder, or AccessKit label.
+- `DialogKind::NonModal` is a real non-modal dialog: no backdrop, and clicks reach the page behind it. Escape still closes it; a click outside does not. `DialogKind::Dismissible` is now a deprecated alias of `NonModal`. `Modal` and `Alert` still block the page. Code that treated `NonModal` as an alias of `Dismissible` (a modal surface that only Escape dismisses) changes behaviour.
 
-Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
+### Changed
+
+- Accessible names are set on gallery inputs that egui_kittest 0.37 now rejects when a visible input role has no label or placeholder (the cause of issue #146).
+- The slider rail, brand fill and thumb stroke follow Fluent hover and pressed alias colours (`neutral_stroke_accessible_hover` / `_pressed`, `compound_brand_background_hover` / `_pressed`, `neutral_stroke_1_hover` / `_pressed`). Disabled still uses the disabled aliases and wins over hover and pressed. Sizes stay on `Theme.slider`.
+- Workspace `repository` and the gallery terminal demo link now point at `TheDancingDeveloper-org/fluent2-egui`.
+
+### Fixed
+
+- Installing the UI font (Segoe UI Variable or Segoe UI on Windows, Inter elsewhere) no longer drops egui's emoji fallback faces. egui 0.37 panics when a glyph such as U+26A0 has no face, which the Windows CI job hit in the combobox tests.
+- Regenerated the Fluent System Icons subset from microsoft/fluentui-system-icons @ 64e5aa757d1b70c24a283256ddcb8269d0f58773 (was a347af95478f989038cccbf085978865264c048a). The committed SVGs and catalogue are unchanged. The MIT notice now names the new revision.
+- Recorded the bundled Inter Regular and SemiBold faces against the v4.1 release commit e3a3d4c57d5ecc01453a575621882a384c1995a3. The shipped TTF files and OFL-1.1 text are unchanged and match Inter-4.1.zip (extras/ttf and LICENSE.txt).
 
 ## [0.3.0] - 2026-10-29
 
