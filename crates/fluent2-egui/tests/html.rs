@@ -218,3 +218,90 @@ fn every_fixture_renders_in_every_theme() {
         }
     }
 }
+
+#[test]
+fn find_text_is_case_insensitive_and_stays_inside_a_block() {
+    use fluent2_egui::data::html::{TextMatch, find_text};
+    let doc = HtmlDocument::parse("<p>Alpha beta</p><p>BETA gamma</p>");
+    let hits = find_text(&doc, "beta");
+    assert_eq!(
+        hits,
+        vec![
+            TextMatch {
+                block: 0,
+                start: 6,
+                end: 10
+            },
+            TextMatch {
+                block: 1,
+                start: 0,
+                end: 4
+            },
+        ]
+    );
+    assert!(find_text(&doc, "").is_empty());
+    assert!(
+        find_text(&doc, "alphabeta").is_empty(),
+        "a match does not cross blocks"
+    );
+}
+
+#[test]
+fn cross_block_copy_joins_selected_blocks() {
+    let doc = HtmlDocument::parse("<p>Alpha beta</p><p>BETA gamma</p>");
+    let copied = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+    let seen = copied.clone();
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(700.0, 400.0))
+        .build_ui(move |ui| {
+            install(ui.ctx(), &Theme::default());
+            let out = HtmlView::new("mail", &doc).show(ui);
+            if !out.selection.is_empty() {
+                *seen.borrow_mut() = out.selection;
+            }
+        });
+    harness.run_steps(2);
+    // Drag from the first paragraph into the second, then copy.
+    let first = harness.get_by_role_and_label(Role::Paragraph, "Alpha beta");
+    let second = harness.get_by_role_and_label(Role::Paragraph, "BETA gamma");
+    let start = first.rect().left_top();
+    let end = second.rect().right_bottom();
+    harness.event(egui::Event::PointerMoved(start));
+    harness.event(egui::Event::PointerButton {
+        pos: start,
+        button: egui::PointerButton::Primary,
+        pressed: true,
+        modifiers: egui::Modifiers::default(),
+    });
+    harness.event(egui::Event::PointerMoved(end));
+    harness.event(egui::Event::PointerButton {
+        pos: end,
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: egui::Modifiers::default(),
+    });
+    harness.run_steps(2);
+    let text = copied.borrow().clone();
+    assert!(text.contains("Alpha"), "copied {text:?}");
+    assert!(text.contains("gamma"), "copied {text:?}");
+}
+
+#[test]
+fn find_reports_matches_and_document_exposes_structure() {
+    let doc = HtmlDocument::parse("<h2>Weekly</h2><p>See the <a href=\"https://example.com\">docs</a>.</p>");
+    let status = std::rc::Rc::new(std::cell::RefCell::new((0usize, 0usize, false)));
+    let seen = status.clone();
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(700.0, 400.0))
+        .build_ui(move |ui| {
+            install(ui.ctx(), &Theme::default());
+            let out = HtmlView::new("mail", &doc).find("the", 0).show(ui);
+            *seen.borrow_mut() = (out.find.matches, out.find.current, out.hovered.is_some());
+        });
+    harness.run_steps(2);
+    assert_eq!(status.borrow().0, 1);
+    assert_eq!(status.borrow().1, 1);
+    let _ = harness.get_by_role_and_label(Role::Heading, "Weekly");
+    let _ = harness.get_by_role_and_label(Role::Paragraph, "See the docs.");
+    let _ = harness.get_by_role_and_label(Role::Link, "docs");
+}
