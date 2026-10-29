@@ -40,12 +40,18 @@ fi
 cargo deny check licenses
 
 # The root LICENSE is the MIT text, byte-for-byte with LICENSE-MIT, so hosts that
-# only read LICENSE see a real licence. LICENSE-APACHE stays beside it; Cargo.toml
-# still says "MIT OR Apache-2.0". A placeholder or a third text fails the check.
+# only read LICENSE see a real licence. LICENSE-APACHE stays beside it.
 if ! cmp -s LICENSE LICENSE-MIT; then
   echo "refusing to publish: LICENSE is not the MIT text in LICENSE-MIT" >&2
   exit 1
 fi
+
+# Each published crate is dual-licensed MIT OR Apache-2.0 and ships its own
+# licence texts plus a NOTICE. Root LICENSE-MIT and LICENSE-APACHE are the
+# source of truth. scripts/check-crate-licences.sh fails when a crate's
+# license field differs, the files differ from the root copies, or
+# `cargo package --list` omits LICENSE-MIT, LICENSE-APACHE or NOTICE.
+scripts/check-crate-licences.sh
 
 crates=(fluent2-tokens fluent2-icons fluent2-egui)
 for crate in "${crates[@]}"; do
@@ -54,31 +60,7 @@ for crate in "${crates[@]}"; do
     echo "skip $crate $version: already on crates.io"
     continue
   fi
-  echo "package $crate $version and check the archive ships licence notices"
-  # Cargo only packs files inside the crate directory. Stage the workspace
-  # licence texts for this check, then remove the copies.
-  crate_dir="crates/$crate"
-  for name in LICENSE LICENSE-MIT LICENSE-APACHE NOTICE; do
-    cp "$name" "$crate_dir/$name"
-  done
-  set +e
-  cargo package -p "$crate" --allow-dirty --list \
-    | python3 -c 'import sys
-need=("LICENSE","LICENSE-MIT","LICENSE-APACHE","NOTICE")
-text=sys.stdin.read().splitlines()
-missing=[n for n in need if not any(line.endswith("/"+n) or line==n for line in text)]
-if missing:
-    sys.stderr.write("crate archive missing: "+", ".join(missing)+"\n")
-    sys.exit(1)
-'
-  status=$?
-  set -e
-  for name in LICENSE LICENSE-MIT LICENSE-APACHE NOTICE; do
-    rm "$crate_dir/$name"
-  done
-  if [[ "$status" -ne 0 ]]; then
-    exit "$status"
-  fi
+  echo "publish $crate $version"
   if [[ "$publish" -eq 1 ]]; then
     cargo publish -p "$crate"
   else
