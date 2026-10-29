@@ -326,7 +326,6 @@ impl<'a> HtmlView<'a> {
         };
         let anchor = painter.anchor;
         ui.ctx().data_mut(|d| {
-            d.insert_temp(anchor.with("block-rects"), Vec::<(usize, Rect)>::new());
             // A new document under the same id must not keep the previous selection.
             let stamp = self.doc.text_blocks().join("\n");
             let stamp_id = anchor.with("sel-doc");
@@ -335,6 +334,13 @@ impl<'a> HtmlView<'a> {
                 d.insert_temp(stamp_id, stamp);
             }
         });
+        // Register the view drag before any block. A drag-only widget registered after a
+        // click widget, and covering it, makes egui drop the click (`hit_test_on_close`).
+        // Block rects from the previous frame are still valid: the document and theme have
+        // not moved between frames, and a pointer drag is never the first frame.
+        drag_selection(ui, anchor, &painter.doc_blocks);
+        ui.ctx()
+            .data_mut(|d| d.insert_temp(anchor.with("block-rects"), Vec::<(usize, Rect)>::new()));
         let inner = ui.push_id(self.id, |ui| {
             // Blocks and links publish their own AccessKit nodes (heading, paragraph,
             // link, image). They are not re-parented: a node egui already placed in the
@@ -344,7 +350,6 @@ impl<'a> HtmlView<'a> {
                 painter.blocks(ui, &self.doc.blocks, 0);
             });
         });
-        drag_selection(ui, anchor, &painter.doc_blocks);
         if let Some(index) = current {
             let hit = matches[index];
             let key = anchor.with(("sel", hit.block));
@@ -648,7 +653,10 @@ impl Painter<'_, '_> {
         let plain = job.text.clone();
         let block_index = self.claim_block(&plain);
         let galley: Arc<Galley> = ui.fonts_mut(|f| f.layout_job(job));
-        let response = ui.add(Label::new(galley.clone()).selectable(true));
+        // Hover only. A selectable label senses click, covers every link, and is
+        // registered before the link widgets, so it would win the click. Drag selection
+        // is the view-level widget registered before this block.
+        let response = ui.add(Label::new(galley.clone()).selectable(false).sense(Sense::hover()));
         let origin = match galley.job.halign {
             egui::Align::LEFT => response.rect.left_top(),
             egui::Align::Center => response.rect.center_top(),
