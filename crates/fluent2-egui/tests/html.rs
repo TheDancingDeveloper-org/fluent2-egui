@@ -305,3 +305,38 @@ fn find_reports_matches_and_document_exposes_structure() {
     let _ = harness.get_by_role_and_label(Role::Paragraph, "See the docs.");
     let _ = harness.get_by_role_and_label(Role::Link, "docs");
 }
+
+#[test]
+fn find_text_matches_across_multibyte_chars() {
+    use fluent2_egui::data::html::{TextMatch, find_text};
+    let doc = HtmlDocument::parse("<p>café au lait</p>");
+    let hits = find_text(&doc, "lait");
+    let text = &doc.text_blocks()[0];
+    let at = match text.find("lait") {
+        Some(at) => at,
+        None => panic!("fixture"),
+    };
+    assert_eq!(
+        hits,
+        vec![TextMatch {
+            block: 0,
+            start: at,
+            end: at + "lait".len(),
+        }]
+    );
+    assert_eq!(&text[hits[0].start..hits[0].end], "lait");
+
+    let accented = HtmlDocument::parse("<p>CAFÉ au lait</p>");
+    let hits = find_text(&accented, "café");
+    let text = &accented.text_blocks()[0];
+    assert_eq!(&text[hits[0].start..hits[0].end], "CAFÉ");
+
+    let cjk = HtmlDocument::parse("<p>東京の夜</p>");
+    let hits = find_text(&cjk, "の");
+    let text = &cjk.text_blocks()[0];
+    assert_eq!(hits.len(), 1);
+    assert_eq!(&text[hits[0].start..hits[0].end], "の");
+    // "東" is three bytes; the match must not start on a continuation byte.
+    assert!(text.is_char_boundary(hits[0].start));
+    assert!(text.is_char_boundary(hits[0].end));
+}
