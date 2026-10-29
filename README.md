@@ -142,6 +142,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | `find::FindBar` (`FindState`, `FindProvider`, `FindItems`, `TextLines`) | egui-only (in-app find, Ctrl+F) | | Find |
 | `editable_list::EditableList` | egui-only (inline list editing) | | Editable list |
 | `html::HtmlView` | egui-only (sanitised HTML, for mail) | `html` | HTML |
+| `grouped_list::GroupedList` (`Group`, `GroupedListState`, `GroupedListResponse`) | egui-only (grouped virtual list, sticky headers) | | Grouped list |
 | `list::List` | List | | List rows |
 | `markdown::MarkdownView` | egui-only (Markdown) | `markdown` | Markdown |
 | `NavigationView` | Nav | | Navigation view |
