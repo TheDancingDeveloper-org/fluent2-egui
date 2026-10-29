@@ -8,7 +8,7 @@
 //!
 //! Drag and drop has no keyboard form, so [`move_menu`] lists the same targets in a menu
 //! (secondary click or Shift+F10). Choosing one reports the same drop with
-//! [`MoveSource::Keyboard`](crate::data::MoveSource::Keyboard).
+//! [`MoveSource::Keyboard`].
 //!
 //! A polite AccessKit live region announces when a drag starts, when it hovers a target, and
 //! when it is dropped or cancelled. Call [`announce`] once a frame from the source pane.
