@@ -201,12 +201,16 @@ pub fn find_text(doc: &HtmlDocument, query: &str) -> Vec<TextMatch> {
     let needle: String = query.chars().flat_map(|ch| ch.to_lowercase()).collect();
     let mut found = Vec::new();
     for (block, text) in doc.text_blocks().into_iter().enumerate() {
+        // `map[folded_byte]` is the source byte that produced it. One entry per
+        // byte of each lowercased char, so a multi-byte fold (e.g. "İ") does not
+        // leave later indexes pointing at the wrong source char.
         let mut folded = String::new();
         let mut map: Vec<usize> = Vec::new();
         for (idx, ch) in text.char_indices() {
             for lower in ch.to_lowercase() {
-                folded.push(lower);
-                map.push(idx);
+                let encoded = lower.encode_utf8(&mut [0; 4]);
+                folded.push_str(encoded);
+                map.extend(std::iter::repeat_n(idx, encoded.len()));
             }
         }
         let mut from = 0;
@@ -214,8 +218,8 @@ pub fn find_text(doc: &HtmlDocument, query: &str) -> Vec<TextMatch> {
             let start_folded = from + at;
             let end_folded = start_folded + needle.len();
             let start = map[start_folded];
-            let end_char = text[map[end_folded - 1]..].chars().next();
-            let end = map[end_folded - 1] + end_char.map_or(0, char::len_utf8);
+            let last = map[end_folded - 1];
+            let end = last + text[last..].chars().next().map_or(0, char::len_utf8);
             found.push(TextMatch { block, start, end });
             from = end_folded.max(start_folded + 1);
         }
@@ -319,8 +323,16 @@ impl<'a> HtmlView<'a> {
             anchor: ui.next_auto_id().with(self.id),
         };
         let anchor = painter.anchor;
-        ui.ctx()
-            .data_mut(|d| d.insert_temp(anchor.with("block-rects"), Vec::<(usize, Rect)>::new()));
+        ui.ctx().data_mut(|d| {
+            d.insert_temp(anchor.with("block-rects"), Vec::<(usize, Rect)>::new());
+            // A new document under the same id must not keep the previous selection.
+            let stamp = self.doc.text_blocks().join("\n");
+            let stamp_id = anchor.with("sel-doc");
+            if d.get_temp::<String>(stamp_id).as_deref() != Some(stamp.as_str()) {
+                d.remove::<SelRange>(anchor.with("sel-range"));
+                d.insert_temp(stamp_id, stamp);
+            }
+        });
         let inner = ui.push_id(self.id, |ui| {
             // Blocks and links publish their own AccessKit nodes (heading, paragraph,
             // link, image). They are not re-parented: a node egui already placed in the
@@ -1376,8 +1388,8 @@ fn selected_text(ctx: &egui::Context, anchor: Id, blocks: &[String]) -> String {
         } else {
             text.len()
         };
-        if start < end {
-            parts.push(text[start..end].to_owned());
+        if start < end && text.is_char_boundary(start) && text.is_char_boundary(end) {
+            parts.push(text.get(start..end).unwrap_or("").to_owned());
         }
     }
     parts.join("\n")
