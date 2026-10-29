@@ -13,7 +13,7 @@ pub use grid::{Cell, DEFAULT_SCROLLBACK, GridPos, Span, TermColor, TerminalGrid,
 use egui::accesskit::Role;
 use egui::{
     Color32, CornerRadius, Event, EventFilter, FontId, Key, Modifiers, Pos2, Rect, Sense, Stroke, TextStyle,
-    Ui, Vec2, WidgetInfo, WidgetType,
+    Ui, Vec2, WidgetInfo,
 };
 
 use crate::foundation::focus::paint_focus_ring;
@@ -174,7 +174,7 @@ impl TerminalView {
     /// A view whose id is derived from `id_salt` and the parent `Ui`.
     pub fn new(id_salt: impl std::hash::Hash) -> Self {
         Self {
-            id_salt: egui::Id::new(hashed(&id_salt)),
+            id_salt: egui::Id::unique(hashed(&id_salt)),
             font: None,
             label: "Terminal".into(),
             click_links: false,
@@ -457,7 +457,7 @@ impl TerminalView {
 
         let enabled = ui.is_enabled();
         let label = self.label.clone();
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &label));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, &label));
         let text = grid.view_text();
         ui.ctx().accesskit_node_builder(id, |node| {
             node.set_role(Role::Terminal);

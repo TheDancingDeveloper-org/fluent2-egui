@@ -68,7 +68,7 @@ pub fn window_resize_edges(ctx: &egui::Context) {
 
 /// One zone: an invisible foreground area that owns its 6 pt strip.
 fn zone(ctx: &egui::Context, name: &'static str, direction: ResizeDirection, rect: Rect) {
-    Area::new(Id::new(("fluent2_resize_zone", name)))
+    Area::new(Id::unique(("fluent2_resize_zone", name)))
         .order(Order::Foreground)
         .fixed_pos(rect.min)
         .movable(false)

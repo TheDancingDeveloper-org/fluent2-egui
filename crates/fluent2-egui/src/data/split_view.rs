@@ -9,8 +9,8 @@
 // Copyright (c) 2026 the craft-libs contributors. Licensed MIT OR Apache-2.0.
 
 use egui::{
-    Color32, CornerRadius, EventFilter, Id, Key, Modifiers, Pos2, Rect, Response, Sense, Ui, UiBuilder, Vec2,
-    WidgetInfo, WidgetType, accesskit,
+    Color32, CornerRadius, EventFilter, Id, Key, Modifiers, Pos2, Rect, Response, Role, Sense, Ui, UiBuilder,
+    Vec2, WidgetInfo, accesskit,
 };
 
 use crate::foundation::focus::{self, paint_focus_ring};
@@ -373,7 +373,7 @@ impl ResizeHandle {
             {
                 WidgetInfo::slider(enabled, f64::from(*value), self.label.as_str())
             } else {
-                WidgetInfo::labeled(WidgetType::Other, enabled, self.label.as_str())
+                WidgetInfo::labeled(Role::Unknown, enabled, self.label.as_str())
             }
         });
         ui.ctx().accesskit_node_builder(response.id, |node| {
@@ -444,7 +444,7 @@ impl SplitView {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, axis: SplitAxis) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             axis,
             minimums: (DEFAULT_MINIMUM, DEFAULT_MINIMUM),
             step: DEFAULT_STEP,

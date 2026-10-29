@@ -2,8 +2,8 @@
 //! autofit needs (§2.3).
 
 use egui::{
-    Align as EguiAlign, CursorIcon, Id, Label, Layout, Pos2, Rect, Sense, Stroke, Ui, UiBuilder, Vec2,
-    WidgetInfo, WidgetType,
+    Align as EguiAlign, CursorIcon, Id, Label, Layout, Pos2, Rect, Role, Sense, Stroke, Ui, UiBuilder, Vec2,
+    WidgetInfo,
 };
 
 use super::column::{Column, ColumnWidth};
@@ -96,7 +96,7 @@ pub(super) fn show(
                 events.sort_changed = true;
             }
             let label = column.header.text().to_owned();
-            response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, label.clone()));
+            response.widget_info(|| WidgetInfo::labeled(Role::Button, true, label.clone()));
         }
         if response.secondary_clicked() {
             events.context_menu = Some(column.id);

@@ -75,7 +75,8 @@ mod tests {
         harness.run();
         let _ = harness.get_by_role_and_label(egui::accesskit::Role::Dialog, "Backstage");
         for label in ["Home", "New", "Open", "Info", "Options"] {
-            let _ = harness.get_by_role_and_label(egui::accesskit::Role::Button, label);
+            // egui 0.37's Role replaces WidgetType; the nav rows are list-box options.
+            let _ = harness.get_by_role_and_label(egui::accesskit::Role::ListBoxOption, label);
         }
     }
 

@@ -43,7 +43,11 @@ fn page(theme: Theme) -> Harness<'static, Page> {
                     .option("Large")
                     .show(ui);
                 ui.add(Switch::new(&mut page.switch, "Wi-Fi"));
-                ui.add(Input::new(&mut page.text).placeholder("Name"));
+                ui.add(
+                    Input::new(&mut page.text)
+                        .label("Name")
+                        .placeholder("Type a name"),
+                );
                 ui.add(Slider::new(&mut page.slider, 0.0..=10.0).label("Volume"));
                 // No label of its own: the Field's label names it (WI-1843).
                 Field::new("Copies").show(ui, |ui| ui.add(SpinButton::new(&mut page.spin)));
@@ -359,13 +363,17 @@ fn opening_backstage_from_the_keyboard_moves_focus_into_it() {
     harness.run();
     assert!(harness.state().open, "Space opened the backstage");
     assert!(
-        harness.get_by_role_and_label(Role::Button, "Info").is_focused(),
+        harness
+            .get_by_role_and_label(Role::ListBoxOption, "Info")
+            .is_focused(),
         "focus moved to the selected backstage entry"
     );
     harness.key_press(egui::Key::Tab);
     harness.run();
     assert!(
-        harness.get_by_role_and_label(Role::Button, "New").is_focused(),
+        harness
+            .get_by_role_and_label(Role::ListBoxOption, "New")
+            .is_focused(),
         "Tab stays inside the backstage"
     );
 }

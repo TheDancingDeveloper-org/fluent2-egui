@@ -343,6 +343,10 @@ impl Editor {
                 .id_salt("editor_document")
                 .layouter(&mut layouter),
         );
+        // egui 0.37's snapshot harness rejects an input widget with no accessible name.
+        ui.ctx().accesskit_node_builder(editor.id, |node| {
+            node.set_label("Document");
+        });
         if editor.changed() {
             self.dirty = true;
         }

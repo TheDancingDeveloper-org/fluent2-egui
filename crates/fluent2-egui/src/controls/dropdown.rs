@@ -9,8 +9,8 @@
 //! (rest stroke, accessible bottom border, focus accent).
 
 use egui::{
-    Align, CornerRadius, Id, Layout, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, Widget,
-    WidgetInfo, WidgetText, WidgetType, epaint::RectShape,
+    Align, CornerRadius, Id, Layout, Rect, Response, Role, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2,
+    Widget, WidgetInfo, WidgetText, epaint::RectShape,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -59,7 +59,7 @@ impl<'a> Dropdown<'a> {
         options: &[impl AsRef<str>],
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             selected,
             options: options.iter().map(|option| option.as_ref().to_owned()).collect(),
             placeholder: None,
@@ -211,7 +211,7 @@ impl Widget for Dropdown<'_> {
             .and_then(|index| self.options.get(index).cloned())
             .unwrap_or_default();
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
+            let mut info = WidgetInfo::labeled(Role::ComboBox, enabled, accessible_name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });
@@ -258,19 +258,26 @@ pub(super) fn show_listbox(
     let popup_height = rows * option_h;
     let popup_id = id.with("popup");
     let mut picked = None;
-    // `Popup` is the layer egui hit-tests. A bare `Area` receives no pointer events, so a click
-    // on an option never reached the row.
     // WI-1545 menu frame: neutral fill, medium radius and the elevation shadow.
+    // Drawn as a foreground child, not a `Popup`/`Area`. egui 0.37 hides an Area on its first
+    // frame (a sizing pass) and makes it its own AccessKit root, so kittest never sees the
+    // option nodes on the frame the list opens. A child of the field stays in the tree.
     let frame = crate::surfaces::menu_frame(ui);
-    let shown = egui::Popup::from_response(&ui.interact(field, id.with("anchor"), Sense::hover()))
-        .id(popup_id)
-        .layout(Layout::top_down(Align::Min))
-        .frame(frame)
-        // IgnoreClicks keeps a scrollbar drag from closing the list. Dismissal of a press that
-        // is outside both the field and this popup is handled below.
-        .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
-        .open(true)
-        .show(|ui| {
+    let margin = frame.inner_margin.sum();
+    let popup_rect = Rect::from_min_size(
+        field.left_bottom() + egui::vec2(0.0, 4.0),
+        egui::vec2(field.width(), popup_height + margin.y),
+    );
+    let mut popup_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt("popup")
+            .layer_id(egui::LayerId::new(egui::Order::Foreground, popup_id))
+            .max_rect(popup_rect)
+            .layout(Layout::top_down(Align::Min)),
+    );
+    popup_ui.set_clip_rect(Rect::EVERYTHING);
+    let popup_rect = frame
+        .show(&mut popup_ui, |ui| {
             ui.set_min_width(field.width());
             ui.set_max_width(field.width());
             ui.set_max_height(popup_height);
@@ -307,16 +314,17 @@ pub(super) fn show_listbox(
                     row(ui, index);
                 }
             }
-        });
+        })
+        .response
+        .rect;
     // A press on the scrollbar is inside the popup rect, so it does not dismiss. A press on the
     // field is handled by the field. Anything else closes.
-    let popup_rect = shown.as_ref().map(|inner| inner.response.rect);
     let outside = ui.input(|input| {
         input.pointer.any_pressed()
             && input
                 .pointer
                 .interact_pos()
-                .is_some_and(|pos| !field.contains(pos) && popup_rect.is_none_or(|rect| !rect.contains(pos)))
+                .is_some_and(|pos| !field.contains(pos) && !popup_rect.contains(pos))
     });
     (picked, outside)
 }
@@ -389,7 +397,7 @@ pub(super) fn option_row(
         let pos = egui::pos2(text_rect.left(), rect.center().y - galley.size().y / 2.0);
         ui.painter().galley(pos, galley, c(ink));
     }
-    response.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, true, selected, label));
+    response.widget_info(|| WidgetInfo::selected(Role::ListBoxOption, true, selected, label));
     response
 }
 
@@ -593,7 +601,7 @@ pub(super) fn icon_points(size: ButtonSize) -> f32 {
 }
 
 pub(super) fn accent_id(rect: Rect) -> Id {
-    Id::new((
+    Id::unique((
         "fluent2_dropdown_accent",
         rect.min.x.to_bits(),
         rect.min.y.to_bits(),

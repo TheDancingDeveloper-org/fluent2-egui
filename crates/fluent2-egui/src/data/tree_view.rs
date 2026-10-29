@@ -13,13 +13,13 @@ use std::collections::BTreeSet;
 use std::f32::consts::FRAC_PI_2;
 use std::marker::PhantomData;
 
+use egui::WidgetInfo;
 use egui::accesskit::Role;
 use egui::emath::Rot2;
 use egui::{
     Align, Align2, Color32, CornerRadius, Event, EventFilter, Id, Key, Layout, Modifiers, Pos2, Rect,
     ScrollArea, Sense, Stroke, Ui, UiBuilder, Vec2, WidgetText,
 };
-use egui::{WidgetInfo, WidgetType};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, stroke_width};
 
 use super::data_grid::SelectionMode;
@@ -251,7 +251,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash) -> Self {
         Self {
-            id: Id::new(hashed(&id_salt)),
+            id: Id::unique(hashed(&id_salt)),
             selection_mode: SelectionMode::Single,
             size: TreeSize::Medium,
             label: None,
@@ -428,7 +428,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                     let Some(key) = row.key.as_ref() else {
                         // The spinner row under a loading node: a busy TreeItem, not focusable.
                         let hit = ui.interact(visible_rect, id.with(("loading", index)), Sense::hover());
-                        hit.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, "Loading"));
+                        hit.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, "Loading"));
                         ui.ctx().accesskit_node_builder(hit.id, |node| {
                             node.set_role(Role::TreeItem);
                             node.set_label("Loading");
@@ -453,7 +453,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         active_row = Some(hit.id.accesskit_id());
                     }
                     let text = row.label.text();
-                    hit.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, text));
+                    hit.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, text));
                     let chevron = row.has_children.then(|| {
                         ui.interact(
                             slot.intersect(clip),
@@ -536,8 +536,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                     if let Some((checked, check)) = &check {
                         let check_label = format!("Check {text}");
                         check.widget_info(|| {
-                            let mut info =
-                                WidgetInfo::labeled(WidgetType::Checkbox, enabled, check_label.as_str());
+                            let mut info = WidgetInfo::labeled(Role::CheckBox, enabled, check_label.as_str());
                             info.selected = Some(*checked == CheckState::Checked);
                             info
                         });
@@ -563,7 +562,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                         let name = if row.expanded { "Collapse" } else { "Expand" };
                         let chevron_label = format!("{name} {text}");
                         chevron.widget_info(|| {
-                            WidgetInfo::labeled(WidgetType::Button, enabled, chevron_label.as_str())
+                            WidgetInfo::labeled(Role::Button, enabled, chevron_label.as_str())
                         });
                         ui.ctx().accesskit_node_builder(chevron.id, |node| {
                             node.set_role(Role::Button);
@@ -642,7 +641,7 @@ impl<'a, K: Clone + Ord + std::hash::Hash> TreeView<'a, K> {
                 }
 
                 tree_response.widget_info(|| {
-                    WidgetInfo::labeled(WidgetType::Other, enabled, label.as_deref().unwrap_or_default())
+                    WidgetInfo::labeled(Role::Unknown, enabled, label.as_deref().unwrap_or_default())
                 });
                 ui.ctx().accesskit_node_builder(tree_response.id, |node| {
                     node.set_role(Role::Tree);

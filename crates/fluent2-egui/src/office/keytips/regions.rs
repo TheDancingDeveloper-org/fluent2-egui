@@ -57,7 +57,7 @@ struct Regions {
 }
 
 fn regions_id() -> Id {
-    Id::new("fluent2_regions")
+    Id::unique("fluent2_regions")
 }
 
 fn with_regions<R>(ctx: &Context, f: impl FnOnce(&mut Regions) -> R) -> R {

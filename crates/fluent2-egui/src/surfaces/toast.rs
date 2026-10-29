@@ -311,7 +311,7 @@ impl Toaster {
             ToastPosition::TopEnd => egui::Align2::RIGHT_TOP,
             ToastPosition::TopStart => egui::Align2::LEFT_TOP,
         };
-        Area::new(Id::new("fluent2_toaster"))
+        Area::new(Id::unique("fluent2_toaster"))
             .order(Order::Foreground)
             .anchor(anchor, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
@@ -368,7 +368,7 @@ fn paint_one(ui: &mut Ui, theme: &Theme, id: ToastId, now: f64, motion: f64) {
     // Opacity goes through `motion::animate` so reduced motion snaps to the target.
     let opacity = crate::foundation::motion::animate(
         ui.ctx(),
-        Id::new(("fluent2_toast_opacity", id.0)),
+        Id::unique(("fluent2_toast_opacity", id.0)),
         if exiting { 0.0 } else { 1.0 },
         MotionDuration::Normal,
         if exiting {

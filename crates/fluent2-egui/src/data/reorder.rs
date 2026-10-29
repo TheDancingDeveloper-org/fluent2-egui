@@ -19,7 +19,7 @@
 use egui::accesskit::Role;
 use egui::{
     CornerRadius, CursorIcon, Id, InnerResponse, Key, LayerId, Modifiers, Order, Pos2, Rect, Sense, Ui,
-    UiBuilder, WidgetInfo, WidgetType, emath::TSTransform,
+    UiBuilder, WidgetInfo, emath::TSTransform,
 };
 
 use crate::foundation::focus::{focus_visible, paint_focus_ring};
@@ -215,7 +215,7 @@ impl Reorder {
     /// Start a reorder session. Items can only be dropped into containers of the same session.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id: Id::new(("fluent2_reorder", id_salt)),
+            id: Id::unique(("fluent2_reorder", id_salt)),
             containers: Vec::new(),
             key_move: None,
             moved: None,
@@ -391,7 +391,7 @@ fn paint_indicator(ui: &Ui, container: Rect, items: &[Rect], axis: ReorderAxis, 
     };
     let painter = ui
         .ctx()
-        .layer_painter(LayerId::new(Order::Foreground, ui.id().with("reorder_bar")));
+        .layer_painter(LayerId::new(Order::Foreground, ui.scope_id().with("reorder_bar")));
     painter.rect_filled(
         bar,
         CornerRadius::same(rounded_u8(border_radius::CIRCULAR)),
@@ -475,7 +475,7 @@ impl ReorderList {
             item.request_focus();
         }
         let label = label.into();
-        item.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &label));
+        item.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, &label));
         ui.ctx().accesskit_node_builder(item_id, |node| {
             node.set_role(Role::ListItem);
             node.set_description("Alt+arrow keys to move");

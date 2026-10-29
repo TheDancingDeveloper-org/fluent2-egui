@@ -20,8 +20,8 @@
 
 use egui::epaint::RectShape;
 use egui::{
-    CornerRadius, Id, Key, Modifiers, PointerButton, Popup, Rect, Response, Sense, Ui, Vec2, WidgetInfo,
-    WidgetText, WidgetType, accesskit,
+    CornerRadius, Id, Key, Modifiers, PointerButton, Popup, Rect, Response, Role, Sense, Ui, Vec2,
+    WidgetInfo, WidgetText, accesskit,
 };
 
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
@@ -216,7 +216,7 @@ impl<'a> TabStrip<'a> {
     /// `id_salt` is the widget id. It is never derived from a tab label.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, selected: &'a mut usize) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             selected,
             tabs: Vec::new(),
             reorderable: true,
@@ -400,7 +400,7 @@ impl<'a> TabStrip<'a> {
                 closed = Some(index);
             }
             let label = format!("Close {}", tab.label);
-            close.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &label));
+            close.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &label));
             close_responses.push(Some(close));
         }
 
@@ -436,7 +436,7 @@ impl<'a> TabStrip<'a> {
                 Vec2::new(OVERFLOW.max(tab_height), tab_height),
             );
             let more = ui.interact(button_rect, id.with("overflow"), Sense::click());
-            more.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, "More tabs"));
+            more.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, "More tabs"));
             let popup_id = Popup::default_response_id(&more);
             let open_key = more.has_focus()
                 && ui.input_mut(|input| {
@@ -531,7 +531,7 @@ impl<'a> TabStrip<'a> {
         }
 
         let current = self.tabs.get(next).map(|tab| tab.label.as_str()).unwrap_or("");
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::SelectableLabel, enabled, current));
+        response.widget_info(|| WidgetInfo::labeled(Role::ListBoxOption, enabled, current));
         let strip_label = self.label.clone();
         let active = id.with(("tab", next)).accesskit_id();
         let has_active = next >= first && next < end;
@@ -550,7 +550,7 @@ impl<'a> TabStrip<'a> {
             let text = tab.label.clone();
             let dirty = tab.dirty;
             // Fills the node's bounds and click action; the role is set to Tab below.
-            tab_response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &text));
+            tab_response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &text));
             ui.ctx().accesskit_node_builder(tab_response.id, |node| {
                 node.set_role(accesskit::Role::Tab);
                 node.set_label(text);

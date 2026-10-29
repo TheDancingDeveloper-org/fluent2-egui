@@ -8,8 +8,8 @@
 use std::collections::HashSet;
 
 use egui::{
-    Area, CornerRadius, Id, Key, Layout, Modifiers, Order, Pos2, Rect, Sense, TextStyle, TextWrapMode, Ui,
-    UiBuilder, Vec2, WidgetInfo, WidgetText, WidgetType, accesskit,
+    CornerRadius, Id, Key, Layout, Modifiers, Order, Pos2, Rect, Role, Sense, TextStyle, TextWrapMode, Ui,
+    UiBuilder, Vec2, WidgetInfo, WidgetText, accesskit,
 };
 use fluent2_icons::{Icon, Size as IconSize, Style as IconStyle};
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -160,7 +160,7 @@ impl NavigationView {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             entries: Vec::new(),
             title: None,
             open_label: "Open navigation".to_owned(),
@@ -357,20 +357,25 @@ impl NavigationView {
                 selected: state.selected.as_deref(),
                 focus: focus_out,
             };
-            let out = Area::new(id.with("overlay"))
-                .order(Order::Foreground)
-                .fixed_pos(overlay_rect.min)
-                .show(ui.ctx(), |ui| {
-                    paint_shadow(
-                        ui.painter(),
-                        overlay_rect,
-                        CornerRadius::ZERO,
-                        Elevation::E16,
-                        &theme,
-                    );
-                    self.draw_pane(ui, overlay_rect, &theme, &plan, look)
-                })
-                .inner;
+            // Drawn on a foreground layer of this Ui, not an Area. egui 0.37 makes an Area its
+            // own AccessKit root and hides it on the first frame (a sizing pass), so kittest
+            // never sees the Navigation node while the overlay slides in.
+            let mut layer = ui.new_child(
+                UiBuilder::new()
+                    .id_salt("overlay")
+                    .layer_id(egui::LayerId::new(Order::Foreground, id.with("overlay")))
+                    .max_rect(overlay_rect)
+                    .layout(Layout::top_down(egui::Align::Min)),
+            );
+            layer.set_clip_rect(Rect::EVERYTHING);
+            paint_shadow(
+                layer.painter(),
+                overlay_rect,
+                CornerRadius::ZERO,
+                Elevation::E16,
+                &theme,
+            );
+            let out = self.draw_pane(&mut layer, overlay_rect, &theme, &plan, look);
             if overlay_open {
                 if out.hamburger_clicked {
                     pane_toggled = true;
@@ -383,8 +388,15 @@ impl NavigationView {
                 focus_out = out.focus;
                 let (escape, outside) = ui.input(|input| {
                     let pointer = input.pointer.interact_pos();
+                    // The click that opened the overlay is still this frame's click, and the
+                    // pane is still off-screen on that frame. A click inside the hamburger is
+                    // not an outside click, or the overlay closes itself the moment it opens.
                     let outside = input.pointer.any_click()
-                        && pointer.is_some_and(|p| !overlay_rect.contains(p) && !anchor.contains(p));
+                        && pointer.is_some_and(|p| {
+                            !overlay_rect.contains(p)
+                                && !anchor.contains(p)
+                                && !minimal_row.is_some_and(|row| row.contains(p))
+                        });
                     (input.key_pressed(Key::Escape), outside)
                 });
                 if escape || outside {
@@ -507,10 +519,15 @@ impl NavigationView {
             y += h;
         }
 
+        // The pane is one keyboard tab stop. egui 0.37 only creates an AccessKit node for
+        // a focusable widget, so hover alone drops the Navigation role (the overlay case).
+        // While the overlay slides out it stays visible but takes no pointer input.
+        // Click is focusable, so the pane gets an AccessKit node. While the overlay
+        // slides out it stays visible but takes no pointer input.
         let sense = if look.interactive {
             Sense::click()
         } else {
-            Sense::hover()
+            Sense::focusable_noninteractive()
         };
         let pane = ui.interact(rect, id, sense);
         let pointer = pane.interact_pointer_pos();
@@ -569,9 +586,9 @@ impl NavigationView {
         let list_rect = Rect::from_min_max(Pos2::new(rect.min.x, hamburger_row.max.y), rect.max);
         let list_id = id.with("list");
         let item_count = plan.nav.len();
-        ui.scope_builder(UiBuilder::new().id(list_id).max_rect(list_rect), |ui| {
+        ui.scope_builder(UiBuilder::new().scope_id(list_id).max_rect(list_rect), |ui| {
             ui.interact(list_rect, list_id, Sense::hover())
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Navigation items"));
+                .widget_info(|| WidgetInfo::labeled(Role::Unknown, true, "Navigation items"));
             ui.ctx().accesskit_node_builder(list_id, |node| {
                 node.set_role(accesskit::Role::TabList);
                 node.set_orientation(accesskit::Orientation::Vertical);
@@ -678,9 +695,8 @@ impl NavigationView {
                         // still takes the click.
                         let item_id = id.with(("item", nav));
                         let label = item.label.clone();
-                        ui.interact(rect, item_id, Sense::hover()).widget_info(|| {
-                            WidgetInfo::labeled(WidgetType::SelectableLabel, true, label.as_str())
-                        });
+                        ui.interact(rect, item_id, Sense::hover())
+                            .widget_info(|| WidgetInfo::labeled(Role::ListBoxOption, true, label.as_str()));
                         ui.ctx().accesskit_node_builder(item_id, |node| {
                             node.set_role(accesskit::Role::Tab);
                             node.set_label(label);
@@ -711,7 +727,7 @@ impl NavigationView {
                             .galley(pos, galley, c(theme.color.neutral_foreground_3));
                         let section_id = id.with(("section", entry));
                         ui.interact(row, section_id, Sense::hover())
-                            .widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, label.as_str()));
+                            .widget_info(|| WidgetInfo::labeled(Role::Label, true, label.as_str()));
                         ui.ctx().accesskit_node_builder(section_id, |node| {
                             node.set_role(accesskit::Role::Heading);
                             node.set_level(2);
@@ -729,7 +745,7 @@ impl NavigationView {
             focus::paint_focus_ring(ui, rect, CornerRadius::same(border_radius::MEDIUM as u8));
         }
         let title = self.title.as_deref().unwrap_or("Navigation");
-        pane.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, title));
+        pane.widget_info(|| WidgetInfo::labeled(Role::Unknown, true, title));
         ui.ctx()
             .accesskit_node_builder(pane.id, |node| node.set_role(accesskit::Role::Navigation));
 

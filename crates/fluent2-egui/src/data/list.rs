@@ -8,7 +8,7 @@
 use egui::accesskit::Role;
 use egui::{
     Align, CornerRadius, Event, EventFilter, Id, Key, Layout, Modifiers, Pos2, Rect, ScrollArea, Sense, Ui,
-    UiBuilder, Vec2, WidgetInfo, WidgetType,
+    UiBuilder, Vec2, WidgetInfo,
 };
 
 use super::RowId;
@@ -147,7 +147,7 @@ impl<'a> List<'a> {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash, row_count: usize) -> Self {
         Self {
-            id: Id::new(hashed(&id_salt)),
+            id: Id::unique(hashed(&id_salt)),
             row_count,
             row_id: None,
             selection_mode: SelectionMode::Single,
@@ -190,7 +190,7 @@ impl<'a> List<'a> {
     /// Forget the measured heights of the variable-height list made with `id_salt`, for example
     /// after the font or the content of many rows changed. Rows are measured again as shown.
     pub fn forget_heights(ctx: &egui::Context, id_salt: impl std::hash::Hash) {
-        let id = variable_id(Id::new(hashed(&id_salt)));
+        let id = variable_id(Id::unique(hashed(&id_salt)));
         ctx.data_mut(|data| data.get_temp_mut_or_default::<VariableRows>(id).cache.clear());
     }
 
@@ -403,7 +403,7 @@ impl<'a> List<'a> {
                 if let Some((fill, _)) = fill {
                     ui.painter().rect_filled(row_rect, ring_radius, fill);
                 }
-                hit.widget_info(|| WidgetInfo::new(WidgetType::Other));
+                hit.widget_info(|| WidgetInfo::new(Role::Unknown));
                 let row_text = self.row_label.as_ref().map(|label| label(index));
                 ui.ctx().accesskit_node_builder(hit.id, |node| {
                     if let Some(text) = row_text {
@@ -490,8 +490,8 @@ impl<'a> List<'a> {
 
             let enabled = ui.is_enabled();
             list_response.widget_info(|| match &label {
-                Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
-                None => WidgetInfo::new(WidgetType::Other),
+                Some(label) => WidgetInfo::labeled(Role::Unknown, enabled, label.as_str()),
+                None => WidgetInfo::new(Role::Unknown),
             });
             ui.ctx().accesskit_node_builder(list_response.id, |node| {
                 if mode == SelectionMode::None {

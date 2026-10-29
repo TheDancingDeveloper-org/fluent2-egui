@@ -1,6 +1,6 @@
 //! Fluent Textarea: a multiline [`Input`] frame around egui's [`TextEdit`].
 
-use egui::{Id, Response, Ui, Widget};
+use egui::{IdSalt, Response, Ui, Widget};
 
 use super::input::{Field, InputAppearance, show_field};
 use crate::foundation::icon::IconSize;
@@ -30,7 +30,7 @@ pub struct Textarea<'a> {
     rows: usize,
     resize: TextareaResize,
     desired_width: Option<f32>,
-    id_salt: Option<Id>,
+    id_salt: Option<IdSalt>,
 }
 
 impl<'a> Textarea<'a> {
@@ -85,7 +85,7 @@ impl<'a> Textarea<'a> {
     /// Extra salt for the widget id.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(IdSalt::new(salt));
         self
     }
 }

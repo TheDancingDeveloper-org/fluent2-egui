@@ -19,6 +19,7 @@ fn arrow_keys_step_and_clamp() {
         let mut current = value.get();
         let response = ui.add(
             SpinButton::new(&mut current)
+                .label("Value")
                 .range(0.0..=2.0)
                 .step(1.0)
                 .decimals(0),
@@ -48,7 +49,7 @@ fn typing_does_not_report_changed_until_commit() {
     let mut harness = Harness::new_ui(|ui| {
         install(ui);
         let mut current = 4.0;
-        let response = ui.add(SpinButton::new(&mut current).decimals(0));
+        let response = ui.add(SpinButton::new(&mut current).label("Value").decimals(0));
         response.request_focus();
         changed.set(response.changed());
     });
@@ -65,7 +66,12 @@ fn invalid_text_reverts_on_enter() {
     let mut harness = Harness::new_ui(|ui| {
         install(ui);
         let mut current = value.get();
-        let response = ui.add(SpinButton::new(&mut current).range(0.0..=10.0).decimals(0));
+        let response = ui.add(
+            SpinButton::new(&mut current)
+                .label("Value")
+                .range(0.0..=10.0)
+                .decimals(0),
+        );
         response.request_focus();
         value.set(current);
     });
@@ -83,8 +89,8 @@ fn non_finite_range_does_not_panic() {
     let mut harness = Harness::new_ui(|ui| {
         install(ui);
         let mut value = f64::NAN;
-        ui.add(SpinButton::new(&mut value).range(f64::NAN..=10.0));
-        ui.add(SpinButton::new(&mut value).range(5.0..=1.0));
+        ui.add(SpinButton::new(&mut value).label("Value").range(f64::NAN..=10.0));
+        ui.add(SpinButton::new(&mut value).label("Value").range(5.0..=1.0));
     });
     harness.run();
 }
@@ -95,7 +101,7 @@ fn renders_in_dark_and_high_contrast() {
         let mut harness = Harness::new_ui(|ui| {
             theme::install(ui.ctx(), &theme);
             let mut value = 3.0;
-            ui.add(SpinButton::new(&mut value));
+            ui.add(SpinButton::new(&mut value).label("Value"));
         });
         harness.run();
     }
@@ -106,7 +112,12 @@ fn label_names_the_accesskit_node() {
     let mut harness = Harness::new_ui(|ui| {
         install(ui);
         let mut value = 3.0;
-        ui.add(SpinButton::new(&mut value).decimals(0).label("Copies"));
+        ui.add(
+            SpinButton::new(&mut value)
+                .label("Value")
+                .decimals(0)
+                .label("Copies"),
+        );
     });
     harness.run();
     let node = harness.get_by_label("Copies");

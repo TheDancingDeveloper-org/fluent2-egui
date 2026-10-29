@@ -108,7 +108,7 @@ impl Breadcrumb {
         T: Into<String>,
     {
         Self {
-            id: Id::new(id_salt),
+            id: Id::unique(id_salt),
             items: items.into_iter().map(Into::into).collect(),
             current: None,
             size: BreadcrumbSize::default(),

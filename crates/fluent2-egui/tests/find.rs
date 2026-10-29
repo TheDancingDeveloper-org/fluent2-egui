@@ -36,7 +36,9 @@ fn harness(theme: fn() -> Theme) -> Harness<'static, App> {
                 FindBar::new("find")
                     .match_case_toggle(true)
                     .show(ui, &mut app.find, &providers);
-                let mut list = List::new("lines", app.lines.len()).label("Lines");
+                let mut list = List::new("lines", app.lines.len())
+                    .label("Lines")
+                    .row_label(|row| format!("line {row}"));
                 if let Some(m) = app.find.take_reveal() {
                     list = list.scroll_to_row(m.item);
                 }

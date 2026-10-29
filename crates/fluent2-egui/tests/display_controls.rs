@@ -79,7 +79,7 @@ fn reduced_motion_holds_the_indeterminate_bar_still() {
         fluent2_egui::foundation::motion::set_reduced_motion(ui.ctx(), true);
         let value = fluent2_egui::foundation::motion::animate(
             ui.ctx(),
-            egui::Id::new("sweep-check"),
+            egui::Id::unique("sweep-check"),
             1.0,
             fluent2_egui::foundation::motion::Duration::UltraSlow,
             fluent2_egui::foundation::motion::Curve::Linear,

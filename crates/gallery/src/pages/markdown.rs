@@ -64,7 +64,10 @@ impl Page for MarkdownPage {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.columns(2, |cols| {
             let [left, right] = cols else { return };
-            if left.add(Textarea::new(&mut self.source).rows(30)).changed() {
+            if left
+                .add(Textarea::new(&mut self.source).rows(30).label("Markdown"))
+                .changed()
+            {
                 self.doc = Document::parse(&self.source);
             }
             egui::ScrollArea::vertical()

@@ -147,12 +147,12 @@ notes = "Converter used to turn TypeScript.tmLanguage into sublime-syntax. The p
 name = "egui"
 repo = "emilk/egui"
 branch = "main"
-rev = "bf5ac0dac137af9a4861611f3d2a77ad531f50e3"
-reviewed = "2026-10-24"
+rev = "841a328ba2dd8f6996beb7189ebb7fc00e668a2a"
+reviewed = "2026-10-29"
 licence = "MIT OR Apache-2.0"
 role = "dependency"
 watch = ["crates/egui/src/style.rs", "crates/egui/src/widgets", "crates/egui/src/containers", "crates/egui/src/response.rs", "crates/egui_kittest", "CHANGELOG.md"]
-notes = "Targeted release: egui 0.36.2 (crates.io, MSRV 1.95). We support exactly one egui minor per release line."
+notes = "Targeted release: egui 0.37.0 (crates.io, tag 0.37.0, MSRV 1.95). We support exactly one egui minor per release line."
 
 [[source]]
 name = "fluentui"
