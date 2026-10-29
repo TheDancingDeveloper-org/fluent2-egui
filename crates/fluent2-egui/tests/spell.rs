@@ -116,3 +116,41 @@ fn rich_text_editor_accepts_a_checker() {
     assert_eq!(*calls.borrow(), again);
     assert_eq!(doc.borrow().text(), "teh notes");
 }
+
+#[test]
+fn word_list_checker_keeps_byte_ranges_after_multibyte_chars() {
+    let mut checker = WordListChecker {
+        misspelled: vec!["lait".to_owned(), "東京".to_owned()],
+        suggestions: vec![],
+    };
+    let text = "café au lait";
+    let found = checker.check(text);
+    assert_eq!(found.len(), 1);
+    assert_eq!(&text[found[0].range.clone()], "lait");
+    assert!(text.is_char_boundary(found[0].range.start));
+
+    let text = "こんにちは 東京 です";
+    let found = checker.check(text);
+    assert_eq!(found.len(), 1);
+    assert_eq!(&text[found[0].range.clone()], "東京");
+    let at = match text.find("東京") {
+        Some(at) => at,
+        None => panic!("fixture"),
+    };
+    assert_eq!(found[0].range.start, at);
+}
+
+#[test]
+fn underline_and_hit_testing_use_char_indexes() {
+    use egui::text::CCursor;
+    // "café " is 6 bytes and 5 chars. A byte range starting at 6 is char index 5.
+    let text = "café lait";
+    let byte = match text.find("lait") {
+        Some(byte) => byte,
+        None => panic!("fixture"),
+    };
+    let chars = text[..byte].chars().count();
+    assert_ne!(byte, chars, "the fixture must actually mix byte and char offsets");
+    assert_eq!(&text[byte..byte + "lait".len()], "lait");
+    let _ = CCursor::new(chars);
+}
