@@ -30,7 +30,7 @@ if crate=="fluent2-icons":
 if crate=="fluent2-egui":
     need += ["fonts/LICENSE-INTER.txt","syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt","syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt"]
 text=sys.stdin.read().splitlines()
-missing=[n for n in need if not any(line.endswith("/"+n) or line==n or line.endswith(n) for line in text)]
+missing=[n for n in need if not any(line==n or line.endswith("/"+n) or line.rsplit("/",1)[-1]==n for line in text)]
 if missing:
     sys.stderr.write("crate archive missing: "+", ".join(missing)+"\n")
     sys.exit(1)
