@@ -1,6 +1,6 @@
 //! HTML: the mail fixtures from `fluent2-egui/tests/fixtures/html` in an HtmlView (WI-1939).
 
-use fluent2_egui::controls::{Button, Divider};
+use fluent2_egui::controls::{Button, Divider, SearchBox};
 use fluent2_egui::data::html::{HtmlDocument, HtmlView, ImageDecision, ImageRef, LinkTarget};
 use fluent2_egui::surfaces::TabList;
 
@@ -25,6 +25,8 @@ pub struct HtmlPage {
     tab: usize,
     docs: Vec<HtmlDocument>,
     status: String,
+    query: String,
+    match_index: usize,
 }
 
 impl Default for HtmlPage {
@@ -36,6 +38,8 @@ impl Default for HtmlPage {
                 .map(|(_, html)| HtmlDocument::parse(html))
                 .collect(),
             status: "No link clicked".to_owned(),
+            query: String::new(),
+            match_index: 0,
         }
     }
 }
@@ -68,10 +72,30 @@ impl Page for HtmlPage {
                 ui.ctx().copy_text(doc.to_plain_text());
             }
         });
+        ui.horizontal(|ui| {
+            ui.add(
+                SearchBox::new(&mut self.query)
+                    .placeholder("Find in message")
+                    .label("Find in message"),
+            );
+            if ui.add(Button::new("Previous")).clicked() {
+                self.match_index = self.match_index.saturating_sub(1);
+            }
+            if ui.add(Button::new("Next")).clicked() {
+                self.match_index = self.match_index.saturating_add(1);
+            }
+        });
         ui.add(Divider::horizontal());
         let out = HtmlView::new(("html_view", self.tab), doc)
             .image_policy(&block_all)
+            .find(&self.query, self.match_index)
             .show(ui);
+        if out.find.matches > 0 {
+            ui.label(format!("{} of {} matches", out.find.current, out.find.matches));
+        }
+        if let Some(hover) = &out.hovered {
+            ui.weak(format!("Link: {}", hover.href));
+        }
         if let Some(click) = out.clicked {
             self.status = match click.target {
                 LinkTarget::Web(url) => format!("Clicked {url}"),
