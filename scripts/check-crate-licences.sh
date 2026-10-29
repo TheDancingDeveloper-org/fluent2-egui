@@ -28,7 +28,7 @@ need=["LICENSE-MIT","LICENSE-APACHE","NOTICE"]
 if crate=="fluent2-icons":
     need.append("LICENSE-FLUENT-ICONS")
 if crate=="fluent2-egui":
-    need += ["fonts/LICENSE-INTER.txt","syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt","syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt"]
+    need += ["fonts/LICENSE-INTER.txt","fonts/LICENSE-NOTO-EMOJI.txt","syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt","syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt"]
 text=sys.stdin.read().splitlines()
 missing=[n for n in need if not any(line==n for line in text)]
 if missing:

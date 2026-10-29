@@ -4,6 +4,11 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+
+- Colour emoji fallback (Noto Emoji COLR/CPAL, OFL-1.1) and `MissingGlyphPolicy::Tofu` on install, so production text never panics on a missing glyph.
+- `EmojiPicker`: search, categories, recent emoji, keyboard movement and AccessKit names.
+
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
 ## [0.4.1] - 2026-10-29

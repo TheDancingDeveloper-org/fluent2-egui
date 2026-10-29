@@ -29,6 +29,7 @@ mod compound_button;
 mod date_picker;
 mod divider;
 mod dropdown;
+mod emoji_picker;
 mod field;
 mod file_card;
 mod input;
@@ -120,6 +121,15 @@ pub use date_picker::{
 };
 pub use divider::Divider;
 pub use dropdown::Dropdown;
+#[rustfmt::skip]
+pub use emoji_picker::{
+    EmojiCategory,
+    EmojiPicker,
+    EmojiPickerResponse,
+    filter_emoji,
+    filter_emoji_all,
+    recent_emoji,
+};
 #[rustfmt::skip]
 pub use field::{
     Field,
