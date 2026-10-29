@@ -77,7 +77,7 @@ Breaking changes in 0.3.0:
   Dialog::new(DialogKind::Dismissible)
   ```
 
-
+- `Combobox<'a, T = &'a str>` gains a type parameter with default `T = &'a str`. Code that names the type with an explicit lifetime (`Combobox<'a>`) or a type list no longer matches; name `Combobox` or `Combobox<'a, &'a str>`. Options are borrowed for `'a` and are not copied into the widget.
 
   Before:
 
@@ -166,7 +166,7 @@ Breaking changes in 0.3.0:
 - MenuBar (`office::menu_bar::MenuBar`, `MenuBarUi`): the classic File / Edit / View / Tools / Help bar of top-level menus holding Fluent `MenuItem`s, submenus and dividers. Titles mark mnemonics with `&` (`"&File"`). Alt pressed alone or F10 focuses the bar and underlines mnemonics; Alt+letter opens a menu from anywhere; Left and Right move between menus and switch the open one; Down, Enter or Space open the focused menu with focus on its first item; Esc closes the menu, then leaves the bar. With a menu open, hovering another title switches to it. AccessKit roles are MenuBar, MenuItem (with has-popup, expanded and access key) and Menu. It is a plain widget row, so it fits in a `TitleBar` slot. Shortcut captions come from `MenuItem::shortcut`; macOS OS-menu forwarding is left to the app. Gallery page "Menu bar" (#115).
 - `platform::LayoutStore` (feature `serde`): saves split sizes, side docks, dock trees, DataGrid
   columns and density under keys as one JSON document, loaded from and saved to any string
-  storage such as eframe's (#118) (gh:TheDancingDeveloper-org/fluent2-egui#141). The gallery now restores its layout and density on restart.
+  storage such as eframe's (#118). The gallery now restores its layout and density on restart.
 - `DataGridSize` derives serde under the `serde` feature.
 - Accordion (`surfaces::Accordion`, `AccordionItem`, `AccordionSize`, `ExpandIconPosition`, `AccordionResponse`): Fluent headers that show or hide panels, for settings panes and grouped options. Small to extra-large sizes, the chevron at the start or end, single or multiple open, and `collapsible` to let the last open item close (off by default, as in Fluent). The app owns the open indices. Panel height animates with `durationNormal` on `curveEasyEase` and snaps under reduced motion. Headers are buttons (Enter or Space toggles) and AccessKit Buttons with expanded state that control their panel Region. Gallery page "Accordion" (WI-1937).
 - RichTextEditor (`controls::RichTextEditor`, `RichText`, `CharStyle`, `BlockKind`,
@@ -177,7 +177,7 @@ Breaking changes in 0.3.0:
   HTML subset (`p`, `ul`/`ol`/`li`, `blockquote`, `strong`, `em`, `u`, and `a` for `http`,
   `https` and `mailto` links only); `RichText::to_plain` writes the plain-text alternative.
   Gallery page "Rich text editor".
-- Add an optional wasm accessibility plugin that mirrors common AccessKit roles, names, states and focus into a hidden DOM layer for browser find, screen readers, translation and extensions (gh:TheDancingDeveloper-org/fluent2-egui#142).
+- Add an optional wasm accessibility plugin that mirrors common AccessKit roles, names, states and focus into a hidden DOM layer for browser find, screen readers, translation and extensions.
 
 ### Changed
 - Dependencies (wasm32 only): `web-sys` is no longer optional and gains the `History`, `Location` and `Window` features, and `wasm-bindgen` is a new direct dependency. Both were already in the tree through egui. The `file-dialog` feature no longer enables `web-sys`.
@@ -212,8 +212,8 @@ Breaking changes in 0.3.0:
 - Dialog bodies taller than the screen scroll inside the surface. The title and actions stay visible, every control stays inside the surface (so clicks no longer land on the backdrop and close a Modal), and a control that gains focus is scrolled into view. Found by the rdpapp port (WI-1815) (WI-1912).
 - `Card` paints its elevation shadow behind its fill. A resting card had looked grey, because the shadow was drawn over the surface colour.
 - The foreground for a filled danger `Badge` is white in light and dark themes. It was unreadable in dark (the fill's own red, about 1.2:1) and low-contrast in light (about 1.7:1). It is now about 6:1 on the fill in both.
-- HTML data URIs with a declared decoded length over 8 MiB are refused before a decode buffer is allocated.
-- File drops stop reading at the size limit. An openable path is cut off by a bounded reader. A pathless drop, or a path that cannot be opened, is copied through the same reader so only `max + 1` bytes are kept.
+- HTML data URIs with a declared decoded length over 8 MiB are refused before a decode buffer is allocated (gh:TheDancingDeveloper-org/fluent2-egui#141).
+- File drops stop reading at the size limit. An openable path is cut off by a bounded reader. A pathless drop, or a path that cannot be opened, is copied through the same reader so only `max + 1` bytes are kept (gh:TheDancingDeveloper-org/fluent2-egui#142).
 - Combobox filter cache for a plain slice (`Combobox::new`) was keyed only on the query, so a caller that rebuilt the option slice while the popup stayed open reused stale indexes and could panic. The cache now fingerprints the slice, and a cached index past the list is dropped. Closed popups still do not filter (gh:TheDancingDeveloper-org/fluent2-egui#152).
 - Code view highlights TSX as TypeScript, including JSX tags, instead of as JavaScript (WI-2424).
 - Docs now match the changelog-fragment rule, the Dialog `show` signature, Field parent naming, and the README: Accordion is listed only as shipped, the egui table includes 0.2, and the hosted gallery is marked unavailable because GitHub Pages is not enabled.
