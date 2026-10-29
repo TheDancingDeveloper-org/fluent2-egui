@@ -67,8 +67,29 @@ Nothing is executed or fetched, so the allow-list is the sanitiser.
 
 CSS classes and `<style>` rules, floats, positioning, margins and padding (except
 paragraph spacing), `rowspan`, borders, background images, web fonts, `font-family`, `dir=rtl`,
-forms, and selection across blocks (each block selects on its own; copy-all is
-`to_plain_text`).
+forms. Selection across blocks, find-in-message, link hover status and the
+AccessKit document tree are in the next section.
+
+## Reading the message
+
+- **Selection.** Dragging across blocks selects one range of the document's
+  selectable text ([`HtmlDocument::text_blocks`]). The range is highlighted, and
+  Copy (while a block of the view is focused) places it on the clipboard with a
+  newline between blocks. Copy-all stays [`HtmlDocument::to_plain_text`].
+- **Find.** [`HtmlView::find`] takes a case-insensitive query and a match index.
+  Matches stay inside one block. Every match is highlighted; the current one is
+  stronger and scrolled into view. [`HtmlResponse::find`] is the "n of m" status.
+  [`find_text`] is the same search without painting.
+- **Link hover.** A link the policy allows sets [`HtmlResponse::hovered`] (href,
+  target, text) while the pointer is over it, and still shows the URL as a tooltip.
+  A blocked link sets neither.
+- **AccessKit.** Each text block is a `Paragraph`, or a `Heading` at its level. Each
+  link is a `Link` and each image an `Image`, as before. They stay in egui's own tree:
+  parenting a node egui already placed makes AccessKit reject the update as a
+  duplicate child.
+
+Nothing is executed. Remote images still load only when the app's image policy
+says so.
 
 ## Fixtures
 
