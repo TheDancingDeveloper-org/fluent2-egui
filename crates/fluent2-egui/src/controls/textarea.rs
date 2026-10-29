@@ -3,6 +3,7 @@
 use egui::{IdSalt, Response, Ui, Widget};
 
 use super::input::{Field, InputAppearance, show_field};
+use super::spell::SpellChecker;
 use crate::foundation::icon::IconSize;
 
 /// How a [`Textarea`] may be resized.
@@ -31,6 +32,7 @@ pub struct Textarea<'a> {
     resize: TextareaResize,
     desired_width: Option<f32>,
     id_salt: Option<IdSalt>,
+    spell: Option<&'a mut dyn SpellChecker>,
 }
 
 impl<'a> Textarea<'a> {
@@ -44,6 +46,7 @@ impl<'a> Textarea<'a> {
             resize: TextareaResize::Vertical,
             desired_width: None,
             id_salt: None,
+            spell: None,
         }
     }
 
@@ -88,6 +91,18 @@ impl<'a> Textarea<'a> {
         self.id_salt = Some(IdSalt::new(salt));
         self
     }
+
+    /// Underline misspellings and offer replacements. The library ships no dictionary:
+    /// `checker` is whatever the app supplies, and its result is cached until the text changes.
+    ///
+    /// A secondary click on a misspelling, or Shift+F10 / the Menu key while the caret is in
+    /// one, opens the suggestions. Choosing one replaces the word. Ignore hides it until the
+    /// text changes.
+    #[must_use]
+    pub fn spell_checker(mut self, checker: &'a mut dyn SpellChecker) -> Self {
+        self.spell = Some(checker);
+        self
+    }
 }
 
 impl Widget for Textarea<'_> {
@@ -110,6 +125,7 @@ impl Widget for Textarea<'_> {
                 desired_width: self.desired_width,
                 id_salt: self.id_salt,
                 clear_button: false,
+                spell: self.spell,
             },
         )
     }

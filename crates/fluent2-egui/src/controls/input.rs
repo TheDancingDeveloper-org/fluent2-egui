@@ -194,6 +194,8 @@ pub(crate) struct Field<'a> {
     pub(crate) id_salt: Option<IdSalt>,
     /// SearchBox: a trailing dismiss control clears the string while it is not empty.
     pub(crate) clear_button: bool,
+    /// Textarea only. `None` for single-line fields.
+    pub(crate) spell: Option<&'a mut dyn super::spell::SpellChecker>,
 }
 
 impl<'a> Field<'a> {
@@ -214,11 +216,12 @@ impl<'a> Field<'a> {
             desired_width: input.desired_width,
             id_salt: input.id_salt,
             clear_button: input.clear_button,
+            spell: None,
         }
     }
 }
 
-pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
+pub(crate) fn show_field(ui: &mut Ui, mut field: Field<'_>) -> Response {
     let theme = Theme::get(ui.ctx());
     let enabled = ui.is_enabled();
     let icon_px = match field.icon {
@@ -313,7 +316,29 @@ pub(crate) fn show_field(ui: &mut Ui, field: Field<'_>) -> Response {
     // The frame fill goes under the text: reserve its slot before the TextEdit paints
     // (WI-1913), and fill it in `paint_frame` once focus and hover are known.
     let background = ui.painter().add(egui::Shape::Noop);
-    let mut response = ui.put(text_rect, edit);
+    let spell = field.spell.take();
+    let mut response = if let Some(checker) = spell {
+        // `show` needs the `Ui` that owns the text rect, which `put` builds for a `Widget`.
+        let mut output = ui
+            .scope_builder(
+                egui::UiBuilder::new()
+                    .max_rect(text_rect)
+                    .layout(egui::Layout::centered_and_justified(egui::Direction::TopDown)),
+                |ui| edit.show(ui),
+            )
+            .inner;
+        let mut session = super::spell::SpellSession::new(id, field.text, checker);
+        session.paint(ui, &output.galley, output.galley_pos);
+        let action = session.menu(ui, &output.response.response, &output.galley, output.galley_pos);
+        if let Some((range, with)) = action.replace
+            && super::spell::apply_replace(field.text, range, &with).is_some()
+        {
+            output.response.response.mark_changed();
+        }
+        output.response.response
+    } else {
+        ui.put(text_rect, edit)
+    };
 
     paint_frame(
         ui,
