@@ -11,6 +11,7 @@ pub mod data_grid;
 pub mod diff;
 pub mod editable_list;
 pub mod find;
+pub mod grouped_list;
 #[cfg(feature = "html")]
 pub mod html;
 pub mod list;
@@ -25,6 +26,13 @@ pub mod split_view;
 pub mod terminal;
 pub mod tree_view;
 
+#[rustfmt::skip]
+pub use grouped_list::{
+    Group,
+    GroupedList,
+    GroupedListResponse,
+    GroupedListState,
+};
 #[rustfmt::skip]
 pub use data_grid::{
     CellCtx,
