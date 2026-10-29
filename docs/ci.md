@@ -86,11 +86,12 @@ which jobs are selected. It does not need a checkout of history.
 
 ## Build cache and runner
 
-- Action uses in `ci.yml` are pinned to a commit SHA, with the version in a comment:
-  `actions/checkout` v4.2.2, `actions/upload-artifact` v4.6.2, `dtolnay/rust-toolchain`
-  (master, which resolves the `stable` and `1.95` toolchains), `taiki-e/install-action`,
-  `jetli/trunk-action` v0.5.0 and `EmbarkStudios/cargo-deny-action` v2. `release.yml`
-  still uses floating tags except the deny action, which shares the SHA above.
+- Action uses in `ci.yml`, `release.yml`, `pages.yml` and `upstream.yml` are pinned to a
+  commit SHA, with the version in a comment: `actions/checkout` (v4.2.2 in `ci.yml`, v5
+  elsewhere), `actions/upload-artifact` v4.6.2, `actions/upload-pages-artifact` v3,
+  `actions/deploy-pages` v4, `actions/setup-python` v6, `dtolnay/rust-toolchain` (the
+  commit that resolves `stable` and `1.95`), `taiki-e/install-action`, `jetli/trunk-action`
+  v0.5.0 and `EmbarkStudios/cargo-deny-action` v2.
 - The screenshot job runs in `rust@sha256:f49565f1…` (`1.95-trixie` on the day it was pinned).
 - `Swatinem/rust-cache` is pinned by commit SHA (v2.9.3), with `shared-key: ci`, so every job
   and the queue share the build artefacts. `save-if` is false on `pull_request`: a PR reads
