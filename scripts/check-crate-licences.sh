@@ -30,9 +30,22 @@ if crate=="fluent2-icons":
 if crate=="fluent2-egui":
     need += ["fonts/LICENSE-INTER.txt","syntaxes/LICENSE-TYPESCRIPT-TMLANGUAGE.txt","syntaxes/LICENSE-TYPESCRIPT-SUBLIME.txt"]
 text=sys.stdin.read().splitlines()
-missing=[n for n in need if not any(line==n or line.endswith("/"+n) or line.rsplit("/",1)[-1]==n for line in text)]
+missing=[n for n in need if not any(line==n for line in text)]
 if missing:
     sys.stderr.write("crate archive missing: "+", ".join(missing)+"\n")
     sys.exit(1)
 ' "$crate"
 done
+
+# Self-test: a nested path must not satisfy a crate-root requirement.
+python3 - <<'EOF'
+lines = ["src/foo/NOTICE", "LICENSE-MIT", "LICENSE-APACHE"]
+need = ["NOTICE"]
+missing = [n for n in need if not any(line == n for line in lines)]
+if missing != ["NOTICE"]:
+    raise SystemExit("self-test failed: nested NOTICE satisfied the root requirement")
+if not any(line == "LICENSE-MIT" for line in lines):
+    raise SystemExit("self-test failed: exact root path not accepted")
+print("licence check: nested NOTICE self-test ok")
+EOF
+
