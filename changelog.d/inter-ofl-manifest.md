@@ -1,1 +1,0 @@
-Recorded the bundled Inter Regular and SemiBold faces against the v4.1 release commit e3a3d4c57d5ecc01453a575621882a384c1995a3. The shipped TTF files and OFL-1.1 text are unchanged and match Inter-4.1.zip (extras/ttf and LICENSE.txt).
