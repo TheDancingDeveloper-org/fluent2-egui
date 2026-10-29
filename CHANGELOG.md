@@ -4,17 +4,14 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Added
-
-- Colour emoji fallback (Noto Emoji COLR/CPAL, OFL-1.1) and `MissingGlyphPolicy::Tofu` on install, so production text never panics on a missing glyph.
-- `EmojiPicker`: search, categories, recent emoji, keyboard movement and AccessKit names.
-
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
 ## [0.4.1] - 2026-10-29
 
 ### Added
 
+- Colour emoji fallback (Noto Emoji COLR/CPAL, OFL-1.1) and `MissingGlyphPolicy::Tofu` on install, so production text never panics on a missing glyph.
+- `EmojiPicker`: search, categories, recent emoji, keyboard movement and AccessKit names.
 - `GroupedList`: a virtualised list of expandable groups. Only the rows in view are built, the current group's header sticks to the top while its rows scroll, and Left, Right, Enter and a header click expand and collapse. Headers are AccessKit groups; rows are list-box options.
 - Inter-pane drag and drop: `data::pane_drag` carries a typed payload from a `DragSource` to a `DropTarget` in another pane, with hover and accept feedback, a keyboard "Move to" menu, and a polite AccessKit live region. The gallery's Pane drag page demonstrates it.
 - `HtmlView` selects text across blocks (Copy places the range on the clipboard), highlights a case-insensitive find query and steps through its matches, reports the link under the pointer, and exposes the message as an AccessKit document of headings, paragraphs and links.
