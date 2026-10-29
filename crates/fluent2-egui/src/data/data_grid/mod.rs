@@ -970,7 +970,7 @@ pub(crate) fn salt_id(salt: impl std::hash::Hash) -> Id {
     use std::hash::Hasher;
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     salt.hash(&mut hasher);
-    Id::new(hasher.finish())
+    Id::unique(hasher.finish())
 }
 
 /// A cell's content rect: the cell less `spacingHorizontalS` on each side.

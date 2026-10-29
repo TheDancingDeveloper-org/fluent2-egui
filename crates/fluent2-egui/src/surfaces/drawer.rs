@@ -102,7 +102,7 @@ impl Drawer {
     /// A drawer whose id comes from `id_salt`, never from the title.
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             title: WidgetText::default(),
             position: DrawerPosition::Start,
             size: DrawerSize::Small,

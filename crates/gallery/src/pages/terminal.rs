@@ -90,13 +90,15 @@ impl Page for TerminalPage {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("TerminalView");
         ui.horizontal(|ui| {
-            let run_it = ui
-                .add(
-                    egui::TextEdit::singleline(&mut self.command)
-                        .hint_text("Command (help, ls, colors, clear)"),
-                )
-                .lost_focus()
-                && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            let command_field = ui.add(
+                egui::TextEdit::singleline(&mut self.command)
+                    .hint_text("Command (help, ls, colors, clear)")
+                    .id_salt("terminal_command"),
+            );
+            ui.ctx().accesskit_node_builder(command_field.id, |node| {
+                node.set_label("Command");
+            });
+            let run_it = command_field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
             if ui.add(Button::new("Run")).clicked() || run_it {
                 let command = std::mem::take(&mut self.command);
                 if command.trim() == "clear" {

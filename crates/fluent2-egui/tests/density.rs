@@ -29,13 +29,14 @@ fn measure(density: Density) -> Vec<(&'static str, Rect)> {
             let mut choice = None;
             let mut radio = 0usize;
             let mut value = 0.5f64;
-            rects.push(("button", ui.add(Button::new("Save")).rect));
-            rects.push((
-                "icon button",
-                ui.add(Button::icon_only(Icon::Dismiss, "Close")).rect,
-            ));
-            rects.push(("toggle", ui.add(ToggleButton::new(&mut flag, "Bold")).rect));
-            rects.push(("menu button", MenuButton::new("More").show(ui, |_| ()).0.rect));
+            let b = ui.add(Button::new("Save"));
+            rects.push(("button", b.rect));
+            let r = ui.add(Button::icon_only(Icon::Dismiss, "Close"));
+            rects.push(("icon button", r.rect));
+            let r = ui.add(ToggleButton::new(&mut flag, "Bold"));
+            rects.push(("toggle", r.rect));
+            let r = MenuButton::new("More").show(ui, |_| ()).0;
+            rects.push(("menu button", r.rect));
             let split = SplitButton::new("Send").show(ui, |_| ());
             rects.push(("split button", split.main.rect.union(split.menu.rect)));
             rects.push(("split chevron", split.menu.rect));
@@ -49,14 +50,22 @@ fn measure(density: Density) -> Vec<(&'static str, Rect)> {
                 ui.add(Combobox::new("c", &mut text, &["A"]).width(200.0)).rect,
             ));
             let mut input = String::new();
-            rects.push(("input", ui.add(Input::new(&mut input).desired_width(200.0)).rect));
+            rects.push((
+                "input",
+                ui.add(Input::new(&mut input).label("Name").desired_width(200.0))
+                    .rect,
+            ));
             let mut query = String::new();
             rects.push((
                 "search box",
-                ui.add(SearchBox::new(&mut query).desired_width(200.0)).rect,
+                ui.add(SearchBox::new(&mut query).label("Search").desired_width(200.0))
+                    .rect,
             ));
             let spin_id = ui.next_auto_id();
-            rects.push(("spin button", ui.add(SpinButton::new(&mut value)).rect));
+            rects.push((
+                "spin button",
+                ui.add(SpinButton::new(&mut value).label("Count")).rect,
+            ));
             // Each stepper is its own hit target (DN3), not just the whole control.
             for (name, part) in [("spin up", "up"), ("spin down", "down")] {
                 let rect = ui
@@ -66,7 +75,7 @@ fn measure(density: Density) -> Vec<(&'static str, Rect)> {
                 rects.push((name, rect));
             }
             rects.push(("checkbox", ui.add(Checkbox::new(&mut state, "Remember")).rect));
-            rects.push(("bare checkbox", ui.add(Checkbox::new(&mut state, "")).rect));
+            rects.push(("bare checkbox", ui.add(Checkbox::new(&mut state, "Agree")).rect));
             rects.push((
                 "radio",
                 RadioGroup::new(&mut radio).option("One").show(ui).response.rect,

@@ -116,6 +116,11 @@ fn harness(shared: &'static Shared) -> Harness<'static> {
             shared.tab_changed.borrow_mut().extend(response.tab_changed);
 
             let editor = ui.text_edit_singleline(&mut *shared.text.borrow_mut());
+            // egui 0.37 stores the accessible name on the TextEdit id, and kittest rejects an
+            // unnamed text input. The region still tracks the response id.
+            ui.ctx().accesskit_node_builder(editor.id, |node| {
+                node.set_label("Document");
+            });
             keytips::mark_region(ui.ctx(), Region::Content, editor.rect, Some(editor.id));
 
             let mut zoom = shared.zoom.get();

@@ -22,8 +22,8 @@
 //! ```
 
 use egui::{
-    CornerRadius, EventFilter, Id, Key, Pos2, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui,
-    UiBuilder, Vec2, Widget, WidgetInfo, WidgetText, WidgetType,
+    CornerRadius, EventFilter, Id, Key, Pos2, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui,
+    UiBuilder, Vec2, Widget, WidgetInfo, WidgetText,
 };
 use fluent2_tokens::Rgba;
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -260,7 +260,7 @@ impl TagGroup {
     #[must_use]
     pub fn new(id_salt: impl std::hash::Hash + std::fmt::Debug, tags: Vec<Tag>) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             tags,
             label: None,
             interactive: false,
@@ -447,8 +447,8 @@ impl TagGroup {
         let label = self.label.clone();
         let enabled = ui.is_enabled();
         response.widget_info(|| match &label {
-            Some(label) => WidgetInfo::labeled(WidgetType::Other, enabled, label.as_str()),
-            None => WidgetInfo::new(WidgetType::Other),
+            Some(label) => WidgetInfo::labeled(Role::Unknown, enabled, label.as_str()),
+            None => WidgetInfo::new(Role::Unknown),
         });
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_role(egui::accesskit::Role::List);
@@ -803,7 +803,7 @@ fn show_tag(ui: &mut Ui, tag: &Tag, options: Options) -> TagResponse {
     let text = tag.accessible_text();
     if options.interactive {
         let name = text.clone();
-        body.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
+        body.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, name.clone()));
         if options.selected {
             ui.ctx().accesskit_node_builder(body.id, |node| {
                 node.set_toggled(egui::accesskit::Toggled::True);
@@ -823,7 +823,7 @@ fn show_tag(ui: &mut Ui, tag: &Tag, options: Options) -> TagResponse {
     }
     if let Some(d) = &dismiss {
         let name = format!("Remove {}", tag.text);
-        d.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
+        d.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, name.clone()));
     }
     TagResponse {
         response: body,

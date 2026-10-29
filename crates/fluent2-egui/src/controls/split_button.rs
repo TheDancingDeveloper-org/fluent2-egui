@@ -9,8 +9,8 @@
 //! tree. Colours, radii and spacing come from the installed [`Theme`].
 
 use egui::{
-    CornerRadius, Id, Key, Modifiers, Popup, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2,
-    WidgetInfo, WidgetText, WidgetType,
+    CornerRadius, Id, Key, Modifiers, Popup, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui,
+    Vec2, WidgetInfo, WidgetText,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -102,7 +102,7 @@ impl<'a> SplitButton<'a> {
     /// Extra salt so two split buttons with the same label can coexist.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 
@@ -177,9 +177,9 @@ impl<'a> SplitButton<'a> {
             }
         }
 
-        main.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &label));
+        main.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &label));
         let options = format!("{label} options");
-        menu_response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &options));
+        menu_response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, &options));
         let expanded = menu_open;
         ui.ctx().accesskit_node_builder(id_menu, |node| {
             node.set_expanded(expanded);

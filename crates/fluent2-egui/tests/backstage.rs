@@ -88,7 +88,7 @@ fn renders_in_light_dark_and_high_contrast() {
         let mut harness = backstage_harness(probe, theme);
         harness.run();
         let _ = harness.get_by_role_and_label(Role::Dialog, "Backstage");
-        let _ = harness.get_by_role_and_label(Role::Button, "Home");
+        let _ = harness.get_by_role_and_label(Role::ListBoxOption, "Home");
     }
 }
 
@@ -119,7 +119,7 @@ fn file_tab_event_opens_backstage() {
 fn clicking_a_page_selects_it_and_reports_the_change() {
     let (probe, mut harness) = open_harness();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "New").click();
+    harness.get_by_role_and_label(Role::ListBoxOption, "New").click();
     harness.run();
     assert_eq!(probe.borrow().response.page_changed, Some("new"));
     assert_eq!(probe.borrow().state.page, Some("new"));
@@ -129,7 +129,9 @@ fn clicking_a_page_selects_it_and_reports_the_change() {
 fn bottom_group_page_is_selectable() {
     let (probe, mut harness) = open_harness();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Options").click();
+    harness
+        .get_by_role_and_label(Role::ListBoxOption, "Options")
+        .click();
     harness.run();
     assert_eq!(probe.borrow().state.page, Some("options"));
 }
@@ -138,7 +140,7 @@ fn bottom_group_page_is_selectable() {
 fn arrow_keys_move_the_selection_through_the_entries() {
     let (probe, mut harness) = open_harness();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Home").focus();
+    harness.get_by_role_and_label(Role::ListBoxOption, "Home").focus();
     harness.run();
     harness.key_press(egui::Key::ArrowDown);
     harness.run();
@@ -172,7 +174,7 @@ fn escape_closes_and_returns_focus_to_the_file_tab() {
     harness.run();
     harness.get_by_label("File").click();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Home").focus();
+    harness.get_by_role_and_label(Role::ListBoxOption, "Home").focus();
     harness.run();
     assert!(
         !harness.get_by_label("File").is_focused(),
@@ -208,16 +210,18 @@ fn nav_column_has_the_spec_roles_and_labels() {
     harness.run();
     let _ = harness.get_by_role_and_label(Role::Dialog, "Backstage");
     let _ = harness.get_by_role_and_label(Role::Button, "Back");
-    let _ = harness.get_by_role_and_label(Role::Button, "Home");
-    let _ = harness.get_by_role_and_label(Role::Button, "New");
-    let _ = harness.get_by_role_and_label(Role::Button, "Options");
+    let _ = harness.get_by_role_and_label(Role::ListBoxOption, "Home");
+    let _ = harness.get_by_role_and_label(Role::ListBoxOption, "New");
+    let _ = harness.get_by_role_and_label(Role::ListBoxOption, "Options");
 }
 
 #[test]
 fn escape_does_not_close_while_a_text_field_has_focus() {
     let (probe, mut harness) = open_harness();
     harness.run();
-    harness.get_by_role_and_label(Role::Button, "Notes").click();
+    harness
+        .get_by_role_and_label(Role::ListBoxOption, "Notes")
+        .click();
     harness.run();
     harness.get_by_role(Role::TextInput).focus();
     harness.run();
@@ -231,7 +235,7 @@ fn escape_does_not_close_while_a_text_field_has_focus() {
     assert!(probe.borrow().state.open, "Escape stays with the text field");
     assert!(!probe.borrow().response.closed);
 
-    harness.get_by_role_and_label(Role::Button, "Home").focus();
+    harness.get_by_role_and_label(Role::ListBoxOption, "Home").focus();
     harness.run();
     harness.key_press(egui::Key::Escape);
     harness.run();

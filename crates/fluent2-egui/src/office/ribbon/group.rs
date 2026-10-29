@@ -276,7 +276,7 @@ fn collapsed_button(ui: &mut Ui, icon: IconName, label: &str, theme: &Theme) -> 
     if focus::focus_visible(ui, &response) {
         paint_focus_ring(ui, rect, corner);
     }
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_has_popup(accesskit::HasPopup::Dialog);
     });
@@ -306,10 +306,11 @@ fn label_row(
 
 fn group_node(ui: &Ui, label: &str) {
     let label = label.to_owned();
-    ui.ctx().accesskit_node_builder(ui.id().with("group"), |node| {
-        node.set_role(accesskit::Role::Group);
-        node.set_label(label);
-    });
+    ui.ctx()
+        .accesskit_node_builder(ui.scope_id().with("group"), |node| {
+            node.set_role(accesskit::Role::Group);
+            node.set_label(label);
+        });
 }
 
 /// Paint the active tab's body: the groups in a row at the steps the planner picks for the

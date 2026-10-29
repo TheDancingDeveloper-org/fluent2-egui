@@ -13,7 +13,7 @@
 //! [`enclosing_field_label`]. The previous value is restored afterwards, so
 //! nested fields keep their own names.
 
-use egui::{Sense, TextStyle, Ui, WidgetInfo, WidgetText, WidgetType};
+use egui::{Role, Sense, TextStyle, Ui, WidgetInfo, WidgetText};
 
 use fluent2_tokens::generated::global::spacing_vertical;
 
@@ -54,7 +54,7 @@ pub struct Field<'a> {
 }
 
 fn field_label_key() -> egui::Id {
-    egui::Id::new("fluent2_field_label")
+    egui::Id::unique("fluent2_field_label")
 }
 
 /// The label of the [`Field`] whose child is running, if any. Controls use it as their
@@ -145,8 +145,7 @@ impl<'a> Field<'a> {
                     );
                 }
             }
-            response
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Label, ui.is_enabled(), accessible.clone()));
+            response.widget_info(|| WidgetInfo::labeled(Role::Label, ui.is_enabled(), accessible.clone()));
         });
         ui.add_space(spacing_vertical::XXS);
         // Controls in the child without a label of their own take the Field's label as their
@@ -227,7 +226,7 @@ fn paint_line(
         if ui.is_rect_visible(rect) {
             ui.painter().galley(rect.left_top(), galley, theme::c(color));
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text.to_owned()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Label, true, text.to_owned()));
     });
 }
 

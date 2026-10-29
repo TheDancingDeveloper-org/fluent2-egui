@@ -13,8 +13,8 @@
 //! default. The items are painted, not widgets, so they have no nodes of their own.
 
 use egui::{
-    Color32, CornerRadius, Id, Mesh, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, Widget,
-    WidgetInfo, WidgetType,
+    Color32, CornerRadius, Id, Mesh, Pos2, Rect, Response, Role, Sense, Stroke, StrokeKind, Ui, Vec2, Widget,
+    WidgetInfo,
 };
 
 use fluent2_tokens::generated::global::{border_radius, spacing_vertical, stroke_width};
@@ -209,9 +209,7 @@ impl Widget for Skeleton {
             }
         }
         let label = self.label;
-        response.widget_info(|| {
-            WidgetInfo::labeled(WidgetType::ProgressIndicator, ui.is_enabled(), label.clone())
-        });
+        response.widget_info(|| WidgetInfo::labeled(Role::ProgressIndicator, ui.is_enabled(), label.clone()));
         ui.ctx()
             .accesskit_node_builder(response.id, |node| node.set_busy());
         response

@@ -97,8 +97,13 @@ impl Page for ShortcutsPage {
 
         ui.label("Press Ctrl+S, J or K, or ? for the overlay. J and K do nothing while the field has focus.");
         ui.label(format!("Last shortcut: {}", self.last));
-        let _ =
-            ui.add(egui::TextEdit::singleline(&mut self.note).hint_text("Type here: J and K are letters"));
+        {
+            let note = ui
+                .add(egui::TextEdit::singleline(&mut self.note).hint_text("Type here: J and K are letters"));
+            ui.ctx().accesskit_node_builder(note.id, |node| {
+                node.set_label("Note");
+            });
+        }
         ui.add_space(8.0);
 
         ui.horizontal(|ui| {

@@ -4,6 +4,20 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Changed
+
+- Built against egui, eframe, egui_extras and egui_kittest 0.37 (was 0.36). The crate version is unchanged. egui's MSRV stays 1.95, matching this crate.
+- Accessible names are set on gallery inputs that egui_kittest 0.37 now rejects when a visible input role has no label or placeholder (the cause of issue #146).
+
+### Breaking
+
+- Callers that name `egui::WidgetType` must use `egui::Role` (a re-export of `accesskit::Role`). Checkboxes are `Role::CheckBox`. Selectable rows and nav rows are `Role::ListBoxOption`, not `Role::Button`.
+- `Id::new` is deprecated. New ids in this crate use `Id::unique`. `FontId::new` and `LayerId::new` are unchanged.
+- `egui::Event::MouseWheel` now carries `source: egui::MouseWheelSource`.
+- Scroll `State::offset` is private. Read `unclamped_offset()` instead.
+- `Ui::id` is `Ui::scope_id`.
+- egui_kittest panics after settle when a visible input widget (including `ListBoxOption`, `TextInput` and `MultilineTextInput`) has no accessible name. Set a label, placeholder, or AccessKit label.
+
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
 ## [0.3.0] - 2026-10-29

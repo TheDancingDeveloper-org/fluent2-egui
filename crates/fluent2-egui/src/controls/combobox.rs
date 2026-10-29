@@ -6,7 +6,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use egui::{Id, Rect, Response, Sense, TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use egui::{Id, Rect, Response, Role, Sense, TextEdit, Ui, Vec2, Widget, WidgetInfo, WidgetText};
 
 use super::ButtonSize;
 use super::dropdown::{
@@ -118,7 +118,7 @@ impl<'a, T: AsRef<str>> Combobox<'a, T> {
         options: &'a [T],
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             text,
             options,
             model: None,
@@ -206,7 +206,7 @@ impl<'a> ModelCombobox<'a> {
         model: &'a dyn ComboboxOptions,
     ) -> Self {
         Self {
-            id_salt: Id::new(id_salt),
+            id_salt: Id::unique(id_salt),
             text,
             model,
             placeholder: None,
@@ -450,7 +450,7 @@ impl<T: AsRef<str>> Widget for Combobox<'_, T> {
             builder.set_value(value_text.clone());
         });
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ComboBox, enabled, accessible_name.clone());
+            let mut info = WidgetInfo::labeled(Role::ComboBox, enabled, accessible_name.clone());
             info.current_text_value = Some(value_text.clone());
             info
         });

@@ -4,7 +4,7 @@
 //! button is shown only while the string is not empty. Activating it, or pressing
 //! Escape while the field is focused, clears the string and keeps focus.
 
-use egui::{Id, Response, Ui, Widget};
+use egui::{IdSalt, Response, Ui, Widget};
 
 use super::ButtonSize;
 use super::input::{Input, InputAppearance};
@@ -25,7 +25,7 @@ pub struct SearchBox<'a> {
     size: ButtonSize,
     appearance: InputAppearance,
     desired_width: Option<f32>,
-    id_salt: Option<Id>,
+    id_salt: Option<IdSalt>,
 }
 
 impl<'a> SearchBox<'a> {
@@ -80,7 +80,7 @@ impl<'a> SearchBox<'a> {
     /// Extra salt for the widget id.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(IdSalt::new(salt));
         self
     }
 }
@@ -102,7 +102,7 @@ impl Widget for SearchBox<'_> {
             input = input.desired_width(width);
         }
         if let Some(salt) = self.id_salt.take() {
-            input = input.id_salt(salt.value());
+            input = input.id_salt(salt);
         }
         ui.add(input)
     }

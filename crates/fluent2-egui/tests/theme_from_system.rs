@@ -14,7 +14,7 @@ fn accent() -> Rgba {
 /// Reduced motion makes `animate` snap to a new target at once. Otherwise the first frame
 /// after a retarget is still at the old value.
 fn reduced_motion(ctx: &Context) -> bool {
-    let id = Id::new("probe");
+    let id = Id::unique("probe");
     animate(ctx, id, 0.0, Duration::Slow, Curve::AccelerateMid);
     animate(ctx, id, 1.0, Duration::Slow, Curve::AccelerateMid) == 1.0
 }

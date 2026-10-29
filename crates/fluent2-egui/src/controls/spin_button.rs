@@ -203,7 +203,7 @@ impl Widget for SpinButton<'_> {
                         .id(edit_id)
                         .desired_width(field.width() - 8.0)
                         .frame(egui::Frame::NONE)
-                        .horizontal_align(egui::Align::RIGHT)
+                        .align(egui::Align2::RIGHT_CENTER)
                         .font(egui::TextStyle::Body),
                 )
             })

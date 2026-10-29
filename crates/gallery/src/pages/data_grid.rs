@@ -108,7 +108,7 @@ impl Page for DataGridPage {
             just_opened = true;
         }
         if let Some((column, pos)) = self.menu {
-            let area = egui::Area::new(egui::Id::new("gallery_data_grid_menu"))
+            let area = egui::Area::new(egui::Id::unique("gallery_data_grid_menu"))
                 .order(egui::Order::Foreground)
                 .fixed_pos(pos)
                 .show(ui.ctx(), |ui| {

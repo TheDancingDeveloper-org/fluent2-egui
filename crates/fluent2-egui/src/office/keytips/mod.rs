@@ -121,7 +121,7 @@ impl Default for Controller {
 }
 
 fn controller_id() -> Id {
-    Id::new("fluent2_keytips")
+    Id::unique("fluent2_keytips")
 }
 
 fn with_controller<R>(ctx: &Context, f: impl FnOnce(&mut Controller) -> R) -> R {
@@ -474,7 +474,7 @@ pub(crate) fn key_sequence(targets: &KeyTipTargets, level: KeyTipLevel, target: 
 
 /// The id of the polite live region that says when KeyTips turn on and off.
 pub fn live_region_id() -> Id {
-    Id::new("fluent2_keytips_live")
+    Id::unique("fluent2_keytips_live")
 }
 
 /// Keep a polite live region saying whether KeyTips are on (WI-1849). It appears the first time
@@ -514,7 +514,7 @@ fn visible_level(state: &KeyTipState) -> Option<(KeyTipLevel, Option<char>)> {
 fn paint_badges(ctx: &Context, shown: &[KeyTipTarget], frame: &[Registered], prefix: Option<char>) {
     let theme = Theme::get(ctx);
     let color = &theme.color;
-    let painter = ctx.layer_painter(LayerId::new(Order::Tooltip, Id::new("fluent2_keytips_badges")));
+    let painter = ctx.layer_painter(LayerId::new(Order::Tooltip, Id::unique("fluent2_keytips_badges")));
     let font = font_id(TypeRamp::Caption2);
     let side = theme.chrome.keytip_badge;
     let offset = spacing_horizontal::XXS;

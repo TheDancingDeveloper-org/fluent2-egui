@@ -10,7 +10,7 @@
 //!
 //! Non-finite progress is clamped to `0.0`. Values above `1.0` clamp to `1.0`.
 
-use egui::{CornerRadius, Id, Response, Sense, Ui, Vec2, Widget, WidgetInfo, WidgetType};
+use egui::{CornerRadius, Id, Response, Role, Sense, Ui, Vec2, Widget, WidgetInfo};
 
 use fluent2_tokens::generated::global::{border_radius, stroke_width};
 
@@ -101,7 +101,7 @@ impl Widget for ProgressBar {
             None => "Indeterminate".to_owned(),
         };
         response.widget_info(|| {
-            let mut info = WidgetInfo::labeled(WidgetType::ProgressIndicator, ui.is_enabled(), label.clone());
+            let mut info = WidgetInfo::labeled(Role::ProgressIndicator, ui.is_enabled(), label.clone());
             info.value = fraction.map(|fraction| (fraction * 100.0) as f64);
             info
         });

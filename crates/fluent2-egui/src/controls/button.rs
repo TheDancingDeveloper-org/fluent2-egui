@@ -9,8 +9,8 @@
 
 use egui::epaint::{Color32, RectShape};
 use egui::{
-    CornerRadius, Galley, Id, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget,
-    WidgetInfo, WidgetText, WidgetType,
+    CornerRadius, Galley, Id, Rect, Response, Role, Sense, Stroke, StrokeKind, TextStyle, Ui, Vec2, Widget,
+    WidgetInfo, WidgetText,
 };
 
 use fluent2_icons::{Icon, Size as IconSize};
@@ -159,7 +159,7 @@ impl<'a> Button<'a> {
     /// The id is never derived from the label alone when a salt is given.
     #[must_use]
     pub fn id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
-        self.id_salt = Some(Id::new(salt));
+        self.id_salt = Some(Id::unique(salt));
         self
     }
 
@@ -257,7 +257,7 @@ impl Widget for Button<'_> {
         if galley.as_ref().is_some_and(|galley| galley.elided) {
             response = response.on_hover_text(accessible.clone());
         }
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, accessible.clone()));
+        response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, accessible.clone()));
         response
     }
 }

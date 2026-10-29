@@ -23,8 +23,8 @@ pub use model::{
 use std::ops::Range;
 
 use egui::{
-    Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, ScrollArea, Sense, Stroke, StrokeKind,
-    TextStyle, Ui, Vec2, WidgetInfo, WidgetType,
+    Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Role, ScrollArea, Sense, Stroke, StrokeKind,
+    TextStyle, Ui, Vec2, WidgetInfo,
 };
 
 use super::rows::visible_rows;
@@ -153,7 +153,7 @@ impl DiffView {
     /// A view whose scroll state is keyed by `id_salt`.
     pub fn new(id_salt: impl std::hash::Hash) -> Self {
         Self {
-            id_salt: egui::Id::new(hashed(&id_salt)),
+            id_salt: egui::Id::unique(hashed(&id_salt)),
             mode: DiffMode::Inline,
             font: None,
             label: "Diff".into(),
@@ -262,7 +262,7 @@ impl DiffView {
                 response
             });
         let response = output.inner;
-        response.widget_info(|| WidgetInfo::labeled(WidgetType::Other, enabled, &summary));
+        response.widget_info(|| WidgetInfo::labeled(Role::Unknown, enabled, &summary));
         DiffResponse {
             response,
             visible_rows: visible,

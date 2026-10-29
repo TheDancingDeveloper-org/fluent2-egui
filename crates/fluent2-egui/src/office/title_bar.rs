@@ -6,8 +6,8 @@
 use std::marker::PhantomData;
 
 use egui::{
-    Align, CornerRadius, Direction, Id, Layout, Rect, Response, Sense, Ui, UiBuilder, Vec2, ViewportCommand,
-    WidgetInfo, WidgetText, WidgetType, accesskit, pos2, vec2,
+    Align, CornerRadius, Direction, Id, Layout, Rect, Response, Role, Sense, Ui, UiBuilder, Vec2,
+    ViewportCommand, WidgetInfo, WidgetText, accesskit, pos2, vec2,
 };
 
 use super::keytips::{self, Region};
@@ -424,7 +424,7 @@ fn caption_button(
     if response.has_focus() {
         paint_focus_ring(ui, rect, CornerRadius::ZERO);
     }
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
+    response.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
     response
 }
 
@@ -434,7 +434,7 @@ fn hashed_id(source: impl std::hash::Hash) -> Id {
     use std::hash::Hasher;
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     source.hash(&mut hasher);
-    Id::new(hasher.finish())
+    Id::unique(hasher.finish())
 }
 
 fn finite_pos(value: f32) -> f32 {
