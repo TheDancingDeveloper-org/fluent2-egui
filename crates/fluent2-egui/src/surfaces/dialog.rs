@@ -5,8 +5,8 @@
 //! AccessKit role. The behaviour is specified in `docs/specs/dialog.md`.
 
 use egui::{
-    Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, ModalResponse, Sense, Stroke, Ui, Vec2,
-    WidgetText,
+    Align, Context, CornerRadius, Frame, Id, Key, Layout, Modal, ModalResponse, Rect, Sense, Stroke, Ui,
+    Vec2, WidgetText,
 };
 
 use fluent2_tokens::generated::global::{border_radius, spacing_horizontal, spacing_vertical, stroke_width};
@@ -291,21 +291,38 @@ impl<'a> Dialog<'a> {
             let max_body =
                 (ui.ctx().content_rect().height() - 2.0 * (SCREEN_MARGIN + spacing_vertical::XXL) - chrome)
                     .max(MIN_BODY_HEIGHT);
-            let scrolled = egui::ScrollArea::vertical()
-                .id_salt(id.with("body"))
-                .max_height(max_body)
-                .auto_shrink([false, true])
-                .show(ui, |ui| {
-                    // The body gets its own container node, which describes the dialog.
-                    ui.scope_builder(egui::UiBuilder::new().id_salt("fluent2_dialog_body"), |ui| {
-                        let value = body(ui);
-                        reveal_new_focus(ui, id.with("body_focus"));
-                        (value, ui.unique_id())
-                    })
-                    .inner
-                });
-            let (value, body_node) = scrolled.inner;
-            let body_rect = scrolled.inner_rect;
+            // egui 0.37's ScrollArea clips children to the viewport even when the content
+            // fits. On the first frame that viewport is shorter than the body, so a button
+            // in the body never receives the click and is missing from AccessKit, and the
+            // click falls through to the backdrop. Scroll only once a measured body is
+            // taller than the room left for it; otherwise paint the body directly.
+            let height_key = id.with("body_content_height");
+            let known_height = ui.ctx().data(|data| data.get_temp::<f32>(height_key));
+            let scroll = known_height.is_some_and(|height| height > max_body);
+            let before = ui.min_rect();
+            // One call site: `body` is `FnOnce`, so both branches cannot name it.
+            let paint = |ui: &mut Ui| show_body(ui, id, body);
+            let (shown, content_height) = if scroll {
+                let scrolled = egui::ScrollArea::vertical()
+                    .id_salt(id.with("body"))
+                    .max_height(max_body)
+                    .auto_shrink([false, true])
+                    .show(ui, paint);
+                // `content_size` is the body's height, not the clipped viewport.
+                ((scrolled.inner, scrolled.inner_rect), scrolled.content_size.y)
+            } else {
+                let shown = paint(ui);
+                let after = ui.min_rect();
+                let body_rect = Rect::from_min_max(before.min.min(after.min), after.max);
+                ((shown, body_rect), after.height() - before.height())
+            };
+            let (value, body_node) = shown.0;
+            let body_rect = shown.1;
+            if known_height.is_none_or(|height| (height - content_height).abs() > 0.5) {
+                ui.ctx()
+                    .data_mut(|data| data.insert_temp(height_key, content_height));
+                ui.ctx().request_discard("dialog body height changed");
+            }
 
             let mut declared = DialogActions {
                 primary: None,
@@ -330,7 +347,10 @@ impl<'a> Dialog<'a> {
 
             // A focusable surface, so Tab has a stop even when the body has no widgets.
             // It is allocated last, which makes it the last stop; the title is not a stop.
-            let surface = ui.interact(ui.min_rect(), surface_id, Sense::focusable_noninteractive());
+            // The area's size can lag the footer by a frame. Grow the node so AccessKit
+            // bounds cover the actions as well as the body.
+            let surface_rect = ui.min_rect().union(body_rect).union(ui.max_rect());
+            let surface = ui.interact(surface_rect, surface_id, Sense::focusable_noninteractive());
             if opening && primary_id.is_none() {
                 surface.request_focus();
             }
@@ -531,6 +551,16 @@ pub(crate) fn escape_pressed(ctx: &Context) -> bool {
                 )
             })
     })
+}
+
+fn show_body<R>(ui: &mut Ui, id: Id, body: impl FnOnce(&mut Ui) -> R) -> (R, Id) {
+    // The body gets its own container node, which describes the dialog.
+    ui.scope_builder(egui::UiBuilder::new().id_salt("fluent2_dialog_body"), |ui| {
+        let value = body(ui);
+        reveal_new_focus(ui, id.with("body_focus"));
+        (value, ui.unique_id())
+    })
+    .inner
 }
 
 fn show_actions(ui: &mut Ui, actions: DialogActions<'_>, stack: bool, opening: bool) -> ActionState {
