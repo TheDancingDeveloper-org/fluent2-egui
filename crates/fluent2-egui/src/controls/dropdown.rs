@@ -268,10 +268,11 @@ pub(super) fn show_listbox(
         field.left_bottom() + egui::vec2(0.0, 4.0),
         egui::vec2(field.width(), popup_height + margin.y),
     );
+    let popup_layer = egui::LayerId::new(egui::Order::Foreground, popup_id);
     let mut popup_ui = ui.new_child(
         egui::UiBuilder::new()
             .id_salt("popup")
-            .layer_id(egui::LayerId::new(egui::Order::Foreground, popup_id))
+            .layer_id(popup_layer)
             .max_rect(popup_rect)
             .layout(Layout::top_down(Align::Min)),
     );
@@ -317,6 +318,7 @@ pub(super) fn show_listbox(
         })
         .response
         .rect;
+    register_popup_layer(ui, popup_layer, popup_rect);
     // A press on the scrollbar is inside the popup rect, so it does not dismiss. A press on the
     // field is handled by the field. Anything else closes.
     let outside = ui.input(|input| {
@@ -327,6 +329,32 @@ pub(super) fn show_listbox(
                 .is_some_and(|pos| !field.contains(pos) && !popup_rect.contains(pos))
     });
     (picked, outside)
+}
+
+/// Put the listbox layer in egui's area order, directly above the layer it opens from.
+///
+/// A layer shown with `UiBuilder::layer_id` is not in that order unless registered. egui then
+/// sorts it below a modal's layer, so inside a `Dialog` the rows draw but every click on them is
+/// blocked. Over a modal (a `Foreground` parent) the listbox becomes the parent's sublayer;
+/// over the page it moves to the top of `Foreground`. `set_state` lets the hit test find it.
+fn register_popup_layer(ui: &Ui, layer: egui::LayerId, rect: Rect) {
+    let parent = ui.layer_id();
+    ui.ctx().memory_mut(|memory| {
+        let areas = memory.areas_mut();
+        if parent.order == layer.order {
+            areas.set_sublayer(parent, layer);
+        } else {
+            areas.move_to_top(layer);
+        }
+        let state = egui::AreaState {
+            pivot_pos: Some(rect.min),
+            pivot: egui::Align2::LEFT_TOP,
+            size: Some(rect.size()),
+            interactable: true,
+            ..Default::default()
+        };
+        areas.set_state(layer, state);
+    });
 }
 
 pub(super) fn option_row(
