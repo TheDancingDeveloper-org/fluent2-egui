@@ -6,6 +6,14 @@ All notable changes are recorded here, following [Keep a Changelog](https://keep
 
 Entry format and the per-PR fragment workflow are in [`changelog.d/README.md`](changelog.d/README.md).
 
+## [0.4.2] - 2026-10-30
+
+### Fixed
+
+- Builds with `RUSTFLAGS=-D warnings` under `--no-default-features` and single optional features (including `html`), and on `wasm32-unknown-unknown`. Colour emoji still installs when `bundled-font` is on.
+- `HtmlView` link clicks reach the link again. The view's drag-selection widget covers the whole document; registered after a link, egui drops the click underneath it. The drag is registered first, using the previous frame's block rectangles, and each text block only senses hover.
+- A `Dropdown`, `Combobox` or `TagPicker` inside a modal `Dialog` can be picked again (regression in 0.4.1). The listbox layer is now registered in egui's area order directly above the layer it opens from, so the dialog's modal no longer blocks clicks on its rows.
+
 ## [0.4.1] - 2026-10-29
 
 ### Added

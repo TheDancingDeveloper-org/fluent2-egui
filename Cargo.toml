@@ -3,16 +3,16 @@ resolver = "3"
 members = ["crates/*", "xtask", "fixtures/*"]
 
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.95"
 repository = "https://github.com/TheDancingDeveloper-org/fluent2-egui"
 
 [workspace.dependencies]
-fluent2-tokens = { path = "crates/fluent2-tokens", version = "0.4.1" }
-fluent2-icons = { path = "crates/fluent2-icons", version = "0.4.1" }
-fluent2-egui = { path = "crates/fluent2-egui", version = "0.4.1" }
+fluent2-tokens = { path = "crates/fluent2-tokens", version = "0.4.2" }
+fluent2-icons = { path = "crates/fluent2-icons", version = "0.4.2" }
+fluent2-egui = { path = "crates/fluent2-egui", version = "0.4.2" }
 # One egui minor per release line; see UPSTREAM.md "egui" and docs/ARCHITECTURE.md "Versioning".
 egui = { version = "0.37", default-features = false }
 
