@@ -286,4 +286,73 @@ mod tests {
         assert_eq!(font_tag_size("+1"), Some(Size::Points(18.0)));
         assert_eq!(font_tag_size("9"), Some(Size::Points(48.0)));
     }
+
+    fn prop_config() -> proptest::test_runner::Config {
+        proptest::test_runner::Config {
+            cases: 256,
+            failure_persistence: None,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(0xF2E6_C055),
+            ..proptest::test_runner::Config::default()
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(prop_config())]
+
+        /// Arbitrary `style` text never panics, and any size it keeps is finite and non-negative.
+        #[test]
+        fn parse_style_never_panics_and_sizes_are_sane(style in ".{0,200}") {
+            if let Some(Size::Points(v) | Size::Factor(v)) = parse_style(&style).size {
+                proptest::prop_assert!(v.is_finite() && v >= 0.0, "size {v}");
+            }
+        }
+
+        /// Any accepted length is finite and non-negative, whatever the number.
+        #[test]
+        fn parse_size_rejects_non_finite_and_negative(
+            number in proptest::num::f32::ANY,
+            unit in proptest::sample::select(vec!["", "px", "pt", "em", "rem", "%"]),
+        ) {
+            let text = format!("{number}{unit}");
+            if let Some(Size::Points(v) | Size::Factor(v)) = parse_size(&text) {
+                proptest::prop_assert!(v.is_finite() && v >= 0.0, "{text} gave {v}");
+            } else {
+                proptest::prop_assert!(!number.is_finite() || number < 0.0 || unit == "pt" && !(number * 4.0 / 3.0).is_finite(), "{text} was rejected");
+            }
+        }
+
+        /// `<font size>` always lands on one of the seven HTML steps.
+        #[test]
+        fn font_tag_size_is_one_of_seven_steps(value in "[+-]?[0-9]{0,12}") {
+            if let Some(size) = font_tag_size(&value) {
+                let steps = [10.0, 13.0, 16.0, 18.0, 24.0, 32.0, 48.0].map(Size::Points);
+                proptest::prop_assert!(steps.contains(&size), "{value} gave {size:?}");
+            }
+        }
+
+        /// Hex colours round-trip in long form and short form.
+        #[test]
+        fn hex_colours_round_trip(r: u8, g: u8, b: u8, upper: bool) {
+            let long = format!("#{r:02x}{g:02x}{b:02x}");
+            let long = if upper { long.to_ascii_uppercase() } else { long };
+            proptest::prop_assert_eq!(parse_color(&long), Some(Rgb(r, g, b)));
+            let (r, g, b) = (r & 0xf, g & 0xf, b & 0xf);
+            proptest::prop_assert_eq!(
+                parse_color(&format!("#{r:x}{g:x}{b:x}")),
+                Some(Rgb(r * 17, g * 17, b * 17))
+            );
+        }
+
+        /// `rgb()` with in-range channels gives those channels back.
+        #[test]
+        fn rgb_function_round_trips(r: u8, g: u8, b: u8) {
+            proptest::prop_assert_eq!(parse_color(&format!("rgb({r}, {g}, {b})")), Some(Rgb(r, g, b)));
+        }
+
+        /// Arbitrary colour text never panics.
+        #[test]
+        fn parse_color_never_panics(value in ".{0,64}") {
+            let _ = parse_color(&value);
+        }
+    }
 }

@@ -427,3 +427,74 @@ fn find_text_matches_across_multibyte_chars() {
     assert!(text.is_char_boundary(hits[0].start));
     assert!(text.is_char_boundary(hits[0].end));
 }
+
+/// Tag soup built from the elements the model handles, so generated input reaches the
+/// nesting, table, list and style paths instead of being plain text.
+fn tag_soup() -> impl proptest::strategy::Strategy<Value = String> {
+    use proptest::strategy::Strategy as _;
+    let piece = proptest::prop_oneof![
+        proptest::sample::select(vec![
+            "<p>",
+            "</p>",
+            "<div>",
+            "</div>",
+            "<blockquote>",
+            "</blockquote>",
+            "<ul>",
+            "<ol>",
+            "<li>",
+            "</ul>",
+            "<table>",
+            "<tr>",
+            "<td>",
+            "</td>",
+            "</tr>",
+            "</table>",
+            "<b>",
+            "</b>",
+            "<a href=\"https://example.com\">",
+            "</a>",
+            "<br>",
+            "<img src=\"data:image/png;base64,iVBORw0KGgo=\">",
+            "<span style=\"font-size: 1e40pt; color: #zzz\">",
+            "<font size=\"+99\">",
+            "&amp;",
+            "&#xFFFFFF;",
+            "<!--",
+            "-->",
+            "<script>",
+            "</script>",
+            "İ",
+        ])
+        .prop_map(str::to_owned),
+        "[a-zA-Z <>/=\"&;#]{0,12}",
+    ];
+    proptest::collection::vec(piece, 0..80).prop_map(|pieces| pieces.concat())
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::test_runner::Config {
+        cases: 128,
+        failure_persistence: None,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0xF2E6_4710),
+        ..proptest::test_runner::Config::default()
+    })]
+
+    /// Any input parses, nesting stays under the cap, and every find match is a valid,
+    /// in-block, char-aligned range.
+    #[test]
+    fn parse_is_total_and_find_ranges_are_valid(
+        html in proptest::prop_oneof![tag_soup(), ".{0,300}"],
+        query in "[a-zA-Zİ ]{1,3}",
+    ) {
+        let doc = HtmlDocument::parse(&html);
+        let max = depth(&doc.blocks);
+        proptest::prop_assert!(max <= MAX_DEPTH, "depth {max}");
+        let blocks = doc.text_blocks();
+        for found in fluent2_egui::data::html::find_text(&doc, &query) {
+            let text = &blocks[found.block];
+            proptest::prop_assert!(found.start < found.end && found.end <= text.len());
+            proptest::prop_assert!(text.is_char_boundary(found.start) && text.is_char_boundary(found.end));
+        }
+    }
+}
