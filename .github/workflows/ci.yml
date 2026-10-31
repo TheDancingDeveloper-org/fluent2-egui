@@ -27,6 +27,7 @@ jobs:
     outputs:
       rust: ${{ steps.c.outputs.rust }}
       gallery: ${{ steps.c.outputs.gallery }}
+      screenshots: ${{ steps.c.outputs.screenshots }}
       fixtures: ${{ steps.c.outputs.fixtures }}
       full: ${{ steps.c.outputs.full }}
       rust_full: ${{ steps.c.outputs.rust_full }}
@@ -48,10 +49,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT" != pull_request ]]; then
-            printf 'full=true\nrust=true\ngallery=true\nfixtures=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\nlicences=true\n' >> "$GITHUB_OUTPUT"
+            printf 'full=true\nrust=true\ngallery=true\nscreenshots=true\nfixtures=true\nrust_full=true\nrust_packages=\nreadme=true\ntokens=true\nicons=true\ndeny=true\nlicences=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          rust=false gallery=false fixtures=false full=false
+          rust=false gallery=false screenshots=false fixtures=false full=false
           readme=false tokens=false icons=false deny=false licences=false
           packages=()
           add_package() {
@@ -66,32 +67,33 @@ jobs:
               # Anything that changes how the workspace resolves or builds takes
               # the full workspace and the Windows matrix.
               .github/*|Cargo.toml|Cargo.lock|rustfmt.toml|rust-toolchain.toml|.cargo/*|deny.toml)
-                rust=true gallery=true fixtures=true full=true
+                rust=true gallery=true screenshots=true fixtures=true full=true
                 readme=true tokens=true icons=true deny=true licences=true ;;
               fixtures/*)
                 rust=true fixtures=true ;;
               crates/gallery/*|gallery/*|docs/images/gallery/*|scripts/gallery-screenshots.sh|scripts/wasm-size-check.sh|ci/wasm-budget.txt|docs/wasm-size.md)
-                rust=true gallery=true
+                rust=true gallery=true screenshots=true
                 add_package gallery ;;
               crates/fluent2-egui/*)
-                rust=true fixtures=true
+                # Component changes alter the rendered gallery pages.
+                rust=true fixtures=true screenshots=true
                 add_package fluent2-egui
                 # The gallery enables every optional feature, so running its
                 # tests is what exercises the feature-gated components.
                 add_package gallery ;;
               crates/fluent2-icons/*|assets/icons/*|xtask/src/icons.rs)
-                rust=true icons=true
+                rust=true icons=true screenshots=true
                 add_package fluent2-icons
                 # Icons feed the component interaction tests.
                 add_package fluent2-egui
                 add_package gallery ;;
               crates/fluent2-tokens/*|design-tokens/*|scripts/gen-tokens*|scripts/snapshot-tokens*)
-                rust=true tokens=true
+                rust=true tokens=true screenshots=true
                 add_package fluent2-tokens
                 add_package fluent2-egui
                 add_package gallery ;;
               xtask/*)
-                rust=true tokens=true
+                rust=true tokens=true screenshots=true
                 add_package xtask
                 add_package fluent2-tokens
                 add_package fluent2-egui
@@ -114,7 +116,7 @@ jobs:
                 rust=true fixtures=true full=true ;;
               *)
                 # An unclassified path fails safe: the full PR set, not nothing.
-                rust=true gallery=true fixtures=true full=true
+                rust=true gallery=true screenshots=true fixtures=true full=true
                 readme=true tokens=true icons=true deny=true licences=true ;;
             esac
           done < <(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
@@ -123,8 +125,8 @@ jobs:
           if [[ "$rust" == true && "$full" == false && "$fixtures" == false && ${#packages[@]} -eq 0 ]]; then
             full=true
           fi
-          printf 'full=%s\nrust=%s\ngallery=%s\nfixtures=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\nlicences=%s\n' \
-            "$full" "$rust" "$gallery" "$fixtures" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" "$licences" | tee -a "$GITHUB_OUTPUT"
+          printf 'full=%s\nrust=%s\ngallery=%s\nscreenshots=%s\nfixtures=%s\nrust_full=%s\nrust_packages=%s\nreadme=%s\ntokens=%s\nicons=%s\ndeny=%s\nlicences=%s\n' \
+            "$full" "$rust" "$gallery" "$screenshots" "$fixtures" "$full" "${packages[*]}" "$readme" "$tokens" "$icons" "$deny" "$licences" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     needs: changes
@@ -374,7 +376,7 @@ jobs:
   # stale image can be replaced without Docker. See scripts/gallery-screenshots.sh.
   gallery-screenshots:
     needs: changes
-    if: needs.changes.outputs.gallery == 'true'
+    if: needs.changes.outputs.screenshots == 'true'
     runs-on: ubuntu-latest
     container: rust@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 # 1.95-trixie
     env:
