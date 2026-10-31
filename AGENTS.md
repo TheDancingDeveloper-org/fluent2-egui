@@ -9,27 +9,20 @@ module layout, the component API, theming, testing and gates.
 
 1. Find the item in Vogt (index: `docs/BACKLOG.md`) and read it fully. It names the files to create or change, the upstream references
    (pinned URLs), the acceptance criteria and the commands to run.
-2. Branch `wi-<number>-<short-slug>` from `main`, or from the branch the item says it stacks on.
-3. Touch only the files the item lists, plus a fragment in `changelog.d/` (see [`changelog.d/README.md`](changelog.d/README.md) and [`docs/ci.md`](docs/ci.md)). Do not edit `CHANGELOG.md`; the release PR folds fragments in. If you need to touch more, or need
+2. Touch only the files the item lists, plus a fragment in `changelog.d/` (see [`changelog.d/README.md`](changelog.d/README.md) and [`docs/ci.md`](docs/ci.md)). Do not edit `CHANGELOG.md`; the release PR folds fragments in. If you need to touch more, or need
    a design choice the item and `docs/ARCHITECTURE.md` don't settle, **stop and ask on the work
    item**. Do not guess.
-4. Run the gates in `docs/ARCHITECTURE.md` until they pass.
-5. Open a PR against `main` (or the stacked branch) that names the work item. **Do not merge.**
-6. CI on a PR runs only the jobs your diff touches (Linux only); the merge queue and `main`
-   run everything, Windows included. The required context is `ci`. Land through the queue
-   (`land-pr`, or `gh pr merge --auto`), never by rebasing a queued PR. See
-   [`docs/ci.md`](docs/ci.md).
+3. Run the gates in `docs/ARCHITECTURE.md` until they pass.
+4. Land with `g land` on graft line `backlog-1` and stop. Oversight batches lands into one PR. See CONTRIBUTING.md, "How changes land".
 
-## Before you push
+## Before you land
 
 1. **Gallery screenshots.** The required `gallery-screenshots` check fails if a change adds or
    alters a gallery page (`crates/gallery/`, `gallery/`) without updating `docs/images/gallery/*.png`.
    Run `CARGO_BUILD_JOBS=4 scripts/gallery-screenshots.sh --update` and commit only the PNGs that
    changed. Check that each image change is intended. If the images look wrong because of a bug on
    `main`, stop and report rather than committing them.
-2. **Stale or conflicting branches.** Merge `origin/main` into the branch and push normally. Don't
-   rebase or force-push; the merge queue rebases on landing.
-3. **Shared registration lists** (README component index, `mod.rs`, `Cargo.toml` features) conflict
+2. **Shared registration lists** (README component index, `mod.rs`, `Cargo.toml` features) conflict
    often. Keep entries one per line, in sorted order.
 
 ## Rules that are never broken
