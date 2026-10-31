@@ -7,11 +7,13 @@
 //! ```
 //!
 //! Each case paints a 10 000-row view for 60 frames in a fixed-size harness and prints the
-//! wall time per frame. The first frame is not timed: it pays for font setup and the first
-//! layout. The numbers are a record, not a gate. A few percent either way between machines
-//! is expected. Allocation counts are not measured here: the library forbids `unsafe`, and a
-//! counting allocator needs it.
+//! wall time, allocation count and allocated bytes per frame. The first frame is not
+//! measured: it pays for font setup and the first layout. The numbers are a record, not a
+//! gate. A few percent either way between machines is expected for time; allocation counts
+//! should be stable on one toolchain. Allocations are counted by `stats_alloc` as the global
+//! allocator of this bench binary only, which needs no `unsafe` here.
 
+use std::alloc::System;
 use std::cell::RefCell;
 use std::time::Instant;
 
@@ -21,6 +23,10 @@ use fluent2_egui::Combobox;
 use fluent2_egui::data::data_grid::{Column, DataGrid, DataGridState};
 use fluent2_egui::data::list::{List, ListState};
 use fluent2_egui::{Theme, install};
+use stats_alloc::{INSTRUMENTED_SYSTEM, Region, StatsAlloc};
+
+#[global_allocator]
+static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 
 const ROWS: usize = 10_000;
 const FRAMES: u32 = 60;
@@ -31,12 +37,19 @@ fn theme(ui: &mut egui::Ui) {
 
 fn bench(name: &str, mut step: impl FnMut()) {
     step();
+    let region = Region::new(GLOBAL);
     let start = Instant::now();
     for _ in 0..FRAMES {
         step();
     }
     let per_frame = start.elapsed() / FRAMES;
-    println!("{name}: {per_frame:?}/frame over {FRAMES} frames ({ROWS} rows)");
+    let stats = region.change();
+    let allocs = stats.allocations as u64 / u64::from(FRAMES);
+    let bytes = stats.bytes_allocated as u64 / u64::from(FRAMES);
+    println!(
+        "{name}: {per_frame:?}/frame, {allocs} allocs/frame, {bytes} B/frame \
+         over {FRAMES} frames ({ROWS} rows)"
+    );
 }
 
 fn main() {
@@ -45,6 +58,8 @@ fn main() {
     let list_state = RefCell::new(ListState::default());
     let mut list = Harness::builder()
         .with_size(Vec2::new(480.0, 640.0))
+        // Timing only: the accessibility tests cover these widgets.
+        .with_accessibility_check(false)
         .build_ui(move |ui| {
             theme(ui);
             let mut state = list_state.borrow_mut();
@@ -58,6 +73,8 @@ fn main() {
     let grid_state = RefCell::new(DataGridState::default());
     let mut grid = Harness::builder()
         .with_size(Vec2::new(640.0, 480.0))
+        // Timing only: the accessibility tests cover these widgets.
+        .with_accessibility_check(false)
         .build_ui(move |ui| {
             theme(ui);
             let columns = [Column::new("name", "Name"), Column::new("value", "Value")];
@@ -72,6 +89,8 @@ fn main() {
     let text = RefCell::new(String::new());
     let mut combo = Harness::builder()
         .with_size(Vec2::new(320.0, 480.0))
+        // Timing only: the accessibility tests cover these widgets.
+        .with_accessibility_check(false)
         .build_ui(move |ui| {
             theme(ui);
             let mut value = text.borrow_mut();
