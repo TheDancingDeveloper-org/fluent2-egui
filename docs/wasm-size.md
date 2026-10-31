@@ -133,9 +133,9 @@ otherwise be needed.
 
 Frame time for a 10,000-row list, a 10,000-row data grid and a combobox of 10,000 options is
 `cargo bench -p fluent2-egui --bench large_views` (`crates/fluent2-egui/benches/large_views.rs`).
-It prints wall time per frame over 60 frames after a warm-up frame. It is not a required check
-and it does not fail CI. Allocation counts are not reported: a counting allocator needs `unsafe`,
-which the library forbids.
+It prints wall time, allocation count and allocated bytes per frame over 60 frames after a
+warm-up frame. Allocations come from `stats_alloc` installed as the bench binary's global
+allocator (a dev-dependency; no `unsafe`). It is not a required check and it does not fail CI.
 
 ## Follow-ups
 

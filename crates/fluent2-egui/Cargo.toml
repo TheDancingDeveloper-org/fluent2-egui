@@ -122,6 +122,9 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 egui = { workspace = true, features = ["default_fonts", "monochrome_emoji_fonts"] }
 # Round-trips the serde state in tests (the `serde` feature).
 serde_json = "1"
+# Counts allocations per frame in benches/large_views.rs. Dev-only; safe to declare as the
+# global allocator, so the bench needs no `unsafe`.
+stats_alloc = "0.1"
 
 [[bench]]
 name = "large_views"
