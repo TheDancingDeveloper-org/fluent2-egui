@@ -28,10 +28,10 @@ workspace; an unrecognised `crates/*` path also falls back to full, never to "no
 | `.github/*`, `Cargo.toml`, `Cargo.lock`, `deny.toml`, `rustfmt.toml`, `rust-toolchain.toml`, `.cargo/*` | full workspace: every job, Linux and Windows, including the downstream fixtures, regeneration drift, icon drift, `cargo deny` and the README index |
 | `fixtures/*` | the downstream fixture jobs (`fixtures`, `fixtures-wasm`, `msrv`) |
 | `crates/gallery/`, `gallery/`, `docs/images/gallery/`, `scripts/gallery-screenshots.sh`, `scripts/wasm-size-check.sh`, `ci/wasm-budget.txt`, `docs/wasm-size.md` | `gallery` package plus the gallery jobs (`gallery-wasm`, which also enforces `ci/wasm-budget.txt`, and `gallery-screenshots`) |
-| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui`. Also the downstream fixtures: each optional feature on its own, a wasm consumer, and the MSRV consumer |
-| `crates/fluent2-icons/*`, `assets/icons/*`, `xtask/src/icons.rs` | icon drift (`cargo xtask check-icons`, offline) plus `fluent2-icons`, `fluent2-egui` and `gallery` |
-| `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui` and `gallery` |
-| `xtask/*` | `xtask`, regeneration drift, and the crates the generators write (`fluent2-tokens`, `fluent2-egui`, `gallery`) |
+| `crates/fluent2-egui/*` | `fluent2-egui` **and** `gallery`, because the gallery enables every optional feature and is what exercises them; the README index runs with `fluent2-egui`. Also `gallery-screenshots`, since components change the rendered pages, and the downstream fixtures: each optional feature on its own, a wasm consumer, and the MSRV consumer |
+| `crates/fluent2-icons/*`, `assets/icons/*`, `xtask/src/icons.rs` | icon drift (`cargo xtask check-icons`, offline) plus `fluent2-icons`, `fluent2-egui`, `gallery` and `gallery-screenshots` |
+| `crates/fluent2-tokens/*`, `design-tokens/*`, `scripts/gen-tokens*`, `scripts/snapshot-tokens*` | regeneration drift (`cargo xtask gen-tokens` must leave the tree clean) plus `fluent2-tokens`, `fluent2-egui`, `gallery` and `gallery-screenshots` |
+| `xtask/*` | `xtask`, regeneration drift, and the crates the generators write (`fluent2-tokens`, `fluent2-egui`, `gallery`) and `gallery-screenshots` |
 | other `scripts/*` (generators) | regeneration drift and `xtask` plus `fluent2-tokens` |
 | `README.md` | the README component index (`cargo test -p fluent2-egui --test readme_index`) |
 | any other `crates/*` path | full workspace (an unrecognised crate is not safe to narrow), including the downstream fixtures |
@@ -48,7 +48,7 @@ runs when icon sources change (`crates/fluent2-icons/`, `assets/icons/`, `xtask/
 and on the full workspace. `cargo deny check` (advisories and licences, `deny.toml`)
 runs when `Cargo.toml`, `Cargo.lock`, `deny.toml` or `.github/` change, and on the full
 workspace. `release.yml` uses the same `deny.toml` for its licence step. The Windows leg and `gallery-wasm` for
-library-only changes run in the queue, never on a PR or on a push to `main`.
+library-only changes run in the queue (`gallery-screenshots` runs on the PR), never on a PR or on a push to `main`.
 
 ## Downstream fixtures
 
