@@ -8,7 +8,7 @@ Windows and Linux, and on the web through wasm.
 
 **Hosted gallery:** unavailable. GitHub Pages is not enabled on this repository, so there is no live site. Run the gallery locally with `cargo run -p gallery`. The wasm build in `.github/workflows/pages.yml` still runs; its deploy step is quarantined until Pages is turned on (see [`docs/ci.md`](docs/ci.md)).
 
-**Status: 0.4.0.** Milestones:
+**Status: 0.4.** Milestones:
 
 | milestone | contents |
 |---|---|
@@ -23,7 +23,7 @@ Windows and Linux, and on the web through wasm.
 ```toml
 [dependencies]
 egui = "0.37"
-fluent2-egui = "0.3"
+fluent2-egui = "0.4"
 ```
 
 Install the theme once (it is safe to call again, for example when the user switches theme),
@@ -189,6 +189,7 @@ What the crate offers, by module, mapped to Fluent 2. Rows are sorted by type na
 | 0.1.x | 0.36 |
 | 0.2.x | 0.36 |
 | 0.3.x | 0.37 |
+| 0.4.x | 0.37 |
 
 ## CI
 

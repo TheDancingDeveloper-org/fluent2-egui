@@ -219,3 +219,23 @@ fn readme_does_not_list_a_shipped_widget_as_missing() {
         "README lists these as both shipped and not yet provided: {contradictions:?}"
     );
 }
+
+#[test]
+fn readme_version_claims_match_the_crate() {
+    let readme =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../README.md")).unwrap_or_default();
+    let line = env!("CARGO_PKG_VERSION")
+        .rsplit_once('.')
+        .map_or("", |(minor, _)| minor);
+    let mut stale = Vec::new();
+    if !readme.contains(&format!("**Status: {line}.**")) {
+        stale.push(format!("status line is not \"**Status: {line}.**\""));
+    }
+    if !readme.contains(&format!("fluent2-egui = \"{line}\"")) {
+        stale.push(format!("usage snippet does not depend on \"{line}\""));
+    }
+    if !readme.contains(&format!("| {line}.x |")) {
+        stale.push(format!("egui compatibility table has no {line}.x row"));
+    }
+    assert!(stale.is_empty(), "README version claims are stale: {stale:?}");
+}
