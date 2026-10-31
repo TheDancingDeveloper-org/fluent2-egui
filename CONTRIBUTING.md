@@ -2,20 +2,15 @@
 
 Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) first: it settles crate and module layout,
 the component API, theming and the gates. Work items live in Vogt (index in
-[`docs/BACKLOG.md`](docs/BACKLOG.md)); do one item per branch and PR.
+[`docs/BACKLOG.md`](docs/BACKLOG.md)); do one item per land.
 
 ## How changes land
 
-`main` is protected by a ruleset with a merge queue (squash, up to three entries per build).
-The single required check is **`ci`**, which passes when every job in
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) succeeded or was skipped by path scope.
-`main` takes no direct pushes.
+Changes land through graft, batched. Workers `g land` on graft line `backlog-1`. Oversight cuts one batch PR from the line (`graft-mirror pr-batch`) and merges it with `land-pr --method rebase`. When a backlog of work is under way, all of it goes into a single batch PR. Batch rules: workspace `.claude/rules/delivery-process.md` ("Landing").
 
-1. Branch from the latest `main` (`wi-<number>-<short-slug>`), or from the branch the item says
-   it stacks on.
-2. Commit and push; open a PR against `main` that names the work item.
-3. `land-pr` enqueues the PR. The queue re-runs the full Linux and Windows matrix; the PR run is
-   scoped to the packages the diff touches and finishes in a few minutes.
+- Graft line: `backlog-1`; mirror: `graft-dev-mirror-fluent2`
+- Required checks: `ci` (the single required context; every job in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) must succeed or be skipped by path scope)
+- Merge queue: yes (`main` is protected by a ruleset with a merge queue; `main` takes no direct pushes)
 
 Version numbers change only in the release PR or at tag time, never in a feature PR. A
 behaviour change adds a fragment under [`changelog.d/`](changelog.d/README.md); release notes
