@@ -290,6 +290,8 @@ jobs:
           - web-find
           - chart
           - chrono
+          - color-emoji
+          - system-preferences
           - serde,docking
           - markdown,html
     steps:
@@ -326,7 +328,16 @@ jobs:
         with:
           shared-key: ci
           save-if: ${{ github.event_name != 'pull_request' }}
-      - run: cargo check -p fluent2-egui-consumer --no-default-features --locked --target wasm32-unknown-unknown
+      - name: Check the consumer on wasm32
+        run: |
+          set -euo pipefail
+          for features in "" bundled-font web-a11y,web-find file-dialog color-emoji; do
+            args=(-p fluent2-egui-consumer --no-default-features --locked --target wasm32-unknown-unknown)
+            if [[ -n "$features" ]]; then
+              args+=(--features "$features")
+            fi
+            cargo check "${args[@]}"
+          done
 
   # The declared rust-version, on the minimal consumer rather than the workspace.
   msrv:

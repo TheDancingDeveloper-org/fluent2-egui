@@ -1,0 +1,2 @@
+- CI: the downstream consumer fixture now also checks `color-emoji` and `system-preferences` alone, and the wasm32 fixture checks the default font, the web features, `file-dialog` and `color-emoji`. (#154)
+- Fix: the `file-dialog` feature now builds on wasm32 (it turns on egui's `web_file`). (#154)
